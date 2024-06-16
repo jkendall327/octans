@@ -24,8 +24,10 @@ var files = Directory.CreateDirectory(Path.Join(AppDomain.CurrentDomain.BaseDire
 
 app.MapPost("/importFile", async (Uri filepath, ServerDbContext context) =>
     {
-        var destination = Path.Join(files.FullName, filepath.ToString());
-        File.Copy(filepath.ToString(), destination);
+        var fileName = Path.GetFileName(filepath.AbsolutePath);
+        var destination = Path.Join(files.FullName, fileName);
+        File.Copy(filepath.AbsolutePath, destination);
+        
         var id = Random.Shared.Next();
 
         var record = new FileRecord
@@ -37,7 +39,7 @@ app.MapPost("/importFile", async (Uri filepath, ServerDbContext context) =>
         context.FileRecords.Add(record);
         await context.SaveChangesAsync();
         
-        return Results.Ok();
+        return Results.Ok(record);
     })
     .WithName("ImportFile")
     .WithDescription("Import a single file from on-disk")
@@ -48,8 +50,11 @@ app.MapPost("/importFiles", (IEnumerable<Uri> filepath) => Results.Ok())
     .WithDescription("Import multiple files from on-disk")
     .WithOpenApi();
 
-
-app.MapGet("/getFile", (int id) => Results.Ok())
+app.MapGet("/getFile", async (int id, ServerDbContext context) =>
+    {
+        var file = await context.FindAsync<FileRecord>(id);
+        return Results.Ok(file);
+    })
     .WithName("GetFile")
     .WithDescription("Get a single file by its ID")
     .WithOpenApi();
