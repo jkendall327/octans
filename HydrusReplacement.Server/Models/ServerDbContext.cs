@@ -10,7 +10,7 @@ public class ServerDbContext : DbContext
 
         var db = Path.Join(dbFolder, "server.db");
         
-        optionsBuilder.UseSqlite($"Data Source={db};Version=3;");
+        optionsBuilder.UseSqlite($"Data Source={db};");
         
         base.OnConfiguring(optionsBuilder);
     }
