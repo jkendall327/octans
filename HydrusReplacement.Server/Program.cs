@@ -16,29 +16,32 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.MapPost("/importFile", (Uri filepath) => Results.Ok())
+    .WithName("ImportFile")
+    .WithDescription("Import a single file from on-disk")
+    .WithOpenApi();
 
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
+
+app.MapPost("/importFiles", (IEnumerable<Uri> filepath) => Results.Ok())
+    .WithName("ImportFiles")
+    .WithDescription("Import multiple files from on-disk")
+    .WithOpenApi();
+
+
+app.MapGet("/getFile", (int id) => Results.Ok())
+    .WithName("GetFile")
+    .WithDescription("Get a single file by its ID")
+    .WithOpenApi();
+
+
+app.MapGet("/getFiles", (IEnumerable<int> id) => Results.Ok())
+    .WithName("GetFiles")
+    .WithDescription("Get multiple files by their IDs")
+    .WithOpenApi();
+
+app.MapGet("/query", (IEnumerable<string> tags) => Results.Ok())
+    .WithName("Search by Query")
+    .WithDescription("Retrieve files found by a tag query search")
     .WithOpenApi();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
