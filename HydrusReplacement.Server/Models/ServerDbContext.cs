@@ -16,4 +16,5 @@ public class ServerDbContext : DbContext
     }
     
     public virtual DbSet<FileRecord> FileRecords { get; set; }
+    public virtual DbSet<HashItem> Hashes { get; set; }
 }
