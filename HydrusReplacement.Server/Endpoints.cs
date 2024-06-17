@@ -40,17 +40,17 @@ public static class Endpoints
 
     private static async Task<IResult> ImportFile(Uri filepath, ServerDbContext context)
     {
-        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var files = Directory.CreateDirectory(Path.Join(baseDirectory, "db", "files"));
-
-        var fileName = Path.GetFileName(filepath.AbsolutePath);
-        var destination = Path.Join(files.FullName, fileName);
-        File.Copy(filepath.AbsolutePath, destination);
-
-        var bytes = await File.ReadAllBytesAsync(destination);
-
+        var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
         var hashed = SHA256.HashData(bytes);
 
+        var subfolder = new SubfolderManager().GetSubfolder(hashed);
+        
+        Directory.CreateDirectory(SubfolderManager.HashFolderPath);
+
+        var fileName = Path.GetFileName(filepath.AbsolutePath);
+        var destination = Path.Join(subfolder.AbsolutePath, fileName);
+        File.Copy(filepath.AbsolutePath, destination);
+        
         var record = new HashItem { Hash = hashed };
 
         context.Hashes.Add(record);

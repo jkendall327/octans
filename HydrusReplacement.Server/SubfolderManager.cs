@@ -4,7 +4,7 @@ public class SubfolderManager
 {
     private const string Hexadecimal = "0123456789abcdef";
 
-    public string HashFolderPath => Path.Join(AppDomain.CurrentDomain.BaseDirectory, "db", "files");
+    public static string HashFolderPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "db", "files");
     
     public void MakeSubfolders()
     {
@@ -25,5 +25,17 @@ public class SubfolderManager
             Directory.CreateDirectory(filePath);
             Directory.CreateDirectory(thumbnailPath);
         }
+    }
+
+    public Uri GetSubfolder(byte[] hashed)
+    {
+        var initialBytes = hashed[..2];
+        var tag = Convert.ToHexString(initialBytes);
+        
+        // TODO: do not assume it's a file (might be thumbnail)
+
+        var path = Path.Join(HashFolderPath, "f", tag);
+        
+        return new(path);
     }
 }
