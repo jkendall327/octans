@@ -8,10 +8,11 @@ public class SubfolderManager
     
     public void MakeSubfolders()
     {
+        // Perform a Cartesian join, i.e. get every permutation of chars in the string.
         var query = 
-            from c in Hexadecimal
-            from d in Hexadecimal
-            select string.Concat(c, d);
+            from a in Hexadecimal
+            from b in Hexadecimal
+            select string.Concat(a, b);
 
         var permutations = query.ToList();
 
@@ -21,7 +22,7 @@ public class SubfolderManager
         {
             var fileDirectory = string.Concat("f", permutation);
             var thumbnailDirectory = string.Concat("t", permutation);
-
+            
             root.CreateSubdirectory(fileDirectory);
             root.CreateSubdirectory(thumbnailDirectory);
         }
@@ -29,8 +30,8 @@ public class SubfolderManager
 
     public Uri GetSubfolder(byte[] hashed)
     {
-        var initialBytes = hashed[..2];
-        var tag = Convert.ToHexString(initialBytes);
+        var hex = Convert.ToHexString(hashed);
+        var tag = hex[..2];
         
         // TODO: do not assume it's a file (might be thumbnail)
 

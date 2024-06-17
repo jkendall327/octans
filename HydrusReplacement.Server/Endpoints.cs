@@ -22,9 +22,20 @@ public static class Endpoints
             {
                 var hash = await context.FindAsync<HashItem>(id);
 
-                var subfolder = manager.GetSubfolder(hash.Hash);
+                if (hash is null)
+                {
+                    return Results.NotFound();
+                }
                 
-                return Results.Ok(hash);
+                var hex = Convert.ToHexString(hash.Hash);
+                
+                var subfolder = manager.GetSubfolder(hash.Hash);
+
+                var file = Directory
+                    .EnumerateFiles(subfolder.AbsolutePath)
+                    .SingleOrDefault(x => x.Contains(hex));
+
+                return file is null ? Results.NotFound() : Results.Ok(file);
             })
             .WithName("GetFile")
             .WithDescription("Get a single file by its ID")
