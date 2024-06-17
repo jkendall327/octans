@@ -49,8 +49,10 @@ public static class Endpoints
         var subfolder = manager.GetSubfolder(hashed);
         
         Directory.CreateDirectory(SubfolderManager.HashFolderPath);
-
-        var fileName = Path.GetFileName(filepath.AbsolutePath);
+        
+        // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
+        
+        var fileName = Convert.ToHexString(hashed) + Path.GetExtension(filepath.AbsolutePath);
         var destination = Path.Join(subfolder.AbsolutePath, fileName);
         File.Copy(filepath.AbsolutePath, destination);
         
