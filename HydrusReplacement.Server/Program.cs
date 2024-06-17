@@ -7,6 +7,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ServerDbContext>();
 builder.Services.AddScoped<SubfolderManager>();
+builder.Services.AddScoped<FileService>();
 
 var app = builder.Build();
 
