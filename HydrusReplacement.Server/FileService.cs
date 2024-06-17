@@ -26,10 +26,10 @@ public class FileService
         CopyPhysicalFile(hashed, filepath);
 
         // Add the hash to the database.
-        var record = new HashItem { Hash = hashed };
-        _context.Hashes.Add(record);
+        var hashItem = new HashItem { Hash = hashed };
+        _context.Hashes.Add(hashItem);
 
-        AddTags(request);
+        AddTags(request, hashItem);
 
         await _context.SaveChangesAsync();
     }
@@ -44,10 +44,13 @@ public class FileService
         
         var fileName = Convert.ToHexString(hashed) + Path.GetExtension(filepath.AbsolutePath);
         var destination = Path.Join(subfolder.AbsolutePath, fileName);
-        File.Copy(filepath.AbsolutePath, destination);
+        
+        // TODO: handle what to do when a file already exists.
+        // On filesystem but not in DB, in DB but not in filesystem, etc.
+        File.Copy(filepath.AbsolutePath, destination, true);
     }
 
-    private void AddTags(ImportRequest request)
+    private void AddTags(ImportRequest request, HashItem hashItem)
     {
         var tags = request.Tags;
 
@@ -68,6 +71,7 @@ public class FileService
             };
 
             _context.Tags.Add(tagDto);
+            _context.Mappings.Add(new Mapping { Tag = tagDto, Hash = hashItem });
         }
     }
 
