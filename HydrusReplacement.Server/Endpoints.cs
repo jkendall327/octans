@@ -1,3 +1,5 @@
+using HydrusReplacement.Server.Models.Tagging;
+
 namespace HydrusReplacement.Server;
 
 public static class Endpoints
@@ -30,7 +32,17 @@ public static class Endpoints
             .WithDescription("Get multiple files by their IDs")
             .WithOpenApi();
 
-        app.MapGet("/query", (IEnumerable<string> tags) => Results.Ok())
+        app.MapGet("/query", async (IEnumerable<Tag> tags, FileService service) =>
+            {
+                var files = await service.GetFilesByTagQuery(tags);
+
+                if (files is null || !files.Any())
+                {
+                    return Results.NotFound();
+                }
+
+                return Results.Ok(files);
+            })
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();

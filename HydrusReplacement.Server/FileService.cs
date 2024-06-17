@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using HydrusReplacement.Server.Models;
 using HydrusReplacement.Server.Models.Tagging;
+using Microsoft.EntityFrameworkCore;
 
 namespace HydrusReplacement.Server;
 
@@ -97,5 +98,20 @@ public class FileService
         return Directory
             .EnumerateFiles(subfolder.AbsolutePath)
             .SingleOrDefault(x => x.Contains(hex));
+    }
+
+    public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)
+    {
+        var found = _context.Tags
+            .Where(t => 
+                tags.Any(tag =>
+                tag.Namespace.Value == t.Namespace.Value && tag.Subtag.Value == t.Namespace.Value));
+
+        var query = 
+            from mapping in _context.Mappings
+            join tag in found on mapping.Tag equals tag
+            select mapping.Hash;
+        
+        return await query.ToListAsync();
     }
 }
