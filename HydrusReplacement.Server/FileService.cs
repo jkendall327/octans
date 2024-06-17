@@ -56,26 +56,15 @@ public class FileService
         
         foreach (var tag in tags)
         {
+            // Tags without namespaces are implemented merely as tags with an empty namespace.
             var split = tag.Split(':');
-            
-            var @namespace = split.FirstOrDefault();
+            var @namespace = split.Length is 2 ? split.First() : string.Empty;
             var subtag = split.Last();
             
-            var namespaceDto = new Namespace
-            {
-                // Tags without namespaces are implemented merely as tags with an empty namespace.
-                Value = @namespace ?? string.Empty
-            };
-
-            var subtagDto = new Subtag
-            {
-                Value = subtag
-            };
-
             var tagDto = new Tag
             {
-                Namespace = namespaceDto,
-                Subtag = subtagDto
+                Namespace = new Namespace { Value = @namespace },
+                Subtag = new Subtag { Value = subtag }
             };
 
             _context.Tags.Add(tagDto);
