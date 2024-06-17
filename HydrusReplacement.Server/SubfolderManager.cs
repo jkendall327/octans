@@ -31,11 +31,12 @@ public class SubfolderManager
     public Uri GetSubfolder(byte[] hashed)
     {
         var hex = Convert.ToHexString(hashed);
-        var tag = hex[..2];
+        var tag = hex[..2].ToLowerInvariant();
+        var bucket = string.Concat("f", tag);
         
         // TODO: do not assume it's a file (might be thumbnail)
-
-        var path = Path.Join(HashFolderPath, "f", tag);
+        
+        var path = Path.Join(HashFolderPath, bucket);
         
         return new(path);
     }
