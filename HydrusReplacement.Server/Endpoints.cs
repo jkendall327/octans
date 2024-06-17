@@ -18,10 +18,13 @@ public static class Endpoints
             .WithDescription("Import multiple files from on-disk")
             .WithOpenApi();
 
-        app.MapGet("/getFile", async (int id, ServerDbContext context) =>
+        app.MapGet("/getFile", async (int id, SubfolderManager manager, ServerDbContext context) =>
             {
-                var file = await context.FindAsync<FileRecord>(id);
-                return Results.Ok(file);
+                var hash = await context.FindAsync<HashItem>(id);
+
+                var subfolder = manager.GetSubfolder(hash.Hash);
+                
+                return Results.Ok(hash);
             })
             .WithName("GetFile")
             .WithDescription("Get a single file by its ID")
@@ -38,12 +41,12 @@ public static class Endpoints
             .WithOpenApi();
     }
 
-    private static async Task<IResult> ImportFile(Uri filepath, ServerDbContext context)
+    private static async Task<IResult> ImportFile(Uri filepath, SubfolderManager manager, ServerDbContext context)
     {
         var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
         var hashed = SHA256.HashData(bytes);
 
-        var subfolder = new SubfolderManager().GetSubfolder(hashed);
+        var subfolder = manager.GetSubfolder(hashed);
         
         Directory.CreateDirectory(SubfolderManager.HashFolderPath);
 

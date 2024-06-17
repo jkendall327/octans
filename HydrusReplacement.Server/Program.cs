@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ServerDbContext>();
+builder.Services.AddScoped<SubfolderManager>();
 
 var app = builder.Build();
 
