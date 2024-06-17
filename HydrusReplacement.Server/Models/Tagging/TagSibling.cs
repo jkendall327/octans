@@ -2,6 +2,8 @@ namespace HydrusReplacement.Server.Models.Tagging;
 
 public class TagSibling
 {
+    public int Id { get; set; }
+
     public Tag Worse { get; set; }
     public Tag Better { get; set; }
     

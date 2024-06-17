@@ -2,6 +2,8 @@ namespace HydrusReplacement.Server.Models.Tagging;
 
 public class TagParent
 {
+    public int Id { get; set; }
+
     public Tag Child { get; set; }
     public Tag Parent { get; set; }
     
