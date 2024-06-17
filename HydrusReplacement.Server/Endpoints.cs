@@ -5,7 +5,7 @@ public static class Endpoints
     public static void AddEndpoints(this WebApplication app)
     {
         app.MapPost("/importFile", 
-                async (Uri filepath, FileService service) => await service.ImportFile(filepath))
+                async (ImportRequest request, FileService service) => await service.ImportFile(request))
             .WithName("ImportFile")
             .WithDescription("Import a single file from on-disk")
             .WithOpenApi();
