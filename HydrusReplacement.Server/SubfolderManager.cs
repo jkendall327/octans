@@ -11,19 +11,19 @@ public class SubfolderManager
         var query = 
             from c in Hexadecimal
             from d in Hexadecimal
-            select new string(c, d);
+            select string.Concat(c, d);
 
         var permutations = query.ToList();
 
-        var root = HashFolderPath;
+        var root = new DirectoryInfo(HashFolderPath);
         
         foreach (var permutation in permutations)
         {
-            var filePath = Path.Join(root, "f", permutation);
-            var thumbnailPath = Path.Join(root, "t", permutation);
+            var fileDirectory = string.Concat("f", permutation);
+            var thumbnailDirectory = string.Concat("t", permutation);
 
-            Directory.CreateDirectory(filePath);
-            Directory.CreateDirectory(thumbnailPath);
+            root.CreateSubdirectory(fileDirectory);
+            root.CreateSubdirectory(thumbnailDirectory);
         }
     }
 
