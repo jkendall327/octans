@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using HydrusReplacement.Server.Models;
 
 namespace HydrusReplacement.Server;
@@ -46,9 +47,13 @@ public static class Endpoints
         var destination = Path.Join(files.FullName, fileName);
         File.Copy(filepath.AbsolutePath, destination);
 
-        var record = new FileRecord { Filepath = destination };
+        var bytes = await File.ReadAllBytesAsync(destination);
 
-        context.FileRecords.Add(record);
+        var hashed = SHA256.HashData(bytes);
+
+        var record = new HashItem { Hash = hashed };
+
+        context.Hashes.Add(record);
         await context.SaveChangesAsync();
 
         return Results.Ok(record);
