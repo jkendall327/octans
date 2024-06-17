@@ -18,4 +18,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.AddEndpoints();
 
+new SubfolderManager().MakeSubfolders();
+
 app.Run();
