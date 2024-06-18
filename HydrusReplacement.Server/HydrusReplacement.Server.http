@@ -1,6 +1,15 @@
 @HydrusReplacement.Server_HostAddress = http://localhost:5185
+@DefaultFile = file:///home/foobar/cat.webp
 
-GET {{HydrusReplacement.Server_HostAddress}}/weatherforecast/
-Accept: application/json
+POST http://{{HydrusReplacement.Server_HostAddress}}/importFile
+Content-Type: application/json
 
-###
+{
+  "sourceLocation": "{{DefaultFile}}",
+  "tags": [
+    "medium:photograph",
+    "cat",
+    "cute",
+    "rating:good"
+  ]
+}
