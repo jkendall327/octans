@@ -4,13 +4,24 @@
     ViewData["Title"] = "Home page";
 }
 
-Images:
+Uris:
 
-@foreach (var hash in Model.Uris)
+@foreach (var uri in Model.Uris)
 {
     <tr>
         <td>
-            @Html.DisplayFor(modelItem => hash.AbsolutePath)
+            @Html.DisplayFor(modelItem => uri.AbsolutePath)
+        </td>
+    </tr>
+}
+
+Images:
+
+@foreach (var image in Model.Images)
+{
+    <tr>
+        <td>
+            <img src="data:image;base64,@System.Convert.ToBase64String(image)" width="80" height="80"/>     
         </td>
     </tr>
 }

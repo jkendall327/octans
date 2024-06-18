@@ -1,7 +1,11 @@
+using HydrusReplacement.Server;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+
+builder.Services.AddScoped<SubfolderManager>();
 
 var app = builder.Build();
 

@@ -8,6 +8,7 @@ namespace HydrusReplacement.Client.Pages;
 public class IndexModel : PageModel
 {
     public List<Uri> Uris { get; set; } = new();
+    public List<byte[]> Images { get; set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
 
@@ -28,10 +29,18 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        Uris = response
+        var uris = response
             .Select(x => _subfolderManager.GetSubfolder(x.Hash))
             .ToList();
 
+        Uris = uris;
+
+        var tasks = uris.Select(x => System.IO.File.ReadAllBytesAsync(x.AbsolutePath)).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        Images = tasks.Select(x => x.Result).ToList();
+        
         return Page();
     }
 }
