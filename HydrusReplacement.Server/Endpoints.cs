@@ -1,4 +1,6 @@
+using HydrusReplacement.Server.Models;
 using HydrusReplacement.Server.Models.Tagging;
+using Microsoft.EntityFrameworkCore;
 
 namespace HydrusReplacement.Server;
 
@@ -27,6 +29,23 @@ public static class Endpoints
             .WithDescription("Get a single file by its ID")
             .WithOpenApi();
 
+        app.MapGet("/getAll", async (int? limit, ServerDbContext context) =>
+            {
+                var hashes = context.Hashes.AsQueryable();
+
+                if (limit is not null)
+                {
+                    hashes = hashes.Take(limit.Value);
+                }
+                
+                var results = await hashes.ToListAsync();
+
+                return results.Any() ? Results.Ok(results) : Results.NotFound();
+            })
+            .WithName("GetAllFiles")
+            .WithDescription("Get all files (limit optional)")
+            .WithOpenApi();
+        
         app.MapGet("/getFiles", (IEnumerable<int> id) => Results.Ok())
             .WithName("GetFiles")
             .WithDescription("Get multiple files by their IDs")
