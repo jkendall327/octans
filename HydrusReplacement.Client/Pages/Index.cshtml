@@ -4,14 +4,13 @@
     ViewData["Title"] = "Home page";
 }
 
-@foreach (var hash in Model.Hashes)
+Images:
+
+@foreach (var hash in Model.Uris)
 {
     <tr>
         <td>
-            @Html.DisplayFor(modelItem => hash.Id)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => hash.Hash)
+            @Html.DisplayFor(modelItem => hash.AbsolutePath)
         </td>
     </tr>
 }
