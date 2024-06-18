@@ -29,18 +29,25 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var uris = response
-            .Select(x => _subfolderManager.GetSubfolder(x.Hash))
-            .ToList();
+        foreach (var hash in response)
+        {
+            var subfolder = _subfolderManager.GetSubfolder(hash.Hash);
 
-        Uris = uris;
+            Uris.Add(subfolder);
 
-        var tasks = uris.Select(x => System.IO.File.ReadAllBytesAsync(x.AbsolutePath)).ToArray();
+            var hex = Convert.ToHexString(hash.Hash);
+            
+            var file = new DirectoryInfo(subfolder.AbsolutePath)
+                .EnumerateFiles()
+                .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hex);
 
-        await Task.WhenAll(tasks);
+            if (file is null) continue;
+            
+            var bytes = await System.IO.File.ReadAllBytesAsync(file.FullName);
+                
+            Images.Add(bytes);
+        }
 
-        Images = tasks.Select(x => x.Result).ToList();
-        
         return Page();
     }
 }

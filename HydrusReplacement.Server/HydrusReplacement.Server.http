@@ -1,5 +1,5 @@
 @HydrusReplacement.Server_HostAddress = http://localhost:5185
-@DefaultFile = file:///home/foobar/cat.webp
+@DefaultFile = file:///home/jackkendall/Pictures/0_0.webp
 
 POST http://{{HydrusReplacement.Server_HostAddress}}/importFile
 Content-Type: application/json
