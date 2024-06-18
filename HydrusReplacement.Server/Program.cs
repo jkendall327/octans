@@ -1,5 +1,6 @@
 using HydrusReplacement.Server;
 using HydrusReplacement.Server.Models;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,4 +28,25 @@ using (var scope = app.Services.CreateScope())
     manager.MakeSubfolders();
 }
 
+// await ClearDatabase();
+
 app.Run();
+
+return;
+
+// Testing convenience.
+async Task ClearDatabase()
+{
+    await using var db = new ServerDbContext();
+
+    db.Hashes.RemoveRange(db.Hashes);
+    db.Mappings.RemoveRange(db.Mappings);
+    db.Tags.RemoveRange(db.Tags);
+    db.TagParents.RemoveRange(db.TagParents);
+    db.TagSiblings.RemoveRange(db.TagSiblings);
+    db.Namespaces.RemoveRange(db.Namespaces);
+    db.Subtags.RemoveRange(db.Subtags);
+    db.FileRecords.RemoveRange(db.FileRecords);
+
+    await db.SaveChangesAsync();
+}
