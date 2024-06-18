@@ -1,11 +1,20 @@
+using Microsoft.Extensions.Configuration;
+
 namespace HydrusReplacement.Server;
 
 public class SubfolderManager
 {
     private const string Hexadecimal = "0123456789abcdef";
 
-    public static string HashFolderPath = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "db", "files");
-    
+    private string HashFolderPath => Path.Join(_config.GetValue<string>("DatabaseRoot"), "db", "files");
+
+    private readonly IConfiguration _config;
+
+    public SubfolderManager(IConfiguration config)
+    {
+        _config = config;
+    }
+
     public void MakeSubfolders()
     {
         // Perform a Cartesian join, i.e. get every permutation of chars in the string.

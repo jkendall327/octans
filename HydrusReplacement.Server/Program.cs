@@ -20,6 +20,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.AddEndpoints();
 
-new SubfolderManager().MakeSubfolders();
+// Ensure subfolders are initialised
+using (var scope = app.Services.CreateScope())
+{
+    var manager = scope.ServiceProvider.GetRequiredService<SubfolderManager>();
+    manager.MakeSubfolders();
+}
 
 app.Run();

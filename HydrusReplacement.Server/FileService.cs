@@ -38,8 +38,6 @@ public class FileService
     {
         var subfolder = _subfolderManager.GetSubfolder(hashed);
         
-        Directory.CreateDirectory(SubfolderManager.HashFolderPath);
-        
         // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
         
         var fileName = Convert.ToHexString(hashed) + Path.GetExtension(filepath.AbsolutePath);
