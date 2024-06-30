@@ -17,8 +17,24 @@ public class IndexModel : PageModel
         _subfolderManager = subfolderManager;
     }
 
+    public IActionResult AyyLmao(string path)
+    {
+       // var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "pictures", path);
+        return File(System.IO.File.OpenRead(path), "image/jpeg");
+    }
+    
+    public async Task<IActionResult> OnGetFilePreview(string path)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        byte[] bytes = await System.IO.File.ReadAllBytesAsync(path);
+        return File(bytes, "application/octet-stream", "1.jpg");
+            
+    }
+    
     public async Task<IActionResult> OnGetAsync()
     {
+        return Page();
+        
         var client = new HttpClient();
 
         // TODO: don't hardcode this
