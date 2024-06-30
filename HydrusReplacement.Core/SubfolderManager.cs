@@ -49,4 +49,15 @@ public class SubfolderManager
         
         return new(path);
     }
+
+    public FileInfo? GetFilepath(byte[] hashed)
+    {
+        var subfolder = GetSubfolder(hashed);
+        
+        var hex = Convert.ToHexString(hashed);
+
+        return new DirectoryInfo(subfolder.AbsolutePath)
+            .EnumerateFiles()
+            .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hex);
+    }
 }

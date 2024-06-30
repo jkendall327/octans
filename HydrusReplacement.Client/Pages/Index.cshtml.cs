@@ -7,36 +7,27 @@ namespace HydrusReplacement.Client.Pages;
 
 public class IndexModel : PageModel
 {
-    public List<Uri> Uris { get; set; } = new();
-    public List<byte[]> Images { get; set; } = new();
+    public List<FileInfo> Filepaths { get; set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
-
-    public IndexModel(SubfolderManager subfolderManager)
+    private readonly IHttpClientFactory _httpClientFactory;
+    
+    public IndexModel(SubfolderManager subfolderManager, IHttpClientFactory httpClientFactory)
     {
         _subfolderManager = subfolderManager;
-    }
-
-    public IActionResult AyyLmao(string path)
-    {
-       // var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "pictures", path);
-        return File(System.IO.File.OpenRead(path), "image/jpeg");
+        _httpClientFactory = httpClientFactory;
     }
     
-    public async Task<IActionResult> OnGetFilePreview(string path)
+    public async Task<IActionResult> OnGetFilePreview(Uri path)
     {
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        byte[] bytes = await System.IO.File.ReadAllBytesAsync(path);
+        var bytes = await System.IO.File.ReadAllBytesAsync(path.AbsolutePath);
         return File(bytes, "application/octet-stream", "1.jpg");
-            
     }
     
     public async Task<IActionResult> OnGetAsync()
     {
-        return Page();
+        var client = _httpClientFactory.CreateClient();
         
-        var client = new HttpClient();
-
         // TODO: don't hardcode this
         var response = await client.GetFromJsonAsync<List<HashItem>>("http://localhost:5185/getAll");
 
@@ -45,24 +36,10 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        foreach (var hash in response)
-        {
-            var subfolder = _subfolderManager.GetSubfolder(hash.Hash);
-
-            Uris.Add(subfolder);
-
-            var hex = Convert.ToHexString(hash.Hash);
-            
-            var file = new DirectoryInfo(subfolder.AbsolutePath)
-                .EnumerateFiles()
-                .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hex);
-
-            if (file is null) continue;
-            
-            var bytes = await System.IO.File.ReadAllBytesAsync(file.FullName);
-                
-            Images.Add(bytes);
-        }
+        Filepaths = response
+            .Select(hash => _subfolderManager.GetFilepath(hash.Hash))
+            .OfType<FileInfo>()
+            .ToList();
 
         return Page();
     }

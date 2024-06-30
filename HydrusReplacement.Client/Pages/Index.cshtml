@@ -18,27 +18,13 @@
     }
 </style>
 
-<div id="imageContainer">
-    <div class="image-wrapper">
-        <img src="@Url.Page("Index", "FilePreview", new {path = "/home/jackkendall/Pictures/27cf5e3abe1795ce04095941902c61ca.jpg"})"
-             alt="loading"
-             onload="this.classList.add('loaded'); this.parentNode.classList.remove('image-wrapper');"/>
-    </div>
-</div>
-@*<img src="@Url.Action("AyyLmao", "Foobar", new { path = "/home/jackkendall/pictures/27cf5e3abe1795ce04095941902c61ca.jpg" })" 
-     alt="Imagfgyjfyuje" 
-     onload="this.classList.add('loaded'); this.parentNode.classList.remove('loading');" />*@
-
-@*Uris: <br/>
-
-@foreach (var uri in Model.Uris)
-{ 
-    @Html.DisplayFor(modelItem => uri.AbsolutePath) <br/>
-}
-
-Images: <br/>
-
-@foreach (var image in Model.Images)
+@foreach (var uri in Model.Filepaths)
 {
-    <img src="data:image;base64,@System.Convert.ToBase64String(image)" width="200" height="200"/> <br/>
-}*@
+    <div id="imageContainer">
+        <div class="image-wrapper">
+            <img src="@Url.Page("Index", "FilePreview", new {path = uri})"
+                 alt="loading"
+                 onload="this.classList.add('loaded'); this.parentNode.classList.remove('image-wrapper');"/>
+        </div>
+    </div>
+}
