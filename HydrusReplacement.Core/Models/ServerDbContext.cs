@@ -5,15 +5,9 @@ namespace HydrusReplacement.Server.Models;
 
 public class ServerDbContext : DbContext
 {
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    public ServerDbContext(DbContextOptions<ServerDbContext> context) : base(context)
     {
-        var dbFolder = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "db");
-
-        var db = Path.Join(dbFolder, "server.db");
         
-        optionsBuilder.UseSqlite($"Data Source={db};");
-        
-        base.OnConfiguring(optionsBuilder);
     }
     
     public virtual DbSet<FileRecord> FileRecords { get; set; }

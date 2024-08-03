@@ -59,5 +59,20 @@ public static class Endpoints
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();
+
+        app.MapPost("/clearAllData",
+            async (ServerDbContext db) =>
+            {
+                db.Hashes.RemoveRange(db.Hashes);
+                db.Mappings.RemoveRange(db.Mappings);
+                db.Tags.RemoveRange(db.Tags);
+                db.TagParents.RemoveRange(db.TagParents);
+                db.TagSiblings.RemoveRange(db.TagSiblings);
+                db.Namespaces.RemoveRange(db.Namespaces);
+                db.Subtags.RemoveRange(db.Subtags);
+                db.FileRecords.RemoveRange(db.FileRecords);
+
+                await db.SaveChangesAsync();
+            });
     }
 }
