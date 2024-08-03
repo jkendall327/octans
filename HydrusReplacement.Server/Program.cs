@@ -1,4 +1,5 @@
 using System.IO.Abstractions;
+using System.Threading.Channels;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Server;
@@ -15,6 +16,14 @@ var filesystem = new FileSystem();
 builder.Services.AddSingleton(filesystem.Path);
 builder.Services.AddSingleton(filesystem.DirectoryInfo);
 builder.Services.AddSingleton(filesystem.File);
+
+var channel = Channel.CreateBounded<ThumbnailCreationRequest>(new BoundedChannelOptions(100)
+{
+    FullMode = BoundedChannelFullMode.Wait
+});
+
+builder.Services.AddSingleton(channel.Reader);
+builder.Services.AddSingleton(channel.Writer);
 
 builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
 {
@@ -34,9 +43,11 @@ builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
     }
 });
 
-builder.Services.AddScoped<SubfolderManager>();
+builder.Services.AddSingleton<SubfolderManager>();
 builder.Services.AddScoped<FileFinder>();
 builder.Services.AddScoped<Importer>();
+
+builder.Services.AddHostedService<ThumbnailCreationBackgroundService>();
 
 var app = builder.Build();
 

@@ -1,4 +1,5 @@
 using System.IO.Abstractions;
+using System.Threading.Channels;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
@@ -15,6 +16,7 @@ public class Importer
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
     private readonly IHttpClientFactory _clientFactory;
+    private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
     private readonly IFile _file;
     private readonly IPath _path;
     private readonly ILogger<Importer> _logger;
@@ -24,12 +26,14 @@ public class Importer
         IHttpClientFactory clientFactory,
         IFile file,
         IPath path,
+        ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
         ILogger<Importer> logger)
     {
         _subfolderManager = subfolderManager;
         _context = context;
         _clientFactory = clientFactory;
         _logger = logger;
+        _thumbnailChannel = thumbnailChannel;
         _file = file;
         _path = path;
     }
@@ -83,41 +87,16 @@ public class Importer
         
         await _file.WriteAllBytesAsync(destination, bytes);
 
+        await _thumbnailChannel.WriteAsync(new()
+        {
+            Bytes = bytes,
+            Hashed = hashed
+        });
+        
         return new()
         {
             Ok = true
         };
-    }
-
-    private async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
-    {
-        if (request.FilterData is null)
-        {
-            return null;
-        }
-        
-        var filters = new List<IImportFilter>
-        {
-            new FilesizeFilter(),
-            new FiletypeFilter(),
-            new ResolutionFilter()
-        };
-
-        foreach (var filter in filters)
-        {
-            var result = await filter.PassesFilter(request.FilterData, bytes);
-
-            if (!result)
-            {
-                return new()
-                {
-                    Ok = false,
-                    Error = $"Failed {filter.GetType().Name} filter"
-                };
-            }
-        }
-
-        return null;
     }
 
     private async Task<ImportItemResult> ImportLocalFile(ImportRequest request, ImportItem item)
@@ -149,10 +128,47 @@ public class Importer
             _file.Delete(item.Source.AbsolutePath);
         }
         
+        await _thumbnailChannel.WriteAsync(new()
+        {
+            Bytes = bytes,
+            Hashed = hashed
+        });
+        
         return new()
         {
             Ok = true
         };
+    }
+    
+    private async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
+    {
+        if (request.FilterData is null)
+        {
+            return null;
+        }
+        
+        var filters = new List<IImportFilter>
+        {
+            new FilesizeFilter(),
+            new FiletypeFilter(),
+            new ResolutionFilter()
+        };
+
+        foreach (var filter in filters)
+        {
+            var result = await filter.PassesFilter(request.FilterData, bytes);
+
+            if (!result)
+            {
+                return new()
+                {
+                    Ok = false,
+                    Error = $"Failed {filter.GetType().Name} filter"
+                };
+            }
+        }
+
+        return null;
     }
 
     private string GetDestination(HashedBytes hashed, byte[] originalBytes)
