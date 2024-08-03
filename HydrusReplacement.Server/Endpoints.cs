@@ -1,4 +1,5 @@
 using HydrusReplacement.Core;
+using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;

@@ -1,25 +1,11 @@
 using System.IO.Abstractions;
-using System.Security.Cryptography;
 using HydrusReplacement.Core;
+using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
 using MimeDetective.InMemory;
 
 namespace HydrusReplacement.Server;
-
-/// <summary>
-/// Represents the success of the import for an individual item/file.
-/// </summary>
-public class ImportItemResult
-{
-    public required bool Ok { get; set; }
-    public string? Error { get; set; }
-}
-
-/// <summary>
-/// Represents the success of an overall import, which could include multiple items.
-/// </summary>
-public record ImportResult(List<ImportItemResult> results);
 
 /// <summary>
 /// Handles the importing of resources from local and remote sources.
@@ -52,22 +38,24 @@ public class Importer
     {
         _logger.LogInformation("Processing import with {ImportCount} items", request.Items.Count);
 
-        var result = new List<ImportItemResult>();
+        var results = new List<ImportItemResult>();
         
         foreach (var item in request.Items)
         {
             if (item.Source.IsFile)
             {
-                await ImportLocalFile(request, item);
+                var result = await ImportLocalFile(request, item);
+                results.Add(result);
             }
 
             if (item.Source.IsWebUrl())
             {
-                await ImportRemoteFile(item);
+                var result = await ImportRemoteFile(item);
+                results.Add(result);
             }
         }
 
-        return new(result);
+        return new(request.ImportId, results);
     }
 
     private async Task<ImportItemResult> ImportRemoteFile(ImportItem item)

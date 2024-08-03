@@ -1,7 +1,8 @@
-namespace HydrusReplacement.Core;
+namespace HydrusReplacement.Core.Importing;
 
 public class ImportRequest
 {
+    public Guid ImportId { get; set; } = Guid.NewGuid();
     public required List<ImportItem> Items { get; set; }
     public required bool DeleteAfterImport { get; set; }
 }
