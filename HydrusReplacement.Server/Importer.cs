@@ -25,6 +25,8 @@ public class Importer
 
     public async Task ProcessImport(ImportRequest request)
     {
+        _logger.LogInformation("Processing import with {ImportCount} items", request.Items.Count);
+        
         foreach (var item in request.Items)
         {
             if (item.Source.IsFile)
@@ -41,9 +43,13 @@ public class Importer
 
     private async Task ImportRemoteFile(ImportItem item)
     {
+        var url = item.Source.AbsoluteUri;
+        
+        _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
+        
         var client = _clientFactory.CreateClient();
 
-        var bytes = await client.GetByteArrayAsync(item.Source.AbsoluteUri);
+        var bytes = await client.GetByteArrayAsync(url);
 
         var hashed = SHA256.HashData(bytes);
         
@@ -58,6 +64,8 @@ public class Importer
 
     private async Task ImportLocalFile(ImportRequest request, ImportItem item)
     {
+        _logger.LogInformation("Importing local file with URI {LocalUri}", item.Source);
+        
         // Generate hash of the file for unique identification.
         var filepath = item.Source;
             
@@ -76,6 +84,7 @@ public class Importer
 
         if (request.DeleteAfterImport)
         {
+            _logger.LogInformation("Deleting original local file");
             File.Delete(item.Source.AbsolutePath);
         }
     }
@@ -83,6 +92,8 @@ public class Importer
     private void CopyPhysicalFile(byte[] hashed, Uri filepath)
     {
         var subfolder = _subfolderManager.GetSubfolder(hashed);
+        
+        _logger.LogInformation("Import item will be persisted to subfolder {Subfolder}", subfolder.AbsolutePath);
         
         // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
         
