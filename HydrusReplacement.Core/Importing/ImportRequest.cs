@@ -4,7 +4,10 @@ public class ImportRequest
 {
     public Guid ImportId { get; set; } = Guid.NewGuid();
     public required List<ImportItem> Items { get; set; }
-    public required bool DeleteAfterImport { get; set; }
+    public required bool DeleteAfterImport { get; init; }
+    
+    public uint? MaxSize { get; init; }
+    public uint? MinSize { get; init; }
 }
 
 public class ImportItem

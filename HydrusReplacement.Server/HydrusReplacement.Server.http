@@ -14,5 +14,7 @@ Content-Type: application/json
       ]
     }
   ],
-  "DeleteAfterImport": false
+  "DeleteAfterImport": false,
+  "MinSize": null,
+  "MaxSize": 1500
 }

@@ -50,7 +50,7 @@ public class Importer
 
             if (item.Source.IsWebUrl())
             {
-                var result = await ImportRemoteFile(item);
+                var result = await ImportRemoteFile(request, item);
                 results.Add(result);
             }
         }
@@ -58,7 +58,7 @@ public class Importer
         return new(request.ImportId, results);
     }
 
-    private async Task<ImportItemResult> ImportRemoteFile(ImportItem item)
+    private async Task<ImportItemResult> ImportRemoteFile(ImportRequest request, ImportItem item)
     {
         var url = item.Source.AbsoluteUri;
         
@@ -67,6 +67,13 @@ public class Importer
         var client = _clientFactory.CreateClient();
 
         var bytes = await client.GetByteArrayAsync(url);
+
+        var filterResult = await ApplyFilters(request, bytes);
+
+        if (filterResult is not null)
+        {
+            return filterResult;
+        }
 
         var hashed = new HashedBytes(bytes, ItemType.File);
 
@@ -82,6 +89,30 @@ public class Importer
         };
     }
 
+    private async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
+    {
+        var filters = new List<IImportFilter>
+        {
+            new FilesizeFilter()
+        };
+
+        foreach (var filter in filters)
+        {
+            var result = await filter.PassesFilter(request, bytes);
+
+            if (!result)
+            {
+                return new()
+                {
+                    Ok = false,
+                    Error = $"Failed {filter.GetType().Name} filter"
+                };
+            }
+        }
+
+        return null;
+    }
+
     private async Task<ImportItemResult> ImportLocalFile(ImportRequest request, ImportItem item)
     {
         var filepath = item.Source;
@@ -89,6 +120,13 @@ public class Importer
         _logger.LogInformation("Importing local file from {LocalUri}", filepath);
 
         var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
+        
+        var filterResult = await ApplyFilters(request, bytes);
+
+        if (filterResult is not null)
+        {
+            return filterResult;
+        }
         
         var hashed = new HashedBytes(bytes, ItemType.File);
 
