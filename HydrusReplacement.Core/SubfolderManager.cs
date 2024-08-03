@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Microsoft.Extensions.Configuration;
 
 namespace HydrusReplacement.Core;
@@ -6,13 +7,17 @@ public class SubfolderManager
 {
     private const string Hexadecimal = "0123456789abcdef";
 
-    private string HashFolderPath => Path.Join(_config.GetValue<string>("DatabaseRoot"), "db", "files");
+    private readonly string _hashFolderPath;
 
-    private readonly IConfiguration _config;
+    private readonly IDirectoryInfoFactory _directory;
+    private readonly IPath _path;
 
-    public SubfolderManager(IConfiguration config)
+    public SubfolderManager(IConfiguration config, IDirectoryInfoFactory directory, IPath path)
     {
-        _config = config;
+        _directory = directory;
+        _path = path;
+        
+        _hashFolderPath = _path.Join(config.GetValue<string>("DatabaseRoot"), "db", "files");
     }
 
     public void MakeSubfolders()
@@ -25,7 +30,7 @@ public class SubfolderManager
 
         var permutations = query.ToList();
 
-        var root = new DirectoryInfo(HashFolderPath);
+        var root = _directory.New(_hashFolderPath);
         
         foreach (var permutation in permutations)
         {
@@ -39,16 +44,16 @@ public class SubfolderManager
     
     public Uri GetSubfolder(HashedBytes hashed)
     {
-        var path = Path.Join(HashFolderPath, hashed.Bucket);
+        var path = _path.Join(_hashFolderPath, hashed.Bucket);
         
         return new(path);
     }
 
-    public FileInfo? GetFilepath(HashedBytes hashed)
+    public IFileInfo? GetFilepath(HashedBytes hashed)
     {
         var subfolder = GetSubfolder(hashed);
 
-        return new DirectoryInfo(subfolder.AbsolutePath)
+        return _directory.New(subfolder.AbsolutePath)
             .EnumerateFiles()
             .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hashed.Hexadecimal);
     }

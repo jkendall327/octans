@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Server;
@@ -9,19 +10,26 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
-builder.Services.AddDbContext<ServerDbContext>(s =>
+var filesystem = new FileSystem();
+
+builder.Services.AddSingleton(filesystem.Path);
+builder.Services.AddSingleton(filesystem.DirectoryInfo);
+
+builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
 {
+    var path = s.GetRequiredService<IPath>();
+    
     if (builder.Environment.IsDevelopment())
     {
-        s.UseInMemoryDatabase("db");
+        opt.UseInMemoryDatabase("db");
     }
     else
     {
-        var dbFolder = Path.Join(AppDomain.CurrentDomain.BaseDirectory, "db");
+        var dbFolder = path.Join(AppDomain.CurrentDomain.BaseDirectory, "db");
 
-        var db = Path.Join(dbFolder, "server.db");
+        var db = path.Join(dbFolder, "server.db");
         
-        s.UseSqlite($"Data Source={db};");
+        opt.UseSqlite($"Data Source={db};");
     }
 });
 

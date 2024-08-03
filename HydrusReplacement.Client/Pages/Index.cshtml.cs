@@ -1,6 +1,6 @@
+using System.IO.Abstractions;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
-using HydrusReplacement.Server;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -8,7 +8,7 @@ namespace HydrusReplacement.Client.Pages;
 
 public class IndexModel : PageModel
 {
-    public List<FileInfo> Filepaths { get; set; } = new();
+    public List<IFileInfo> Filepaths { get; set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -41,7 +41,7 @@ public class IndexModel : PageModel
 
         Filepaths = hashed
             .Select(hash => _subfolderManager.GetFilepath(hash))
-            .OfType<FileInfo>()
+            .OfType<IFileInfo>()
             .ToList();
 
         return Page();
