@@ -25,5 +25,5 @@ public class ImportFilterData
 public class ImportItem
 {
     public required Uri Source { get; set; }
-    public required TagModel[] Tags { get; set; }   
+    public TagModel[]? Tags { get; set; }   
 }

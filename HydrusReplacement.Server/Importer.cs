@@ -185,6 +185,11 @@ public class Importer
     {
         var tags = request.Tags;
 
+        if (tags is null)
+        {
+            return;
+        }
+        
         // TODO: does this work when a namespace/subtag already exists?
         // Upserts in EF Core?
         
