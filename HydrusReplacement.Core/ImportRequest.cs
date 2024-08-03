@@ -9,5 +9,5 @@ public class ImportRequest
 public class ImportItem
 {
     public required Uri Source { get; set; }
-    public required string[] Tags { get; set; }   
+    public required TagModel[] Tags { get; set; }   
 }
