@@ -12,13 +12,5 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
-        <PackageReference Include="System.IO.Abstractions" Version="21.0.29" />
-        <PackageReference Include="MimeDetective.InMemory.Ext" Version="1.0.5" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\HydrusReplacement.Data\HydrusReplacement.Data.csproj" />
     </ItemGroup>
 </Project>
