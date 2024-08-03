@@ -8,6 +8,20 @@ using MimeDetective.InMemory;
 namespace HydrusReplacement.Server;
 
 /// <summary>
+/// Represents the success of the import for an individual item/file.
+/// </summary>
+public class ImportItemResult
+{
+    public required bool Ok { get; set; }
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// Represents the success of an overall import, which could include multiple items.
+/// </summary>
+public record ImportResult(List<ImportItemResult> results);
+
+/// <summary>
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
 public class Importer
@@ -34,9 +48,11 @@ public class Importer
         _path = path;
     }
 
-    public async Task ProcessImport(ImportRequest request)
+    public async Task<ImportResult> ProcessImport(ImportRequest request)
     {
         _logger.LogInformation("Processing import with {ImportCount} items", request.Items.Count);
+
+        var result = new List<ImportItemResult>();
         
         foreach (var item in request.Items)
         {
@@ -50,9 +66,11 @@ public class Importer
                 await ImportRemoteFile(item);
             }
         }
+
+        return new(result);
     }
 
-    private async Task ImportRemoteFile(ImportItem item)
+    private async Task<ImportItemResult> ImportRemoteFile(ImportItem item)
     {
         var url = item.Source.AbsoluteUri;
         
@@ -69,9 +87,14 @@ public class Importer
         var destination = GetDestination(hashed, bytes);
         
         await _file.WriteAllBytesAsync(destination, bytes);
+
+        return new()
+        {
+            Ok = true
+        };
     }
 
-    private async Task ImportLocalFile(ImportRequest request, ImportItem item)
+    private async Task<ImportItemResult> ImportLocalFile(ImportRequest request, ImportItem item)
     {
         var filepath = item.Source;
      
@@ -92,6 +115,11 @@ public class Importer
             _logger.LogInformation("Deleting original local file");
             _file.Delete(item.Source.AbsolutePath);
         }
+        
+        return new()
+        {
+            Ok = true
+        };
     }
 
     private string GetDestination(HashedBytes hashed, byte[] originalBytes)
