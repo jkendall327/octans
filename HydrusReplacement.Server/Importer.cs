@@ -51,37 +51,30 @@ public class Importer
 
         var bytes = await client.GetByteArrayAsync(url);
 
-        var hashed = SHA256.HashData(bytes);
+        var hashed = new HashedBytes(bytes, ItemType.File);
+
+        await AddItemToDatabase(item, hashed);
+
+        var destination = GetDestination(hashed, item.Source);
         
-        // Add the hash to the database.
-        var hashItem = new HashItem { Hash = hashed };
-        _context.Hashes.Add(hashItem);
-
-        AddTags(item, hashItem);
-
-        await _context.SaveChangesAsync();
+        await File.WriteAllBytesAsync(destination, bytes);
     }
 
     private async Task ImportLocalFile(ImportRequest request, ImportItem item)
     {
-        _logger.LogInformation("Importing local file with URI {LocalUri}", item.Source);
-        
-        // Generate hash of the file for unique identification.
         var filepath = item.Source;
-            
+     
+        _logger.LogInformation("Importing local file from {LocalUri}", filepath);
+
         var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
         
         var hashed = new HashedBytes(bytes, ItemType.File);
 
-        CopyPhysicalFile(hashed, filepath);
+        var destination = GetDestination(hashed, filepath);
+        
+        File.Copy(filepath.AbsolutePath, destination, true);
 
-        // Add the hash to the database.
-        var hashItem = new HashItem { Hash = hashed.Bytes };
-        _context.Hashes.Add(hashItem);
-
-        AddTags(item, hashItem);
-
-        await _context.SaveChangesAsync();
+        await AddItemToDatabase(item, hashed);
 
         if (request.DeleteAfterImport)
         {
@@ -90,20 +83,29 @@ public class Importer
         }
     }
 
-    private void CopyPhysicalFile(HashedBytes hashed, Uri filepath)
+    private string GetDestination(HashedBytes hashed, Uri originalUri)
     {
         var subfolder = _subfolderManager.GetSubfolder(hashed);
         
-        _logger.LogInformation("Import item will be persisted to subfolder {Subfolder}", subfolder.AbsolutePath);
-        
         // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
         
-        var fileName = hashed.Hexadecimal + Path.GetExtension(filepath.AbsolutePath);
+        var fileName = hashed.Hexadecimal + Path.GetExtension(originalUri.AbsolutePath);
         var destination = Path.Join(subfolder.AbsolutePath, fileName);
         
-        // TODO: handle what to do when a file already exists.
-        // On filesystem but not in DB, in DB but not in filesystem, etc.
-        File.Copy(filepath.AbsolutePath, destination, true);
+        _logger.LogInformation("Import item will be persisted to subfolder {Subfolder}", subfolder.AbsolutePath);
+
+        return destination;
+    }
+    
+    private async Task AddItemToDatabase(ImportItem item, HashedBytes hashed)
+    {
+        var hashItem = new HashItem { Hash = hashed.Bytes };
+        
+        _context.Hashes.Add(hashItem);
+
+        AddTags(item, hashItem);
+
+        await _context.SaveChangesAsync();
     }
 
     private void AddTags(ImportItem request, HashItem hashItem)
