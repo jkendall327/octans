@@ -1,10 +1,43 @@
 using MimeDetective.InMemory;
+using SixLabors.ImageSharp;
 
 namespace HydrusReplacement.Core.Importing;
 
 public interface IImportFilter
 {
     Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default);
+}
+
+public class ResolutionFilter : IImportFilter
+{
+    public async Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default)
+    {
+        var image = Image.Load(bytes);
+
+        (var height, var width) = (image.Height, image.Width);
+
+        if (request.MinHeight is not null && request.MinHeight > height)
+        {
+            return false;
+        }
+        
+        if (request.MinWidth is not null && request.MinWidth > width)
+        {
+            return false;
+        }
+
+        if (request.MaxHeight is not null && request.MaxHeight < height)
+        {
+            return false;
+        }
+
+        if (request.MaxWidth is not null && request.MaxWidth < height)
+        {
+            return false;
+        }
+        
+        return true;
+    }
 }
 
 public class FiletypeFilter : IImportFilter
@@ -32,7 +65,7 @@ public class FilesizeFilter : IImportFilter
 {
     public async Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default)
     {
-        (var max, var min) = (request.MaxSize, request.MinSize);
+        (var max, var min) = (request.MaxFileSize, request.MinFileSize);
         
         if (max is null && min is null)
         {

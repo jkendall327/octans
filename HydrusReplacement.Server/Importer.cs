@@ -94,7 +94,8 @@ public class Importer
         var filters = new List<IImportFilter>
         {
             new FilesizeFilter(),
-            new FiletypeFilter()
+            new FiletypeFilter(),
+            new ResolutionFilter()
         };
 
         foreach (var filter in filters)
