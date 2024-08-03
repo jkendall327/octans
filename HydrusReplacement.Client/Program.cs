@@ -1,3 +1,4 @@
+using HydrusReplacement.Core;
 using HydrusReplacement.Server;
 
 var builder = WebApplication.CreateBuilder(args);

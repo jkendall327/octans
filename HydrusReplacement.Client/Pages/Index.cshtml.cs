@@ -1,5 +1,6 @@
+using HydrusReplacement.Core;
+using HydrusReplacement.Core.Models;
 using HydrusReplacement.Server;
-using HydrusReplacement.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 

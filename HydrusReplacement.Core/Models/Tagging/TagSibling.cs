@@ -1,4 +1,4 @@
-namespace HydrusReplacement.Server.Models.Tagging;
+namespace HydrusReplacement.Core.Models.Tagging;
 
 public class TagSibling
 {

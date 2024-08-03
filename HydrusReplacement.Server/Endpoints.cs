@@ -1,5 +1,6 @@
-using HydrusReplacement.Server.Models;
-using HydrusReplacement.Server.Models.Tagging;
+using HydrusReplacement.Core;
+using HydrusReplacement.Core.Models;
+using HydrusReplacement.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
 
 namespace HydrusReplacement.Server;

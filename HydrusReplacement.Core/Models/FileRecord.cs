@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace HydrusReplacement.Server.Models;
+namespace HydrusReplacement.Core.Models;
 
 public class FileRecord
 {

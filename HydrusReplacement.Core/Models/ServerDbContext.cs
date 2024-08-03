@@ -1,7 +1,7 @@
-using HydrusReplacement.Server.Models.Tagging;
+using HydrusReplacement.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
 
-namespace HydrusReplacement.Server.Models;
+namespace HydrusReplacement.Core.Models;
 
 public class ServerDbContext : DbContext
 {

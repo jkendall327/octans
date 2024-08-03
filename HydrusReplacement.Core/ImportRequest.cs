@@ -1,4 +1,4 @@
-namespace HydrusReplacement.Server;
+namespace HydrusReplacement.Core;
 
 public class ImportRequest
 {
