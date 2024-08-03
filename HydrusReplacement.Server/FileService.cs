@@ -9,37 +9,69 @@ public class FileService
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
+    private readonly IHttpClientFactory _clientFactory;
 
-    public FileService(SubfolderManager subfolderManager, ServerDbContext context)
+    public FileService(SubfolderManager subfolderManager, ServerDbContext context, IHttpClientFactory clientFactory)
     {
         _subfolderManager = subfolderManager;
         _context = context;
+        _clientFactory = clientFactory;
     }
 
     public async Task ProcessImport(ImportRequest request)
     {
         foreach (var item in request.Items)
         {
-            // Generate hash of the file for unique identification.
-            var filepath = item.Source;
-            
-            var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
-            var hashed = SHA256.HashData(bytes);
-
-            CopyPhysicalFile(hashed, filepath);
-
-            // Add the hash to the database.
-            var hashItem = new HashItem { Hash = hashed };
-            _context.Hashes.Add(hashItem);
-
-            AddTags(item, hashItem);
-
-            await _context.SaveChangesAsync();
-
-            if (request.DeleteAfterImport)
+            if (item.Source.IsFile)
             {
-                File.Delete(item.Source.AbsolutePath);
+                await ImportLocalFile(request, item);
             }
+
+            if (item.Source.IsWebUrl())
+            {
+                await ImportRemoteFile(item);
+            }
+        }
+    }
+
+    private async Task ImportRemoteFile(ImportItem item)
+    {
+        var client = _clientFactory.CreateClient();
+
+        var bytes = await client.GetByteArrayAsync(item.Source.AbsoluteUri);
+
+        var hashed = SHA256.HashData(bytes);
+        
+        // Add the hash to the database.
+        var hashItem = new HashItem { Hash = hashed };
+        _context.Hashes.Add(hashItem);
+
+        AddTags(item, hashItem);
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task ImportLocalFile(ImportRequest request, ImportItem item)
+    {
+        // Generate hash of the file for unique identification.
+        var filepath = item.Source;
+            
+        var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
+        var hashed = SHA256.HashData(bytes);
+
+        CopyPhysicalFile(hashed, filepath);
+
+        // Add the hash to the database.
+        var hashItem = new HashItem { Hash = hashed };
+        _context.Hashes.Add(hashItem);
+
+        AddTags(item, hashItem);
+
+        await _context.SaveChangesAsync();
+
+        if (request.DeleteAfterImport)
+        {
+            File.Delete(item.Source.AbsolutePath);
         }
     }
 
