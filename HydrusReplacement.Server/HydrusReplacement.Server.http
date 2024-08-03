@@ -9,9 +9,8 @@ Content-Type: application/json
     {
       "Source": "{{DefaultFile}}",
       "Tags": [
-        "tag1",
-        "tag2",
-        "tag3"
+        { "Namespace": "foobar", "Subtag": "barfoo" },
+        { "Subtag": "foobaz" }
       ]
     }
   ],

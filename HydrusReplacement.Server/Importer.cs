@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
+using MimeDetective.InMemory;
 
 namespace HydrusReplacement.Server;
 
@@ -65,7 +66,7 @@ public class Importer
 
         await AddItemToDatabase(item, hashed);
 
-        var destination = GetDestination(hashed, item.Source);
+        var destination = GetDestination(hashed, bytes);
         
         await _file.WriteAllBytesAsync(destination, bytes);
     }
@@ -80,7 +81,7 @@ public class Importer
         
         var hashed = new HashedBytes(bytes, ItemType.File);
 
-        var destination = GetDestination(hashed, filepath);
+        var destination = GetDestination(hashed, bytes);
         
         _file.Copy(filepath.AbsolutePath, destination, true);
 
@@ -93,10 +94,11 @@ public class Importer
         }
     }
 
-    private string GetDestination(HashedBytes hashed, Uri originalUri)
+    private string GetDestination(HashedBytes hashed, byte[] originalBytes)
     {
-        // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
-        var fileName = hashed.Hexadecimal + _path.GetExtension(originalUri.AbsolutePath);
+        var fileType = originalBytes.DetectMimeType();
+        
+        var fileName = string.Join(hashed.Hexadecimal, '.', fileType.Extension);
 
         var subfolder = _subfolderManager.GetSubfolder(hashed);
 

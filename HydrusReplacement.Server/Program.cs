@@ -14,6 +14,7 @@ var filesystem = new FileSystem();
 
 builder.Services.AddSingleton(filesystem.Path);
 builder.Services.AddSingleton(filesystem.DirectoryInfo);
+builder.Services.AddSingleton(filesystem.File);
 
 builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
 {
