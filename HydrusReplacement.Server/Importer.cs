@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using System.Security.Cryptography;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
@@ -13,14 +14,23 @@ public class Importer
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
     private readonly IHttpClientFactory _clientFactory;
+    private readonly IFile _file;
+    private readonly IPath _path;
     private readonly ILogger<Importer> _logger;
 
-    public Importer(SubfolderManager subfolderManager, ServerDbContext context, IHttpClientFactory clientFactory, ILogger<Importer> logger)
+    public Importer(SubfolderManager subfolderManager,
+        ServerDbContext context,
+        IHttpClientFactory clientFactory,
+        IFile file,
+        IPath path,
+        ILogger<Importer> logger)
     {
         _subfolderManager = subfolderManager;
         _context = context;
         _clientFactory = clientFactory;
         _logger = logger;
+        _file = file;
+        _path = path;
     }
 
     public async Task ProcessImport(ImportRequest request)
@@ -57,7 +67,7 @@ public class Importer
 
         var destination = GetDestination(hashed, item.Source);
         
-        await File.WriteAllBytesAsync(destination, bytes);
+        await _file.WriteAllBytesAsync(destination, bytes);
     }
 
     private async Task ImportLocalFile(ImportRequest request, ImportItem item)
@@ -66,31 +76,31 @@ public class Importer
      
         _logger.LogInformation("Importing local file from {LocalUri}", filepath);
 
-        var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
+        var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
         
         var hashed = new HashedBytes(bytes, ItemType.File);
 
         var destination = GetDestination(hashed, filepath);
         
-        File.Copy(filepath.AbsolutePath, destination, true);
+        _file.Copy(filepath.AbsolutePath, destination, true);
 
         await AddItemToDatabase(item, hashed);
 
         if (request.DeleteAfterImport)
         {
             _logger.LogInformation("Deleting original local file");
-            File.Delete(item.Source.AbsolutePath);
+            _file.Delete(item.Source.AbsolutePath);
         }
     }
 
     private string GetDestination(HashedBytes hashed, Uri originalUri)
     {
-        var subfolder = _subfolderManager.GetSubfolder(hashed);
-        
         // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
-        
-        var fileName = hashed.Hexadecimal + Path.GetExtension(originalUri.AbsolutePath);
-        var destination = Path.Join(subfolder.AbsolutePath, fileName);
+        var fileName = hashed.Hexadecimal + _path.GetExtension(originalUri.AbsolutePath);
+
+        var subfolder = _subfolderManager.GetSubfolder(hashed);
+
+        var destination = _path.Join(subfolder.AbsolutePath, fileName);
         
         _logger.LogInformation("Import item will be persisted to subfolder {Subfolder}", subfolder.AbsolutePath);
 
