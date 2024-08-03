@@ -5,7 +5,12 @@ public class ImportRequest
     public Guid ImportId { get; set; } = Guid.NewGuid();
     public required List<ImportItem> Items { get; set; }
     public required bool DeleteAfterImport { get; init; }
-    
+
+    public ImportFilterData? FilterData { get; set; }
+}
+
+public class ImportFilterData
+{
     public uint? MaxFileSize { get; init; }
     public uint? MinFileSize { get; init; }
 

@@ -5,12 +5,12 @@ namespace HydrusReplacement.Core.Importing;
 
 public interface IImportFilter
 {
-    Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default);
+    Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default);
 }
 
 public class ResolutionFilter : IImportFilter
 {
-    public async Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default)
+    public async Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         var image = Image.Load(bytes);
 
@@ -42,7 +42,7 @@ public class ResolutionFilter : IImportFilter
 
 public class FiletypeFilter : IImportFilter
 {
-    public Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default)
+    public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         if (request.AllowedFileTypes is null)
         {
@@ -63,7 +63,7 @@ public class FiletypeFilter : IImportFilter
 
 public class FilesizeFilter : IImportFilter
 {
-    public async Task<bool> PassesFilter(ImportRequest request, byte[] bytes, CancellationToken cancellationToken = default)
+    public async Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         (var max, var min) = (request.MaxFileSize, request.MinFileSize);
         

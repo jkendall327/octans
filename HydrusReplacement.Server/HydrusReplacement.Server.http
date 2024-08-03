@@ -15,7 +15,10 @@ Content-Type: application/json
     }
   ],
   "DeleteAfterImport": false,
-  "MinFileSize": null,
-  "MaxFileSize": 1500000,
-  "AllowedFileTypes": [ "jpg", "png" ]
+  "FilterData":
+  {
+    "MinFileSize": null,
+    "MaxFileSize": 1500000,
+    "AllowedFileTypes": [ "jpg", "png" ] 
+  }
 }

@@ -91,6 +91,11 @@ public class Importer
 
     private async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
     {
+        if (request.FilterData is null)
+        {
+            return null;
+        }
+        
         var filters = new List<IImportFilter>
         {
             new FilesizeFilter(),
@@ -100,7 +105,7 @@ public class Importer
 
         foreach (var filter in filters)
         {
-            var result = await filter.PassesFilter(request, bytes);
+            var result = await filter.PassesFilter(request.FilterData, bytes);
 
             if (!result)
             {
