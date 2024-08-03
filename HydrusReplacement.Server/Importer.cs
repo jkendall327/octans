@@ -93,7 +93,8 @@ public class Importer
     {
         var filters = new List<IImportFilter>
         {
-            new FilesizeFilter()
+            new FilesizeFilter(),
+            new FiletypeFilter()
         };
 
         foreach (var filter in filters)

@@ -16,5 +16,6 @@ Content-Type: application/json
   ],
   "DeleteAfterImport": false,
   "MinSize": null,
-  "MaxSize": 1500
+  "MaxSize": 1500000,
+  "AllowedFileTypes": [ "jpg", "png" ]
 }

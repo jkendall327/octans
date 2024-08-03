@@ -8,6 +8,8 @@ public class ImportRequest
     
     public uint? MaxSize { get; init; }
     public uint? MinSize { get; init; }
+
+    public string[]? AllowedFileTypes { get; set; }
 }
 
 public class ImportItem
