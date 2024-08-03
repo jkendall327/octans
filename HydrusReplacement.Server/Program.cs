@@ -26,7 +26,8 @@ builder.Services.AddDbContext<ServerDbContext>(s =>
 });
 
 builder.Services.AddScoped<SubfolderManager>();
-builder.Services.AddScoped<FileService>();
+builder.Services.AddScoped<FileFinder>();
+builder.Services.AddScoped<Importer>();
 
 var app = builder.Build();
 

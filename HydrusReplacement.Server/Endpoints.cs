@@ -9,12 +9,12 @@ public static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
-        app.MapPost("/import", async (ImportRequest request, FileService service) => await service.ProcessImport(request))
+        app.MapPost("/import", async (ImportRequest request, Importer service) => await service.ProcessImport(request))
             .WithName("Import")
             .WithDescription("Processes an import request")
             .WithOpenApi();
 
-        app.MapGet("/getFile", async (int id, FileService service) =>
+        app.MapGet("/getFile", async (int id, FileFinder service) =>
             {
                 var file = await service.GetFile(id);
 
@@ -46,7 +46,7 @@ public static class Endpoints
             .WithDescription("Get multiple files by their IDs")
             .WithOpenApi();
 
-        app.MapGet("/query", async (IEnumerable<Tag> tags, FileService service) =>
+        app.MapGet("/query", async (IEnumerable<Tag> tags, FileFinder service) =>
             {
                 var files = await service.GetFilesByTagQuery(tags);
 

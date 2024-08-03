@@ -2,21 +2,25 @@ using System.Security.Cryptography;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
-using Microsoft.EntityFrameworkCore;
 
 namespace HydrusReplacement.Server;
 
-public class FileService
+/// <summary>
+/// Handles the importing of resources from local and remote sources.
+/// </summary>
+public class Importer
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
     private readonly IHttpClientFactory _clientFactory;
+    private readonly ILogger<Importer> _logger;
 
-    public FileService(SubfolderManager subfolderManager, ServerDbContext context, IHttpClientFactory clientFactory)
+    public Importer(SubfolderManager subfolderManager, ServerDbContext context, IHttpClientFactory clientFactory, ILogger<Importer> logger)
     {
         _subfolderManager = subfolderManager;
         _context = context;
         _clientFactory = clientFactory;
+        _logger = logger;
     }
 
     public async Task ProcessImport(ImportRequest request)
@@ -108,38 +112,5 @@ public class FileService
             _context.Tags.Add(tagDto);
             _context.Mappings.Add(new() { Tag = tagDto, Hash = hashItem });
         }
-    }
-
-    public async Task<string?> GetFile(int id)
-    {
-        var hash = await _context.FindAsync<HashItem>(id);
-
-        if (hash is null)
-        {
-            return null;
-        }
-                
-        var hex = Convert.ToHexString(hash.Hash);
-                
-        var subfolder = _subfolderManager.GetSubfolder(hash.Hash);
-
-        return Directory
-            .EnumerateFiles(subfolder.AbsolutePath)
-            .SingleOrDefault(x => x.Contains(hex));
-    }
-
-    public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)
-    {
-        var found = _context.Tags
-            .Where(t => 
-                tags.Any(tag =>
-                tag.Namespace.Value == t.Namespace.Value && tag.Subtag.Value == t.Namespace.Value));
-
-        var query = 
-            from mapping in _context.Mappings
-            join tag in found on mapping.Tag equals tag
-            select mapping.Hash;
-        
-        return await query.ToListAsync();
     }
 }
