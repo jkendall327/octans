@@ -8,13 +8,17 @@ public static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
-        app.MapPost("/importFile", 
-                async (ImportRequest request, FileService service) => await service.ImportFile(request))
+        app.MapPost("/importFile", async (ImportRequest request, FileService service) => await service.ImportFile(request))
             .WithName("ImportFile")
             .WithDescription("Import a single file from on-disk")
             .WithOpenApi();
 
-        app.MapPost("/importFiles", (IEnumerable<Uri> filepath) => Results.Ok())
+        app.MapPost("/importFiles", async (IEnumerable<ImportRequest> filepath, FileService service) =>
+            {
+                var tasks = filepath.Select(service.ImportFile);
+                await Task.WhenAll(tasks);
+                return Results.Ok();
+            })
             .WithName("ImportFiles")
             .WithDescription("Import multiple files from on-disk")
             .WithOpenApi();
@@ -46,7 +50,7 @@ public static class Endpoints
             .WithDescription("Get all files (limit optional)")
             .WithOpenApi();
         
-        app.MapGet("/getFiles", (IEnumerable<int> id) => Results.Ok())
+        app.MapGet("/getFiles", (IEnumerable<int> ids) => Results.Ok())
             .WithName("GetFiles")
             .WithDescription("Get multiple files by their IDs")
             .WithOpenApi();
