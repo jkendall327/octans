@@ -16,22 +16,30 @@ public class FileService
         _context = context;
     }
 
-    public async Task ImportFile(ImportRequest request)
+    public async Task ProcessImport(ImportRequest request)
     {
-        // Generate hash of the file for unique identification.
-        var filepath = request.SourceLocation;
-        var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
-        var hashed = SHA256.HashData(bytes);
+        foreach (var item in request.Items)
+        {
+            // Generate hash of the file for unique identification.
+            var filepath = item.Source;
+            var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
+            var hashed = SHA256.HashData(bytes);
 
-        CopyPhysicalFile(hashed, filepath);
+            CopyPhysicalFile(hashed, filepath);
 
-        // Add the hash to the database.
-        var hashItem = new HashItem { Hash = hashed };
-        _context.Hashes.Add(hashItem);
+            // Add the hash to the database.
+            var hashItem = new HashItem { Hash = hashed };
+            _context.Hashes.Add(hashItem);
 
-        AddTags(request, hashItem);
+            AddTags(item, hashItem);
 
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+
+            if (request.DeleteAfterImport)
+            {
+                File.Delete(item.Source.AbsolutePath);
+            }
+        }
     }
 
     private void CopyPhysicalFile(byte[] hashed, Uri filepath)
@@ -48,7 +56,7 @@ public class FileService
         File.Copy(filepath.AbsolutePath, destination, true);
     }
 
-    private void AddTags(ImportRequest request, HashItem hashItem)
+    private void AddTags(ImportItem request, HashItem hashItem)
     {
         var tags = request.Tags;
 
