@@ -22,6 +22,7 @@ public class FileService
         {
             // Generate hash of the file for unique identification.
             var filepath = item.Source;
+            
             var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
             var hashed = SHA256.HashData(bytes);
 

@@ -1,15 +1,19 @@
 @HydrusReplacement.Server_HostAddress = http://localhost:5185
-@DefaultFile = file:///home/jackkendall/Pictures/0_0.webp
+@DefaultFile = file:///home/jackkendall/Pictures/2TSW24SHADW5TKP7NKFSQXTY60.jpeg
 
-POST http://{{HydrusReplacement.Server_HostAddress}}/importFile
+POST http://{{HydrusReplacement.Server_HostAddress}}/import
 Content-Type: application/json
 
 {
-  "sourceLocation": "{{DefaultFile}}",
-  "tags": [
-    "medium:photograph",
-    "cat",
-    "cute",
-    "rating:good"
-  ]
+  "Items": [
+    {
+      "Source": "{{DefaultFile}}",
+      "Tags": [
+        "tag1",
+        "tag2",
+        "tag3"
+      ]
+    }
+  ],
+  "DeleteAfterImport": false
 }
