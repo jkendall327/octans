@@ -19,20 +19,20 @@ public class FileFinder
 
     public async Task<string?> GetFile(int id)
     {
-        var hash = await _context.FindAsync<HashItem>(id);
+        var hashItem = await _context.FindAsync<HashItem>(id);
 
-        if (hash is null)
+        if (hashItem is null)
         {
             return null;
         }
-                
-        var hex = Convert.ToHexString(hash.Hash);
-                
-        var subfolder = _subfolderManager.GetSubfolder(hash.Hash);
+
+        var hashed = new HashedBytes(hashItem.Hash, ItemType.File);
+        
+        var subfolder = _subfolderManager.GetSubfolder(hashed);
 
         return Directory
             .EnumerateFiles(subfolder.AbsolutePath)
-            .SingleOrDefault(x => x.Contains(hex));
+            .SingleOrDefault(x => x.Contains(hashed.Hexadecimal));
     }
 
     public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)

@@ -70,12 +70,13 @@ public class Importer
         var filepath = item.Source;
             
         var bytes = await File.ReadAllBytesAsync(filepath.AbsolutePath);
-        var hashed = SHA256.HashData(bytes);
+        
+        var hashed = new HashedBytes(bytes, ItemType.File);
 
         CopyPhysicalFile(hashed, filepath);
 
         // Add the hash to the database.
-        var hashItem = new HashItem { Hash = hashed };
+        var hashItem = new HashItem { Hash = hashed.Bytes };
         _context.Hashes.Add(hashItem);
 
         AddTags(item, hashItem);
@@ -89,7 +90,7 @@ public class Importer
         }
     }
 
-    private void CopyPhysicalFile(byte[] hashed, Uri filepath)
+    private void CopyPhysicalFile(HashedBytes hashed, Uri filepath)
     {
         var subfolder = _subfolderManager.GetSubfolder(hashed);
         
@@ -97,7 +98,7 @@ public class Importer
         
         // TODO determine the file's MIME and use it here to determine the extension (don't trust the original).
         
-        var fileName = Convert.ToHexString(hashed) + Path.GetExtension(filepath.AbsolutePath);
+        var fileName = hashed.Hexadecimal + Path.GetExtension(filepath.AbsolutePath);
         var destination = Path.Join(subfolder.AbsolutePath, fileName);
         
         // TODO: handle what to do when a file already exists.

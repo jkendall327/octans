@@ -36,28 +36,20 @@ public class SubfolderManager
             root.CreateSubdirectory(thumbnailDirectory);
         }
     }
-
-    public Uri GetSubfolder(byte[] hashed)
+    
+    public Uri GetSubfolder(HashedBytes hashed)
     {
-        var hex = Convert.ToHexString(hashed);
-        var tag = hex[..2].ToLowerInvariant();
-        var bucket = string.Concat("f", tag);
-        
-        // TODO: do not assume it's a file (might be thumbnail)
-        
-        var path = Path.Join(HashFolderPath, bucket);
+        var path = Path.Join(HashFolderPath, hashed.Bucket);
         
         return new(path);
     }
 
-    public FileInfo? GetFilepath(byte[] hashed)
+    public FileInfo? GetFilepath(HashedBytes hashed)
     {
         var subfolder = GetSubfolder(hashed);
-        
-        var hex = Convert.ToHexString(hashed);
 
         return new DirectoryInfo(subfolder.AbsolutePath)
             .EnumerateFiles()
-            .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hex);
+            .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hashed.Hexadecimal);
     }
 }
