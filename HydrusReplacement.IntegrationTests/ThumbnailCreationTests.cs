@@ -13,14 +13,13 @@ namespace HydrusReplacement.IntegrationTests;
 
 public class ThumbnailCreationTests
 {
-    [Fact]
-    public async Task ExecuteAsync_WritesThumbnailToDisk()
+    private readonly ILogger<ThumbnailCreationBackgroundService>? _logger = Substitute.For<ILogger<ThumbnailCreationBackgroundService>>();
+    private readonly MockFileSystem _mockFileSystem = new();
+    private readonly Channel<ThumbnailCreationRequest> _channel = Channel.CreateUnbounded<ThumbnailCreationRequest>();
+    private readonly ThumbnailCreationBackgroundService _sut;
+
+    public ThumbnailCreationTests()
     {
-        // Arrange
-        var mockFileSystem = new MockFileSystem();
-        var logger = Substitute.For<ILogger<ThumbnailCreationBackgroundService>>();
-        
-        // Set up a real SubfolderManager with a mock file system
         var config = new ConfigurationManager();
         
         config.AddInMemoryCollection(new Dictionary<string, string?>
@@ -30,45 +29,61 @@ public class ThumbnailCreationTests
             }
         });
         
-        var subfolderManager = new SubfolderManager(config, mockFileSystem.DirectoryInfo, mockFileSystem.Path);
+        var subfolderManager = new SubfolderManager(config, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path);
         
         subfolderManager.MakeSubfolders();
         
-        var thumbnailsDirectory = @"C:\thumbnails";
-        mockFileSystem.AddDirectory(thumbnailsDirectory);
-
-        // Create a channel and add a test request
-        var channel = Channel.CreateUnbounded<ThumbnailCreationRequest>();
-        
-        var testImageBytes = TestingConstants.MinimalJpeg;
-        
-        var testRequest = new ThumbnailCreationRequest
-        {
-            Bytes = testImageBytes,
-            Hashed = new(testImageBytes, ItemType.Thumbnail)
-        };
-        
-        await channel.Writer.WriteAsync(testRequest);
-        channel.Writer.Complete();
-
-        var service = new ThumbnailCreationBackgroundService(
-            channel.Reader,
+        _sut = new(
+            _channel.Reader,
             subfolderManager,
-            mockFileSystem.File,
-            logger);
+            _mockFileSystem.File,
+            _logger);
+    }
 
-        await service.StartAsync(CancellationToken.None);
-        await service.StopAsync(CancellationToken.None);
-        
-        var writtenFile = mockFileSystem.AllFiles.Single();
+    [Fact]
+    public async Task ExecuteAsync_WritesThumbnailToDisk()
+    {
+        await ExecuteRequest(GetMinimalRequest());
+
+        var writtenFile = _mockFileSystem.AllFiles.Single();
         
         writtenFile.Should().NotBeNull();
+    }
+    
+    [Fact]
+    public async Task ExecuteAsync_CreatesThumbnailWithCorrectDimensions()
+    {
+        await ExecuteRequest(GetMinimalRequest());
+
+        var writtenFile = _mockFileSystem.AllFiles.Single();
         
-        var fileContent = await mockFileSystem.File.ReadAllBytesAsync(writtenFile);
+        var fileContent = await _mockFileSystem.File.ReadAllBytesAsync(writtenFile);
 
         var image = Image.Load(fileContent);
 
         image.Width.Should().Be(200);
         image.Width.Should().Be(200);
+    }
+
+    private async Task ExecuteRequest(ThumbnailCreationRequest request)
+    {
+        await _channel.Writer.WriteAsync(request);
+        _channel.Writer.Complete();
+
+        await _sut.StartAsync(CancellationToken.None);
+        await _sut.StopAsync(CancellationToken.None);
+    }
+
+    private static ThumbnailCreationRequest GetMinimalRequest()
+    {
+        var bytes = TestingConstants.MinimalJpeg;
+
+        var request = new ThumbnailCreationRequest
+        {
+            Bytes = bytes,
+            Hashed = new(bytes, ItemType.Thumbnail)
+        };
+        
+        return request;
     }
 }
