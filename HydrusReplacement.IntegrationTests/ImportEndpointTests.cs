@@ -85,8 +85,8 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Import_ValidRequest_WritesFileToSubfolder()
     {
         _ = await SendSimpleValidRequest();
-        
-        var expectedPath = _fileSystem.Path.Join(_appRoot, "db", "files", "fd2", "D20F6FFD523B78A86CD2F916FA34AF5D1918D75F7B142237C752AD6B254213AB.jpg");
+
+        var expectedPath = _fileSystem.Path.Join(_appRoot, "db", "files", "f61", "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
         
         var file = _fileSystem.GetFile(expectedPath);
 
