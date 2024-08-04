@@ -1,71 +1,65 @@
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
-using HydrusReplacement.Core;
+using HydrusReplacement.Core.Models;
 
 namespace HydrusReplacement.IntegrationTests;
 
-public class ImportEndpointTests : IAsyncLifetime
+public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
-    private readonly IContainer _dbContainer;
-    private HttpClient _client;
 
-    public ImportEndpointTests()
+    public ImportEndpointTests(WebApplicationFactory<Program> factory)
     {
-        _factory = new();
-        
-        _dbContainer = new ContainerBuilder()
-            .WithImage("sqlite:latest")
-            .WithPortBinding(5432, true)
-            .Build();
-    }
-
-    public async Task InitializeAsync()
-    {
-        await _dbContainer.StartAsync();
-
-        _client = _factory.WithWebHostBuilder(builder =>
+        _factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
             {
-                // Configure your services to use the test container
-                // This might involve replacing the DbContext configuration
-            });
-        }).CreateClient();
-    }
+                var descriptor = services.SingleOrDefault(
+                    d => d.ServiceType == typeof(DbContextOptions<ServerDbContext>));
 
-    public async Task DisposeAsync()
-    {
-        await _dbContainer.StopAsync();
-        _client.Dispose();
-        _factory.Dispose();
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.AddDbContext<ServerDbContext>(options =>
+                {
+                    options.UseInMemoryDatabase("TestDatabase");
+                });
+            });
+        });
     }
 
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
         // Arrange
+        var client = _factory.CreateClient();
         var request = new ImportRequest
         {
-            Items = new()
-            {
+            Items =
+            [
                 new()
                 {
                     Source = new("https://example.com/image.jpg"),
-                    Tags = new[]
-                    {
-                        new TagModel() { Namespace = "category", Subtag = "example" }
-                    }
+                    Tags =
+                    [
+                        new()
+                        {
+                            Namespace = "category",
+                            Subtag = "example"
+                        }
+                    ]
                 }
-            },
+            ],
             DeleteAfterImport = false
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/import", request);
+        var response = await client.PostAsJsonAsync("/import", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -80,18 +74,17 @@ public class ImportEndpointTests : IAsyncLifetime
     public async Task Import_InvalidRequest_ReturnsBadRequest()
     {
         // Arrange
+        var client = _factory.CreateClient();
         var request = new ImportRequest
         {
-            Items = new(), // Empty list, should be invalid
+            Items = [], // Empty list, should be invalid
             DeleteAfterImport = false
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/import", request);
+        var response = await client.PostAsJsonAsync("/import", request);
 
         // Assert
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
-
-    // Add more tests as needed
 }
