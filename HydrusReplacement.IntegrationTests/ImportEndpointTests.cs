@@ -1,12 +1,12 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
-using System.Net;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
 using FluentAssertions;
+using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
@@ -79,19 +79,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
-        var client = _factory.CreateClient();
-        
-        var mockFile = new MockFileData(_minimalJpeg);
-
-        var filepath = "C:/image.jpg";
-        
-        _fileSystem.AddFile(filepath, mockFile);
-
-        var request = BuildRequest(filepath, "category", "example");
-
-        var response = await client.PostAsJsonAsync("/import", request);
-
-        response.EnsureSuccessStatusCode();
+        (var request, var response) = await SendSimpleValidRequest();
         
         var result = await response.Content.ReadFromJsonAsync<ImportResult>();
 
@@ -103,19 +91,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_ValidRequest_WritesFileToSubfolder()
     {
-        var client = _factory.CreateClient();
-     
-        var mockFile = new MockFileData(_minimalJpeg);
-
-        var filepath = "C:/image.jpg";
-        
-        _fileSystem.AddFile(filepath, mockFile);
-
-        var request = BuildRequest(filepath, "category", "example");
-
-        var response = await client.PostAsJsonAsync("/import", request);
-
-        response.EnsureSuccessStatusCode();
+        (var request, var response) = await SendSimpleValidRequest();
         
         _ = await response.Content.ReadFromJsonAsync<ImportResult>();
 
@@ -129,6 +105,29 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_ValidRequest_PersistsInfoToDatabase()
     {
+        _ = await SendSimpleValidRequest();
+
+        var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var mapping = db.Mappings
+            .Include(mapping => mapping.Hash)
+            .Include(mapping => mapping.Tag)
+            .ThenInclude(tag => tag.Namespace)
+            .Include(mapping => mapping.Tag)
+            .ThenInclude(tag => tag.Subtag)
+            .Single();
+
+        mapping.Tag.Namespace.Value.Should().Be("category", "the namespace should be linked the tag");
+        mapping.Tag.Subtag.Value.Should().Be("example", "the subtag should be linked to the tag");
+
+        var hashed = new HashedBytes(_minimalJpeg, ItemType.File);
+        
+        mapping.Hash.Hash.Should().BeEquivalentTo(hashed.Bytes, "we should be persisting the hashed bytes");
+    }
+    
+    private async Task<(ImportRequest request, HttpResponseMessage response)> SendSimpleValidRequest()
+    {
         var client = _factory.CreateClient();
         
         var mockFile = new MockFileData(_minimalJpeg);
@@ -142,33 +141,8 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.PostAsJsonAsync("/import", request);
 
         response.EnsureSuccessStatusCode();
-        
-        _ = await response.Content.ReadFromJsonAsync<ImportResult>();
 
-        var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var tag = db.Tags
-            .Include(tag => tag.Namespace)
-            .Include(tag => tag.Subtag)
-            .Single();
-
-        var @namespace = tag.Namespace;
-        var subtag = tag.Subtag;
-
-        @namespace.Value.Should().Be("category");
-        subtag.Value.Should().Be("example");
-
-        var mapping = await db.Mappings
-            .Include(mapping => mapping.Tag)
-            .Include(mapping => mapping.Hash)
-            .SingleAsync();
-
-        mapping.Tag.Should().Be(tag);
-
-        var hash = db.Hashes.Single();
-
-        mapping.Hash.Should().Be(hash);
+        return (request, response);
     }
 
     private ImportRequest BuildRequest(string source, string? @namespace, string subtag)
