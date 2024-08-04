@@ -68,35 +68,13 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var client = _factory.CreateClient();
         
-        var mockFile = new MockFileData(_minimalJpeg)
-        {
-            CreationTime = new DateTime(2023, 1, 1),
-            LastWriteTime = new DateTime(2023, 1, 2),
-            LastAccessTime = new DateTime(2023, 1, 3)
-        };
+        var mockFile = new MockFileData(_minimalJpeg);
+
+        var filepath = "C:/image.jpg";
         
-        _fileSystem.AddFile("C:/image.jpg", mockFile);
-        
-        var request = new ImportRequest
-        {
-            Items =
-            [
-                new()
-                {
-                    Source = new("C:/image.jpg"),
-                    Tags =
-                    [
-                        new()
-                        {
-                            Namespace = "category",
-                            Subtag = "example"
-                        }
-                    ]
-                }
-            ],
-            
-            DeleteAfterImport = false
-        };
+        _fileSystem.AddFile(filepath, mockFile);
+
+        var request = BuildRequest(filepath, "category", "example");
 
         var response = await client.PostAsJsonAsync("/import", request);
 
@@ -107,6 +85,99 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         result.Should().NotBeNull();
         result!.ImportId.Should().Be(request.ImportId);
         result.Results.Single().Ok.Should().BeTrue();
+    }
+    
+    [Fact]
+    public async Task Import_ValidRequest_WritesFileToSubfolder()
+    {
+        var client = _factory.CreateClient();
+        
+        var mockFile = new MockFileData(_minimalJpeg);
+
+        var filepath = "C:/image.jpg";
+        
+        _fileSystem.AddFile(filepath, mockFile);
+
+        var request = BuildRequest(filepath, "category", "example");
+
+        var response = await client.PostAsJsonAsync("/import", request);
+
+        response.EnsureSuccessStatusCode();
+        
+        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+
+        throw new NotImplementedException();
+    }
+    
+    [Fact]
+    public async Task Import_ValidRequest_PersistsInfoToDatabase()
+    {
+        var client = _factory.CreateClient();
+        
+        var mockFile = new MockFileData(_minimalJpeg);
+
+        var filepath = "C:/image.jpg";
+        
+        _fileSystem.AddFile(filepath, mockFile);
+
+        var request = BuildRequest(filepath, "category", "example");
+
+        var response = await client.PostAsJsonAsync("/import", request);
+
+        response.EnsureSuccessStatusCode();
+        
+        _ = await response.Content.ReadFromJsonAsync<ImportResult>();
+
+        var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var tag = db.Tags
+            .Include(tag => tag.Namespace)
+            .Include(tag => tag.Subtag)
+            .Single();
+
+        var @namespace = tag.Namespace;
+        var subtag = tag.Subtag;
+
+        @namespace.Value.Should().Be("category");
+        subtag.Value.Should().Be("example");
+
+        var mapping = await db.Mappings
+            .Include(mapping => mapping.Tag)
+            .Include(mapping => mapping.Hash)
+            .SingleAsync();
+
+        mapping.Tag.Should().Be(tag);
+
+        var hash = db.Hashes.Single();
+
+        mapping.Hash.Should().Be(hash);
+    }
+
+    private ImportRequest BuildRequest(string source, string? @namespace, string subtag)
+    {
+        var request = new ImportRequest
+        {
+            Items =
+            [
+                new()
+                {
+                    Source = new(source),
+                    Tags =
+                    [
+                        new()
+                        {
+                            Namespace = @namespace,
+                            Subtag = subtag
+                        }
+                    ]
+                }
+            ],
+            
+            DeleteAfterImport = false
+        };
+
+        return request;
     }
 
     public async Task InitializeAsync() => await _connection.OpenAsync();
