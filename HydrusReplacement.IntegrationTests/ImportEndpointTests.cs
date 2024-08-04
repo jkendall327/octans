@@ -21,20 +21,6 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     private readonly WebApplicationFactory<Program> _factory;
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly MockFileSystem _fileSystem = new();
-    
-    private readonly byte[] _minimalJpeg =
-    [
-        0xFF, 0xD8,             // SOI marker
-        0xFF, 0xE0,             // APP0 marker
-        0x00, 0x10,             // Length of APP0 segment
-        0x4A, 0x46, 0x49, 0x46, 0x00, // JFIF identifier
-        0x01, 0x01,             // JFIF version
-        0x00,                   // Units
-        0x00, 0x01,             // X density
-        0x00, 0x01,             // Y density
-        0x00, 0x00,             // Thumbnail width and height
-        0xFF, 0xD9              // EOI marker
-    ];
 
     private readonly string _appRoot = "C:/app";
     private readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
@@ -126,7 +112,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         mapping.Tag.Namespace.Value.Should().Be("category", "the namespace should be linked the tag");
         mapping.Tag.Subtag.Value.Should().Be("example", "the subtag should be linked to the tag");
 
-        var hashed = new HashedBytes(_minimalJpeg, ItemType.File);
+        var hashed = new HashedBytes(TestingConstants.MinimalJpeg, ItemType.File);
         
         mapping.Hash.Hash.Should().BeEquivalentTo(hashed.Bytes, "we should be persisting the hashed bytes");
     }
@@ -138,14 +124,14 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         
         var thumbnailRequest = _spyChannel.WrittenItems.Single();
 
-        thumbnailRequest.Bytes.Should().BeEquivalentTo(_minimalJpeg, "thumbnails should be made for valid imports");
+        thumbnailRequest.Bytes.Should().BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
     }
     
     private async Task<(ImportRequest request, HttpResponseMessage response)> SendSimpleValidRequest()
     {
         var client = _factory.CreateClient();
         
-        var mockFile = new MockFileData(_minimalJpeg);
+        var mockFile = new MockFileData(TestingConstants.MinimalJpeg);
 
         var filepath = "C:/image.jpg";
         
