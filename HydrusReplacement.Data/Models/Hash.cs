@@ -8,5 +8,5 @@ public class HashItem
     public byte[] Hash { get; set; }
     public DateTime? DeletedAt { get; set; }
 
-    public bool IsDeleted() => DeletedAt is null;
+    public bool IsDeleted() => DeletedAt is not null;
 }

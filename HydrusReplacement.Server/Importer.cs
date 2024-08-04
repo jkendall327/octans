@@ -178,6 +178,7 @@ public class Importer
 
         _logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
 
+        // Would still need to copy the actual content back in if it's not there.
         return new()
         {
             Ok = true,
