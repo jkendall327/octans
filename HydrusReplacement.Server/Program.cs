@@ -30,3 +30,5 @@ var manager = app.Services.GetRequiredService<SubfolderManager>();
 manager.MakeSubfolders();
 
 app.Run();
+
+public partial class Program {}

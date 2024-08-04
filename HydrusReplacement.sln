@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HydrusReplacement.Core", "H
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HydrusReplacement.Data", "HydrusReplacement.Data\HydrusReplacement.Data.csproj", "{489AE62E-8F38-41DD-8EB6-AD56D7FD34D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HydrusReplacement.IntegrationTests", "HydrusReplacement.IntegrationTests\HydrusReplacement.IntegrationTests.csproj", "{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{489AE62E-8F38-41DD-8EB6-AD56D7FD34D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{489AE62E-8F38-41DD-8EB6-AD56D7FD34D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{489AE62E-8F38-41DD-8EB6-AD56D7FD34D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
