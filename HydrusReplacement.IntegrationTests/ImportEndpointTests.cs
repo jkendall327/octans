@@ -1,72 +1,19 @@
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
-using System.Threading.Channels;
 using FluentAssertions;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
-using HydrusReplacement.Server;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HydrusReplacement.IntegrationTests;
 
-public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
+public class ImportEndpointTests : EndpointTest
 {
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
-    private readonly MockFileSystem _fileSystem = new();
-
-    private readonly string _appRoot = "C:/app";
-    private readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
-
-    public ImportEndpointTests(WebApplicationFactory<Program> factory)
+    public ImportEndpointTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll(typeof(IPath));
-                services.RemoveAll(typeof(IDirectoryInfo));
-                services.RemoveAll(typeof(IFile));
-
-                services.AddSingleton(_fileSystem.Path);
-                services.AddSingleton(_fileSystem.DirectoryInfo);
-                services.AddSingleton(_fileSystem.File);
-
-                services.RemoveAll(typeof(ChannelWriter<ThumbnailCreationRequest>));
-
-                services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
-                
-                services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
-
-                services.AddDbContext<ServerDbContext>(options =>
-                {
-                    options.UseSqlite(_connection);
-                });
-                
-                // Ensure the database is created
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-                db.Database.EnsureCreated();
-            });
-            
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    {
-                        "DatabaseRoot", _appRoot
-                    }
-                });
-            });
-        });
     }
     
     [Fact]
@@ -171,7 +118,4 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         return request;
     }
-
-    public async Task InitializeAsync() => await _connection.OpenAsync();
-    public async Task DisposeAsync() => await _connection.DisposeAsync();
 }

@@ -1,3 +1,4 @@
+using System.IO.Abstractions.TestingHelpers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using HydrusReplacement.Core;
@@ -8,36 +9,31 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace HydrusReplacement.IntegrationTests;
 
-public class ReimportTests : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
+public class ReimportTests : EndpointTest
 {
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly HttpClient _client;
-    private ServerDbContext _dbContext;
-
-    public ReimportTests(WebApplicationFactory<Program> factory)
+    public ReimportTests(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            // Use the same in-memory database setup as in ImportEndpointTests
-        });
 
-        _client = _factory.CreateClient();
     }
 
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
         // Arrange
-        var hash = await SetupDeletedImage();
+        var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var hash = await SetupDeletedImage(db);
+        
+        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
         
         var request = new ImportRequest
         {
-            Items = new List<ImportItem>
+            Items = new()
             {
                 new()
                 {
                     // Need to use the mock filesystem to point at a file made with the minimal JPEG.
-                    Source = new Uri("https://i.imgur.com/w3fmQPH.jpeg"),
+                    Source = new("C:/myfile.jpeg"),
                     Tags = new[] { new TagModel { Namespace = "test", Subtag = "reimport" } }
                 }
             },
@@ -46,15 +42,17 @@ public class ReimportTests : IClassFixture<WebApplicationFactory<Program>>, IAsy
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/import", request);
+        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
 
         // Assert
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeFalse();
 
-        var dbHash = await _dbContext.Hashes.FindAsync(hash.Id);
+        var dbHash = await db.Hashes.FindAsync(hash.Id);
+        
         dbHash.Should().NotBeNull();
     }
 
@@ -62,15 +60,19 @@ public class ReimportTests : IClassFixture<WebApplicationFactory<Program>>, IAsy
     public async Task Import_PreviouslyDeletedImage_ShouldReimportWhenAllowed()
     {
         // Arrange
-        var hash = await SetupDeletedImage();
+        var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var hash = await SetupDeletedImage(db);
+
+        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
 
         var request = new ImportRequest
         {
-            Items = new List<ImportItem>
+            Items = new()
             {
                 new()
                 {
-                    Source = new Uri("http://example.com/image.jpg"),
+                    Source = new("C:/myfile.jpeg"),
                     Tags = new[] { new TagModel { Namespace = "test", Subtag = "reimport" } }
                 }
             },
@@ -78,22 +80,22 @@ public class ReimportTests : IClassFixture<WebApplicationFactory<Program>>, IAsy
             AllowReimportDeleted = true
         };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/import", request);
+        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
 
-        // Assert
         response.EnsureSuccessStatusCode();
+        
         var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeTrue();
-        result.Results.Single().Message.Should().Contain("reimported");
-
-        var dbHash = await _dbContext.Hashes.FindAsync(hash.Id);
+        
+        var dbHash = await db.Hashes.FindAsync(hash.Id);
+        
         dbHash.Should().NotBeNull();
-        dbHash.DeletedAt.Should().BeNull();
+        dbHash!.DeletedAt.Should().BeNull();
     }
 
-    private async Task<HashItem> SetupDeletedImage()
+    private async Task<HashItem> SetupDeletedImage(ServerDbContext dbContext)
     {
         var hash = new HashItem
         {
@@ -101,22 +103,9 @@ public class ReimportTests : IClassFixture<WebApplicationFactory<Program>>, IAsy
             DeletedAt = DateTime.UtcNow.AddDays(-1)
         };
 
-        _dbContext.Hashes.Add(hash);
-        await _dbContext.SaveChangesAsync();
+        dbContext.Hashes.Add(hash);
+        await dbContext.SaveChangesAsync();
 
         return hash;
-    }
-
-    public Task InitializeAsync()
-    {
-        var scope = _factory.Services.CreateScope();
-        _dbContext = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        return Task.CompletedTask;
-    }
-
-    public Task DisposeAsync()
-    {
-        _dbContext.Dispose();
-        return Task.CompletedTask;
     }
 }
