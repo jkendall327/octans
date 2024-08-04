@@ -1,10 +1,13 @@
 using System.IO.Abstractions.TestingHelpers;
+using System.Net.Mime;
 using System.Threading.Channels;
+using FluentAssertions;
 using HydrusReplacement.Core;
 using HydrusReplacement.Server;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using SixLabors.ImageSharp;
 
 namespace HydrusReplacement.IntegrationTests;
 
@@ -28,6 +31,9 @@ public class ThumbnailCreationTests
         });
         
         var subfolderManager = new SubfolderManager(config, mockFileSystem.DirectoryInfo, mockFileSystem.Path);
+        
+        subfolderManager.MakeSubfolders();
+        
         var thumbnailsDirectory = @"C:\thumbnails";
         mockFileSystem.AddDirectory(thumbnailsDirectory);
 
@@ -37,7 +43,6 @@ public class ThumbnailCreationTests
         var testImageBytes = TestingConstants.MinimalJpeg;
         
         var testRequest = new ThumbnailCreationRequest
-        
         {
             Bytes = testImageBytes,
             Hashed = new(testImageBytes, ItemType.Thumbnail)
@@ -52,18 +57,18 @@ public class ThumbnailCreationTests
             mockFileSystem.File,
             logger);
 
-        // Act
         await service.StartAsync(CancellationToken.None);
         await service.StopAsync(CancellationToken.None);
+        
+        var writtenFile = mockFileSystem.AllFiles.Single();
+        
+        writtenFile.Should().NotBeNull();
+        
+        var fileContent = await mockFileSystem.File.ReadAllBytesAsync(writtenFile);
 
-        // Assert
-        var files = mockFileSystem.Directory.GetFiles(thumbnailsDirectory, "*", SearchOption.AllDirectories);
-        Assert.Single(files);
-        
-        var thumbnailPath = files[0];
-        Assert.True(mockFileSystem.File.Exists(thumbnailPath));
-        
-        var fileContent = await mockFileSystem.File.ReadAllBytesAsync(thumbnailPath);
-        Assert.NotEmpty(fileContent);
+        var image = Image.Load(fileContent);
+
+        image.Width.Should().Be(200);
+        image.Width.Should().Be(200);
     }
 }

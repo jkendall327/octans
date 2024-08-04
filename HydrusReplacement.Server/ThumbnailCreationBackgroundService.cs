@@ -73,17 +73,19 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         
         var thumbnailHash = new HashedBytes(thumbnailBytes, ItemType.Thumbnail);
 
-        var destination = _subfolderManager.GetFilepath(thumbnailHash);
+        var folder = _subfolderManager.GetSubfolder(thumbnailHash);
 
+        var destination = Path.Join(folder.AbsolutePath, thumbnailHash.Hexadecimal + ".jpeg");
+        
         if (destination is null)
         {
             _logger.LogWarning("Failed to find an appropriate subfolder for the thumbnail");
             return;
         }
         
-        _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination.FullName);
+        _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         
-        await _file.WriteAllBytesAsync(destination.FullName, thumbnailBytes, stoppingToken);
+        await _file.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
     }
 
     private async Task<byte[]> SaveThumbnailAsync(Image image, CancellationToken stoppingToken)
