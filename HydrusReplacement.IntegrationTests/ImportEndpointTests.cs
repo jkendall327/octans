@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
+using System.Threading.Channels;
 using FluentAssertions;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
+using HydrusReplacement.Server;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -35,6 +37,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     ];
 
     private readonly string _appRoot = "C:/app";
+    private readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
 
     public ImportEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -49,6 +52,10 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
                 services.AddSingleton(_fileSystem.Path);
                 services.AddSingleton(_fileSystem.DirectoryInfo);
                 services.AddSingleton(_fileSystem.File);
+
+                services.RemoveAll(typeof(ChannelWriter<ThumbnailCreationRequest>));
+
+                services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
                 
                 services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
 
@@ -91,10 +98,8 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_ValidRequest_WritesFileToSubfolder()
     {
-        (var request, var response) = await SendSimpleValidRequest();
+        _ = await SendSimpleValidRequest();
         
-        _ = await response.Content.ReadFromJsonAsync<ImportResult>();
-
         var expectedPath = _fileSystem.Path.Join(_appRoot, "db", "files", "fd2", "D20F6FFD523B78A86CD2F916FA34AF5D1918D75F7B142237C752AD6B254213AB.jpg");
         
         var file = _fileSystem.GetFile(expectedPath);
@@ -124,6 +129,16 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var hashed = new HashedBytes(_minimalJpeg, ItemType.File);
         
         mapping.Hash.Hash.Should().BeEquivalentTo(hashed.Bytes, "we should be persisting the hashed bytes");
+    }
+    
+    [Fact]
+    public async Task Import_ValidRequest_SendsRequestToThumbnailCreationQueue()
+    {
+        _ = await SendSimpleValidRequest();
+        
+        var thumbnailRequest = _spyChannel.WrittenItems.Single();
+
+        thumbnailRequest.Bytes.Should().BeEquivalentTo(_minimalJpeg, "thumbnails should be made for valid imports");
     }
     
     private async Task<(ImportRequest request, HttpResponseMessage response)> SendSimpleValidRequest()
