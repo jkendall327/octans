@@ -6,7 +6,7 @@ namespace HydrusReplacement.Core.Importing;
 public class ImportItemResult
 {
     public required bool Ok { get; set; }
-    public string? Error { get; set; }
+    public string? Message { get; set; }
 }
 
 /// <summary>

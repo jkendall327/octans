@@ -4,6 +4,7 @@ using HydrusReplacement.Core;
 using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
+using Microsoft.EntityFrameworkCore;
 using MimeDetective.InMemory;
 
 namespace HydrusReplacement.Server;
@@ -81,6 +82,13 @@ public class Importer
 
         var hashed = new HashedBytes(bytes, ItemType.File);
 
+        var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+        
         await AddItemToDatabase(item, hashed);
 
         var destination = GetDestination(hashed, bytes);
@@ -116,6 +124,13 @@ public class Importer
         
         var hashed = new HashedBytes(bytes, ItemType.File);
 
+        var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+        
         var destination = GetDestination(hashed, bytes);
         
         _file.Copy(filepath.AbsolutePath, destination, true);
@@ -136,7 +151,37 @@ public class Importer
         
         return new()
         {
-            Ok = true
+            Ok = true,
+            Message = "Image imported"
+        };
+    }
+
+    private async Task<ImportItemResult?> CheckIfPreviouslyDeleted(HashedBytes hashed, bool allowReimportDeleted)
+    {
+        var existingHash = await _context.Hashes
+            .FirstOrDefaultAsync(h => h.Hash == hashed.Bytes);
+
+        if (existingHash == null) return null;
+        
+        if (existingHash.IsDeleted() && !allowReimportDeleted)
+        {
+            return new()
+            {
+                Ok = false,
+                Message = "Image was previously deleted and reimport is not allowed"
+            };
+        }
+
+        // Reactivate the previously deleted hash
+        existingHash.DeletedAt = null;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
+
+        return new()
+        {
+            Ok = true,
+            Message = "Previously deleted image has been reimported"
         };
     }
     
@@ -163,7 +208,7 @@ public class Importer
                 return new()
                 {
                     Ok = false,
-                    Error = $"Failed {filter.GetType().Name} filter"
+                    Message = $"Failed {filter.GetType().Name} filter"
                 };
             }
         }

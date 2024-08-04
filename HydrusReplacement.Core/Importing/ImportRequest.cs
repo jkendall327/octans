@@ -7,6 +7,7 @@ public class ImportRequest
     public required bool DeleteAfterImport { get; init; }
 
     public ImportFilterData? FilterData { get; set; }
+    public bool AllowReimportDeleted { get; set; }
 }
 
 public class ImportFilterData
