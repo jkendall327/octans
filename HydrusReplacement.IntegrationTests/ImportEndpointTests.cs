@@ -1,8 +1,10 @@
+using System.Net;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
+using FluentAssertions;
 using HydrusReplacement.Core.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -65,12 +67,13 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await client.PostAsJsonAsync("/import", request);
 
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
         
-        Assert.NotNull(result);
-        Assert.Equal(request.ImportId, result.ImportId);
-        Assert.Single(result.Results);
-        Assert.True(result.Results[0].Ok);
+        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+
+        result.Should().NotBeNull();
+        result!.ImportId.Should().Be(request.ImportId);
+        result.Results.Should().ContainSingle();
+        result.Results[0].Ok.Should().BeTrue();
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.PostAsJsonAsync("/import", request);
 
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     public async Task InitializeAsync() => await _connection.OpenAsync();
