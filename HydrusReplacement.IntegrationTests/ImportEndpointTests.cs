@@ -4,12 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
 using HydrusReplacement.Core.Models;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HydrusReplacement.IntegrationTests;
 
-public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
     private readonly WebApplicationFactory<Program> _factory;
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
     public ImportEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -17,18 +20,18 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         {
             builder.ConfigureServices(services =>
             {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<ServerDbContext>));
-
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
+                services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
 
                 services.AddDbContext<ServerDbContext>(options =>
                 {
-                    options.UseInMemoryDatabase("TestDatabase");
+                    options.UseSqlite(_connection);
                 });
+                
+                // Ensure the database is created
+                var sp = services.BuildServiceProvider();
+                using var scope = sp.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+                db.Database.EnsureCreated();
             });
         });
     }
@@ -86,5 +89,15 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         // Assert
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _connection.OpenAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _connection.DisposeAsync();
     }
 }
