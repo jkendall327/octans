@@ -39,8 +39,8 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
-        // Arrange
         var client = _factory.CreateClient();
+        
         var request = new ImportRequest
         {
             Items =
@@ -58,15 +58,15 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
                     ]
                 }
             ],
+            
             DeleteAfterImport = false
         };
 
-        // Act
         var response = await client.PostAsJsonAsync("/import", request);
 
-        // Assert
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        
         Assert.NotNull(result);
         Assert.Equal(request.ImportId, result.ImportId);
         Assert.Single(result.Results);
@@ -76,7 +76,6 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task Import_InvalidRequest_ReturnsBadRequest()
     {
-        // Arrange
         var client = _factory.CreateClient();
         var request = new ImportRequest
         {
@@ -84,20 +83,11 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             DeleteAfterImport = false
         };
 
-        // Act
         var response = await client.PostAsJsonAsync("/import", request);
 
-        // Assert
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    public async Task InitializeAsync()
-    {
-        await _connection.OpenAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        await _connection.DisposeAsync();
-    }
+    public async Task InitializeAsync() => await _connection.OpenAsync();
+    public async Task DisposeAsync() => await _connection.DisposeAsync();
 }
