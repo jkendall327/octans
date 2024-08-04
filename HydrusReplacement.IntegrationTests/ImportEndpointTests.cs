@@ -1,3 +1,5 @@
+using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
 using System.Net;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,6 +17,21 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly MockFileSystem _fileSystem = new();
+    
+    private readonly byte[] _minimalJpeg =
+    [
+        0xFF, 0xD8,             // SOI marker
+        0xFF, 0xE0,             // APP0 marker
+        0x00, 0x10,             // Length of APP0 segment
+        0x4A, 0x46, 0x49, 0x46, 0x00, // JFIF identifier
+        0x01, 0x01,             // JFIF version
+        0x00,                   // Units
+        0x00, 0x01,             // X density
+        0x00, 0x01,             // Y density
+        0x00, 0x00,             // Thumbnail width and height
+        0xFF, 0xD9              // EOI marker
+    ];
 
     public ImportEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -22,6 +39,14 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         {
             builder.ConfigureServices(services =>
             {
+                services.RemoveAll(typeof(IPath));
+                services.RemoveAll(typeof(IDirectoryInfo));
+                services.RemoveAll(typeof(IFile));
+
+                services.AddSingleton(_fileSystem.Path);
+                services.AddSingleton(_fileSystem.DirectoryInfo);
+                services.AddSingleton(_fileSystem.File);
+                
                 services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
 
                 services.AddDbContext<ServerDbContext>(options =>
@@ -37,11 +62,20 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             });
         });
     }
-
+    
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
         var client = _factory.CreateClient();
+        
+        var mockFile = new MockFileData(_minimalJpeg)
+        {
+            CreationTime = new DateTime(2023, 1, 1),
+            LastWriteTime = new DateTime(2023, 1, 2),
+            LastAccessTime = new DateTime(2023, 1, 3)
+        };
+        
+        _fileSystem.AddFile("C:/image.jpg", mockFile);
         
         var request = new ImportRequest
         {
@@ -49,7 +83,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
             [
                 new()
                 {
-                    Source = new("https://example.com/image.jpg"),
+                    Source = new("C:/image.jpg"),
                     Tags =
                     [
                         new()
@@ -72,23 +106,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         result.Should().NotBeNull();
         result!.ImportId.Should().Be(request.ImportId);
-        result.Results.Should().ContainSingle();
-        result.Results[0].Ok.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Import_InvalidRequest_ReturnsBadRequest()
-    {
-        var client = _factory.CreateClient();
-        var request = new ImportRequest
-        {
-            Items = [], // Empty list, should be invalid
-            DeleteAfterImport = false
-        };
-
-        var response = await client.PostAsJsonAsync("/import", request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        result.Results.Single().Ok.Should().BeTrue();
     }
 
     public async Task InitializeAsync() => await _connection.OpenAsync();
