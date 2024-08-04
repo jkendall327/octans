@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using HydrusReplacement.Core.Models;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HydrusReplacement.IntegrationTests;
@@ -32,6 +33,8 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         0x00, 0x00,             // Thumbnail width and height
         0xFF, 0xD9              // EOI marker
     ];
+
+    private readonly string _appRoot = "C:/app";
 
     public ImportEndpointTests(WebApplicationFactory<Program> factory)
     {
@@ -59,6 +62,16 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
                 db.Database.EnsureCreated();
+            });
+            
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    {
+                        "DatabaseRoot", _appRoot
+                    }
+                });
             });
         });
     }
@@ -91,7 +104,7 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Import_ValidRequest_WritesFileToSubfolder()
     {
         var client = _factory.CreateClient();
-        
+     
         var mockFile = new MockFileData(_minimalJpeg);
 
         var filepath = "C:/image.jpg";
@@ -104,9 +117,13 @@ public class ImportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         response.EnsureSuccessStatusCode();
         
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        _ = await response.Content.ReadFromJsonAsync<ImportResult>();
 
-        throw new NotImplementedException();
+        var expectedPath = _fileSystem.Path.Join(_appRoot, "db", "files", "fd2", "D20F6FFD523B78A86CD2F916FA34AF5D1918D75F7B142237C752AD6B254213AB.jpg");
+        
+        var file = _fileSystem.GetFile(expectedPath);
+
+        file.Should().NotBeNull();
     }
     
     [Fact]

@@ -175,7 +175,7 @@ public class Importer
     {
         var fileType = originalBytes.DetectMimeType();
         
-        var fileName = string.Join(hashed.Hexadecimal, '.', fileType.Extension);
+        var fileName = string.Concat(hashed.Hexadecimal, '.', fileType.Extension);
 
         var subfolder = _subfolderManager.GetSubfolder(hashed);
 
