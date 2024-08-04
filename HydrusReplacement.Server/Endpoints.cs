@@ -2,7 +2,9 @@ using HydrusReplacement.Core;
 using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace HydrusReplacement.Server;
 
@@ -76,5 +78,14 @@ public static class Endpoints
 
                 await db.SaveChangesAsync();
             });
+        
+        app.MapHealthChecks("/health", new()
+        {
+            ResponseWriter = async (context, report) =>
+            {
+                context.Response.ContentType = "text/plain";
+                await context.Response.WriteAsync(report.Status.ToString());
+            }
+        });
     }
 }

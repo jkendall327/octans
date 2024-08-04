@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace HydrusReplacement.Server;
 
@@ -27,6 +28,10 @@ public static class ServiceCollectionExtensions
                 opt.UseSqlite($"Data Source={db};");
             }
         });
+        
+        builder.Services
+            .AddHealthChecks()
+            .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
     }
 
     public static void AddFilesystem(this WebApplicationBuilder builder)
