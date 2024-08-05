@@ -1,116 +1,106 @@
+using Dapper;
+using Microsoft.Data.Sqlite;
+using System.Data;
+using System.Text;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
-using HydrusReplacement.Core.Models.Tagging;
-using Microsoft.EntityFrameworkCore;
-
-namespace HydrusReplacement.Server.Services;
 
 public class TagUpdater
 {
-    private readonly ServerDbContext _db;
+    private readonly string _connectionString;
 
-    public TagUpdater(ServerDbContext db)
+    public TagUpdater(IConfiguration configuration)
     {
-        _db = db;
+        _connectionString = configuration.GetConnectionString("db.sqlite");
     }
 
     public async Task<bool> UpdateTags(UpdateTagsRequest request)
     {
-        var hash = await _db.Hashes.FindAsync(request.HashId);
-        
-        if (hash is null)
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await using var transaction = connection.BeginTransaction();
+
+        try
         {
-            return false;
-        }
-
-        var existingMappings = await _db.Mappings
-            .Where(m => m.Hash.Id == request.HashId)
-            .Include(m => m.Tag)
-            .ThenInclude(t => t.Namespace)
-            .Include(m => m.Tag)
-            .ThenInclude(t => t.Subtag)
-            .ToListAsync();
-
-        RemoveTags(request.TagsToRemove, existingMappings);
-        await AddTags(request.TagsToAdd, existingMappings, hash);
-
-        await _db.SaveChangesAsync();
-
-        return true;
-    }
-
-    private void RemoveTags(IEnumerable<TagModel> tagsToRemove, List<Mapping> existingMappings)
-    {
-        var tagsToRemoveSet = tagsToRemove.ToHashSet();
-        var mappingsToRemove = existingMappings.Where(m => tagsToRemoveSet.Any(t => 
-            t.Namespace == m.Tag.Namespace.Value && t.Subtag == m.Tag.Subtag.Value)).ToList();
-
-        if (mappingsToRemove.Any())
-        {
-            _db.Mappings.RemoveRange(mappingsToRemove);
-        }
-    }
-
-    private async Task AddTags(IEnumerable<TagModel> tagsToAdd, List<Mapping> existingMappings, HashItem hash)
-    {
-        var tagsToAddSet = tagsToAdd.ToHashSet();
-        var tagsToCreate = tagsToAddSet.Except(existingMappings.Select(m => new TagModel 
-        { 
-            Namespace = m.Tag.Namespace.Value, 
-            Subtag = m.Tag.Subtag.Value 
-        }));
-
-        if (tagsToCreate.Any())
-        {
-            // ?????
-            var allNamespaces = await _db.Namespaces.ToDictionaryAsync(n => n.Value, n => n);
-            var allSubtags = await _db.Subtags.ToDictionaryAsync(s => s.Value, s => s);
-
-            var newMappings = new List<Mapping>();
-
-            foreach (var tag in tagsToCreate)
+            var hash = await GetHash(connection, request.HashId);
+            if (hash == null)
             {
-                var (namespaceEntity, subtagEntity) = GetOrCreateNamespaceAndSubtag(tag, allNamespaces, allSubtags);
-                var tagEntity = await GetOrCreateTag(namespaceEntity, subtagEntity);
-
-                newMappings.Add(new Mapping { Tag = tagEntity, Hash = hash });
+                return false;
             }
 
-            _db.Mappings.AddRange(newMappings);
+            await RemoveTags(connection, request.TagsToRemove, request.HashId);
+            await AddTags(connection, request.TagsToAdd, request.HashId);
+
+            transaction.Commit();
+            return true;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
         }
     }
 
-    private (Namespace, Subtag) GetOrCreateNamespaceAndSubtag(
-        TagModel tag, 
-        Dictionary<string, Namespace> allNamespaces, 
-        Dictionary<string, Subtag> allSubtags)
+    private async Task<HashItem?> GetHash(IDbConnection connection, int hashId)
     {
-        if (!allNamespaces.TryGetValue(tag.Namespace ?? string.Empty, out var namespaceEntity))
-        {
-            namespaceEntity = new Namespace { Value = tag.Namespace ?? string.Empty };
-            allNamespaces[namespaceEntity.Value] = namespaceEntity;
-        }
-
-        if (!allSubtags.TryGetValue(tag.Subtag, out var subtagEntity))
-        {
-            subtagEntity = new Subtag { Value = tag.Subtag };
-            allSubtags[subtagEntity.Value] = subtagEntity;
-        }
-
-        return (namespaceEntity, subtagEntity);
+        return await connection.QuerySingleOrDefaultAsync<HashItem>(
+            "SELECT * FROM Hashes WHERE Id = @HashId", new { HashId = hashId });
     }
 
-    private async Task<Tag> GetOrCreateTag(Namespace namespaceEntity, Subtag subtagEntity)
+    private async Task RemoveTags(IDbConnection connection, IEnumerable<TagModel> tagsToRemove, int hashId)
     {
-        var tagEntity = await _db.Tags.FirstOrDefaultAsync(t => 
-            t.Namespace.Value == namespaceEntity.Value && t.Subtag.Value == subtagEntity.Value);
+        var query = @"
+            DELETE FROM Mappings
+            WHERE HashId = @HashId
+            AND TagId IN (
+                SELECT Tags.Id
+                FROM Tags
+                JOIN Namespaces ON Tags.NamespaceId = Namespaces.Id
+                JOIN Subtags ON Tags.SubtagId = Subtags.Id
+                WHERE (Namespaces.Value = @Namespace OR (@Namespace IS NULL AND Namespaces.Value = ''))
+                AND Subtags.Value = @Subtag
+            )";
 
-        if (tagEntity == null)
+        foreach (var tag in tagsToRemove)
         {
-            tagEntity = new Tag { Namespace = namespaceEntity, Subtag = subtagEntity };
-            _db.Tags.Add(tagEntity);
+            await connection.ExecuteAsync(query, new { HashId = hashId, tag.Namespace, tag.Subtag });
         }
+    }
 
-        return tagEntity;
+    private async Task AddTags(IDbConnection connection, IEnumerable<TagModel> tagsToAdd, int hashId)
+    {
+        var upsertNamespace = @"
+            INSERT INTO Namespaces (Value) VALUES (@Value)
+            ON CONFLICT(Value) DO UPDATE SET Value = @Value
+            RETURNING Id";
+
+        var upsertSubtag = @"
+            INSERT INTO Subtags (Value) VALUES (@Value)
+            ON CONFLICT(Value) DO UPDATE SET Value = @Value
+            RETURNING Id";
+
+        var upsertTag = @"
+            INSERT INTO Tags (NamespaceId, SubtagId) VALUES (@NamespaceId, @SubtagId)
+            ON CONFLICT(NamespaceId, SubtagId) DO UPDATE SET NamespaceId = @NamespaceId
+            RETURNING Id";
+
+        var insertMapping = @"
+            INSERT INTO Mappings (TagId, HashId)
+            SELECT @TagId, @HashId
+            WHERE NOT EXISTS (
+                SELECT 1 FROM Mappings
+                WHERE TagId = @TagId AND HashId = @HashId
+            )";
+
+        var sb = new StringBuilder();
+        foreach (var tag in tagsToAdd)
+        {
+            var namespaceId = await connection.ExecuteScalarAsync<int>(upsertNamespace, new { Value = tag.Namespace ?? string.Empty });
+            var subtagId = await connection.ExecuteScalarAsync<int>(upsertSubtag, new { Value = tag.Subtag });
+            var tagId = await connection.ExecuteScalarAsync<int>(upsertTag, new { NamespaceId = namespaceId, SubtagId = subtagId });
+            
+            await connection.ExecuteAsync(insertMapping, new { TagId = tagId, HashId = hashId });
+        }
     }
 }
