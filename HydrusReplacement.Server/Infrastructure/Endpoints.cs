@@ -1,10 +1,6 @@
-using HydrusReplacement.Core;
 using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace HydrusReplacement.Server;
 
@@ -25,28 +21,6 @@ public static class Endpoints
             })
             .WithName("GetFile")
             .WithDescription("Get a single file by its ID")
-            .WithOpenApi();
-
-        app.MapGet("/getAll", async (int? limit, ServerDbContext context) =>
-            {
-                var hashes = context.Hashes.AsQueryable();
-
-                if (limit is not null)
-                {
-                    hashes = hashes.Take(limit.Value);
-                }
-                
-                var results = await hashes.ToListAsync();
-
-                return results.Any() ? Results.Ok(results) : Results.NotFound();
-            })
-            .WithName("GetAllFiles")
-            .WithDescription("Get all files (limit optional)")
-            .WithOpenApi();
-        
-        app.MapGet("/getFiles", (IEnumerable<int> ids) => Results.Ok())
-            .WithName("GetFiles")
-            .WithDescription("Get multiple files by their IDs")
             .WithOpenApi();
 
         app.MapGet("/query", async (IEnumerable<Tag> tags, FileFinder service) =>
