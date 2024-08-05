@@ -23,28 +23,12 @@ public class ReimportTests : EndpointTest
 
         var hash = await SetupDeletedImage(db);
         
-        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
-        
-        var request = new ImportRequest
-        {
-            Items = new()
-            {
-                new()
-                {
-                    // Need to use the mock filesystem to point at a file made with the minimal JPEG.
-                    Source = new("C:/myfile.jpeg"),
-                    Tags = new[] { new TagModel { Namespace = "test", Subtag = "reimport" } }
-                }
-            },
-            DeleteAfterImport = false,
-            AllowReimportDeleted = false // Default behavior
-        };
+        var request = BuildRequest();
 
-        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
-
-        response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        request.AllowReimportDeleted = false;
         
+        var result = await SendRequest(request);
+
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeFalse();
 
@@ -61,27 +45,11 @@ public class ReimportTests : EndpointTest
 
         var hash = await SetupDeletedImage(db);
 
-        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
+        var request = BuildRequest();
 
-        var request = new ImportRequest
-        {
-            Items = new()
-            {
-                new()
-                {
-                    Source = new("C:/myfile.jpeg"),
-                    Tags = [new() { Namespace = "test", Subtag = "reimport" }]
-                }
-            },
-            DeleteAfterImport = false,
-            AllowReimportDeleted = true
-        };
+        request.AllowReimportDeleted = true;
 
-        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
-
-        response.EnsureSuccessStatusCode();
-        
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        var result = await SendRequest(request);
         
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeTrue();
@@ -105,5 +73,35 @@ public class ReimportTests : EndpointTest
         await dbContext.SaveChangesAsync();
 
         return hash;
+    }
+    
+    private ImportRequest BuildRequest()
+    {
+        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
+
+        var item = new ImportItem
+        {
+            // Need to use the mock filesystem to point at a file made with the minimal JPEG.
+            Source = new("C:/myfile.jpeg"),
+            Tags = [new() { Namespace = "test", Subtag = "reimport" }]
+        };
+        
+        var request = new ImportRequest
+        {
+            Items = [item],
+            DeleteAfterImport = false,
+            AllowReimportDeleted = false 
+        };
+        
+        return request;
+    }
+    
+    private async Task<ImportResult?> SendRequest(ImportRequest request)
+    {
+        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
+
+        response.EnsureSuccessStatusCode();
+        
+        return await response.Content.ReadFromJsonAsync<ImportResult>();
     }
 }
