@@ -61,5 +61,6 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<FileFinder>();
         builder.Services.AddScoped<Importer>();
         builder.Services.AddScoped<ItemDeleter>();
+        builder.Services.AddScoped<TagUpdater>();
     }
 }

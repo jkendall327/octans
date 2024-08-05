@@ -40,6 +40,15 @@ public static class Endpoints
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();
         
+        app.MapPut("/updateTags", async (UpdateTagsRequest request, TagUpdater updater) =>
+            {
+                var success = await updater.UpdateTags(request);
+                return success ? Results.Ok() : Results.NotFound();
+            })
+            .WithName("UpdateTags")
+            .WithDescription("Add and remove tags for a specific image")
+            .WithOpenApi();
+        
         app.MapPost("/delete", async (DeleteRequest request, ItemDeleter deleter) =>
             {
                 var results = await deleter.ProcessDeletion(request);
