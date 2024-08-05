@@ -15,16 +15,22 @@ namespace HydrusReplacement.IntegrationTests;
 public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
     protected readonly WebApplicationFactory<Program> _factory;
-    protected readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
     protected readonly MockFileSystem _fileSystem = new();
-
-    public async Task InitializeAsync() => await _connection.OpenAsync();
-    public async Task DisposeAsync() => await _connection.DisposeAsync();
-
+    protected ServerDbContext _context = null!;
     protected readonly string _appRoot = "C:/app";
     protected readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
 
-    public EndpointTest(WebApplicationFactory<Program> factory)
+    public async Task InitializeAsync()
+    {
+        await _connection.OpenAsync();
+        
+        _context = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+    }
+
+    public async Task DisposeAsync() => await _connection.DisposeAsync();
+
+    protected EndpointTest(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {

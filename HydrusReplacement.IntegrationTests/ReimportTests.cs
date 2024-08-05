@@ -19,9 +19,7 @@ public class ReimportTests : EndpointTest
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
-        var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var hash = await SetupDeletedImage(db);
+        var hash = await SetupDeletedImage();
         
         var request = BuildRequest();
 
@@ -32,8 +30,8 @@ public class ReimportTests : EndpointTest
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeFalse();
 
-        var dbHash = await db.Hashes.FindAsync(hash.Id);
-        await db.Entry(dbHash).ReloadAsync();
+        var dbHash = await _context.Hashes.FindAsync(hash.Id);
+        await _context.Entry(dbHash).ReloadAsync();
 
         dbHash.Should().NotBeNull();
     }
@@ -41,9 +39,7 @@ public class ReimportTests : EndpointTest
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldReimportWhenAllowed()
     {
-        var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var hash = await SetupDeletedImage(db);
+        var hash = await SetupDeletedImage();
 
         var request = BuildRequest();
 
@@ -55,13 +51,13 @@ public class ReimportTests : EndpointTest
         result!.Results.Single().Ok.Should().BeTrue();
         
         // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
-        var dbHash = await db.Hashes.FindAsync(hash.Id) ?? throw new InvalidOperationException("Should always exist");
-        await db.Entry(dbHash).ReloadAsync();
+        var dbHash = await _context.Hashes.FindAsync(hash.Id) ?? throw new InvalidOperationException("Should always exist");
+        await _context.Entry(dbHash).ReloadAsync();
         
         dbHash.DeletedAt.Should().BeNull();
     }
 
-    private async Task<HashItem> SetupDeletedImage(ServerDbContext dbContext)
+    private async Task<HashItem> SetupDeletedImage()
     {
         var hash = new HashItem
         {
@@ -69,8 +65,8 @@ public class ReimportTests : EndpointTest
             DeletedAt = DateTime.UtcNow.AddDays(-1)
         };
 
-        dbContext.Hashes.Add(hash);
-        await dbContext.SaveChangesAsync();
+        _context.Hashes.Add(hash);
+        await _context.SaveChangesAsync();
 
         return hash;
     }

@@ -2,11 +2,9 @@ using System.IO.Abstractions.TestingHelpers;
 using HydrusReplacement.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Json;
 using FluentAssertions;
 using HydrusReplacement.Core;
-using HydrusReplacement.Core.Models;
 
 namespace HydrusReplacement.IntegrationTests;
 
@@ -44,11 +42,8 @@ public class ImportEndpointTests : EndpointTest
     public async Task Import_ValidRequest_PersistsInfoToDatabase()
     {
         _ = await SendSimpleValidRequest();
-
-        var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var mapping = db.Mappings
+        
+        var mapping = _context.Mappings
             .Include(mapping => mapping.Hash)
             .Include(mapping => mapping.Tag)
             .ThenInclude(tag => tag.Namespace)
