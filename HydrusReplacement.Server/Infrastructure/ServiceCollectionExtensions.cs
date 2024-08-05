@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.Threading.Channels;
 using HydrusReplacement.Core;
 using HydrusReplacement.Core.Models;
+using HydrusReplacement.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -59,5 +60,6 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<SubfolderManager>();
         builder.Services.AddScoped<FileFinder>();
         builder.Services.AddScoped<Importer>();
+        builder.Services.AddScoped<ItemDeleter>();
     }
 }

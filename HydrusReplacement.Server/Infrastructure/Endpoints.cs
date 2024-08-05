@@ -1,6 +1,8 @@
+using HydrusReplacement.Core;
 using HydrusReplacement.Core.Importing;
 using HydrusReplacement.Core.Models;
 using HydrusReplacement.Core.Models.Tagging;
+using HydrusReplacement.Server.Services;
 
 namespace HydrusReplacement.Server;
 
@@ -36,6 +38,18 @@ public static class Endpoints
             })
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
+            .WithOpenApi();
+        
+        app.MapPost("/delete", async (DeleteRequest request, ItemDeleter deleter) =>
+            {
+                var results = await deleter.ProcessDeletion(request);
+
+                var response = new DeleteResponse(request.DeleteId, results);
+                
+                return Results.Ok(response);
+            })
+            .WithName("DeleteFiles")
+            .WithDescription("Delete one or more files and their associated data")
             .WithOpenApi();
 
         app.MapPost("/clearAllData",
