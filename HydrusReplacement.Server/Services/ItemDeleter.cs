@@ -47,7 +47,7 @@ public class ItemDeleter
             fileInfo.Delete();
         }
 
-        hashItem.DeletedAt = null;
+        hashItem.DeletedAt = DateTime.Now;
 
         return new(item.Id, true, null);
     }
