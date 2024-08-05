@@ -19,7 +19,6 @@ public class ReimportTests : EndpointTest
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
-        // Arrange
         var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hash = await SetupDeletedImage(db);
@@ -41,10 +40,8 @@ public class ReimportTests : EndpointTest
             AllowReimportDeleted = false // Default behavior
         };
 
-        // Act
         var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
 
-        // Assert
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ImportResult>();
         
@@ -52,14 +49,14 @@ public class ReimportTests : EndpointTest
         result!.Results.Single().Ok.Should().BeFalse();
 
         var dbHash = await db.Hashes.FindAsync(hash.Id);
-        
+        await db.Entry(dbHash).ReloadAsync();
+
         dbHash.Should().NotBeNull();
     }
 
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldReimportWhenAllowed()
     {
-        // Arrange
         var db = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hash = await SetupDeletedImage(db);
@@ -73,7 +70,7 @@ public class ReimportTests : EndpointTest
                 new()
                 {
                     Source = new("C:/myfile.jpeg"),
-                    Tags = new[] { new TagModel { Namespace = "test", Subtag = "reimport" } }
+                    Tags = [new() { Namespace = "test", Subtag = "reimport" }]
                 }
             },
             DeleteAfterImport = false,
@@ -89,10 +86,11 @@ public class ReimportTests : EndpointTest
         result.Should().NotBeNull();
         result!.Results.Single().Ok.Should().BeTrue();
         
-        var dbHash = await db.Hashes.FindAsync(hash.Id);
+        // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
+        var dbHash = await db.Hashes.FindAsync(hash.Id) ?? throw new InvalidOperationException("Should always exist");
+        await db.Entry(dbHash).ReloadAsync();
         
-        dbHash.Should().NotBeNull();
-        dbHash!.DeletedAt.Should().BeNull();
+        dbHash.DeletedAt.Should().BeNull();
     }
 
     private async Task<HashItem> SetupDeletedImage(ServerDbContext dbContext)
