@@ -61,5 +61,21 @@ public static class Endpoints
                 await context.Response.WriteAsync(report.Status.ToString());
             }
         });
+        
+        app.MapGet("/version", () => new { Version = "1.0.0" })
+            .WithName("GetVersion")
+            .WithDescription("Returns the current API version")
+            .WithOpenApi();
+        
+        app.MapGet("/config", (IConfiguration config) => 
+                new
+                {
+                    DatabaseRoot = config["DatabaseRoot"],
+                    Environment = config["ASPNETCORE_ENVIRONMENT"],
+                    LogLevel = config["Logging:LogLevel:Default"]
+                })
+            .WithName("GetConfig")
+            .WithDescription("Returns non-sensitive configuration settings")
+            .WithOpenApi();
     }
 }
