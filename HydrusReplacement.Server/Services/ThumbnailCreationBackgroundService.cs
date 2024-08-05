@@ -77,12 +77,6 @@ public class ThumbnailCreationBackgroundService : BackgroundService
 
         var destination = Path.Join(folder.AbsolutePath, thumbnailHash.Hexadecimal + ".jpeg");
         
-        if (destination is null)
-        {
-            _logger.LogWarning("Failed to find an appropriate subfolder for the thumbnail");
-            return;
-        }
-        
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         
         await _file.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
