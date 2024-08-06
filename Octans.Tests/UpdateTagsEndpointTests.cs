@@ -23,8 +23,8 @@ public class UpdateTagsEndpointTests : EndpointTest
         var request = new UpdateTagsRequest
         {
             HashId = hash.Id,
-            TagsToAdd = new[] { new TagModel { Namespace = "new", Subtag = "tag" } },
-            TagsToRemove = new[] { new TagModel { Namespace = "initial", Subtag = "tag" } }
+            TagsToAdd = new[] { new TagModel { Namespace = "character", Subtag = "samus aran" } },
+            TagsToRemove = new[] { new TagModel { Namespace = "weapon", Subtag = "laser" } }
         };
 
         // Act
@@ -39,8 +39,8 @@ public class UpdateTagsEndpointTests : EndpointTest
             .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
             .ToListAsync();
 
-        updatedTags.Should().ContainSingle(t => t.Namespace == "new" && t.Subtag == "tag");
-        updatedTags.Should().NotContain(t => t.Namespace == "initial" && t.Subtag == "tag");
+        updatedTags.Should().ContainSingle(t => t.Namespace == "character" && t.Subtag == "samus aran");
+        updatedTags.Should().NotContain(t => t.Namespace == "weapon" && t.Subtag == "laser");
     }
 
     [Fact]
@@ -69,8 +69,8 @@ public class UpdateTagsEndpointTests : EndpointTest
 
         var tag = new Tag
         {
-            Namespace = new Namespace { Value = "initial" },
-            Subtag = new Subtag { Value = "tag" }
+            Namespace = new Namespace { Value = "weapon" },
+            Subtag = new Subtag { Value = "laser" }
         };
         _context.Tags.Add(tag);
 
