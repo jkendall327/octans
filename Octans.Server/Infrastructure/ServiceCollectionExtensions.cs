@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
         {
             var path = s.GetRequiredService<IPath>();
-    
+            
             if (builder.Environment.IsDevelopment())
             {
                 opt.UseInMemoryDatabase("db");
@@ -24,8 +24,8 @@ public static class ServiceCollectionExtensions
             {
                 var dbFolder = path.Join(AppDomain.CurrentDomain.BaseDirectory, "db");
 
-                var db = path.Join(dbFolder, "server.db");
-        
+                var db = path.Join(dbFolder, "octans.db");
+
                 opt.UseSqlite($"Data Source={db};");
             }
         });
@@ -33,6 +33,8 @@ public static class ServiceCollectionExtensions
         builder.Services
             .AddHealthChecks()
             .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
+        
+        builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
     }
 
     public static void AddFilesystem(this WebApplicationBuilder builder)

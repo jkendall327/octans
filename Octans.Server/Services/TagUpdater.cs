@@ -6,11 +6,16 @@ using Octans.Core.Models;
 
 public class TagUpdater
 {
-    private readonly string _connectionString = "db.sqlite";
+    private readonly ISqlConnectionFactory _connectionFactory;
+
+    public TagUpdater(ISqlConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
 
     public async Task<bool> UpdateTags(UpdateTagsRequest request)
     {
-        await using var connection = new SqliteConnection(_connectionString);
+        await using var connection = _connectionFactory.GetConnection();
         await connection.OpenAsync();
 
         var hash = await GetHash(connection, request.HashId);
