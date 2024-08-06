@@ -58,76 +58,62 @@ public class TagUpdater
     private async Task RemoveTags(IDbConnection connection, IEnumerable<TagModel> tagsToRemove, int hashId)
     {
         var query = @"
-        DELETE FROM Mappings
-        WHERE HashId = @HashId
-        AND TagId IN (
-            SELECT Tags.Id
-            FROM Tags
-            JOIN Namespaces ON Tags.NamespaceId = Namespaces.Id
-            JOIN Subtags ON Tags.SubtagId = Subtags.Id
-            WHERE (
-                (Namespaces.Value = @Namespace OR (@Namespace IS NULL AND Namespaces.Value = ''))
-                AND Subtags.Value = @Subtag
-            )
-            AND (Namespaces.Value, Subtags.Value) IN @TagPairs
-        )";
+    DELETE FROM Mappings
+    WHERE HashId = @HashId
+    AND TagId IN (
+        SELECT Tags.Id
+        FROM Tags
+        JOIN Namespaces ON Tags.NamespaceId = Namespaces.Id
+        JOIN Subtags ON Tags.SubtagId = Subtags.Id
+        WHERE (Namespaces.Value = @Namespace OR (@Namespace IS NULL AND Namespaces.Value = ''))
+          AND Subtags.Value = @Subtag
+    )";
 
-        var tagPairs = tagsToRemove.Select(t => new { t.Namespace, t.Subtag }).ToList();
-
-        await connection.ExecuteAsync(query, new { HashId = hashId, TagPairs = tagPairs });
+        foreach (var tag in tagsToRemove)
+        {
+            await connection.ExecuteAsync(query, new 
+            { 
+                HashId = hashId, 
+                Namespace = tag.Namespace, 
+                Subtag = tag.Subtag 
+            });
+        }
     }
 
     private async Task AddTags(IDbConnection connection, IList<TagModel> tagsToAdd, int hashId)
     {
-        var upsertNamespaces = @"
-        INSERT INTO Namespaces (Value) 
-        VALUES (@Value)
-        ON CONFLICT(Value) DO UPDATE SET Value = Value
-        RETURNING Id, Value";
+        var upsertNamespace = @"
+    INSERT OR IGNORE INTO Namespaces (Value) 
+    VALUES (@Value);
+    SELECT Id FROM Namespaces WHERE Value = @Value;";
 
-        var upsertSubtags = @"
-        INSERT INTO Subtags (Value) 
-        VALUES (@Value)
-        ON CONFLICT(Value) DO UPDATE SET Value = Value
-        RETURNING Id, Value";
+        var upsertSubtag = @"
+    INSERT OR IGNORE INTO Subtags (Value) 
+    VALUES (@Value);
+    SELECT Id FROM Subtags WHERE Value = @Value;";
 
-        var upsertTags = @"
-        INSERT INTO Tags (NamespaceId, SubtagId) 
-        VALUES (@NamespaceId, @SubtagId)
-        ON CONFLICT(NamespaceId, SubtagId) DO UPDATE SET NamespaceId = NamespaceId
-        RETURNING Id, NamespaceId, SubtagId";
+        var upsertTag = @"
+    INSERT OR IGNORE INTO Tags (NamespaceId, SubtagId) 
+    VALUES (@NamespaceId, @SubtagId);
+    SELECT Id FROM Tags WHERE NamespaceId = @NamespaceId AND SubtagId = @SubtagId;";
 
-        var insertMappings = @"
-        INSERT INTO Mappings (TagId, HashId)
-        SELECT t.Id, @HashId
-        FROM (VALUES @TagIds) AS t(Id)
-        WHERE NOT EXISTS (
-            SELECT 1 FROM Mappings
-            WHERE TagId = t.Id AND HashId = @HashId
-        )";
+        var insertMapping = @"
+    INSERT OR IGNORE INTO Mappings (TagId, HashId)
+    VALUES (@TagId, @HashId);";
 
-        // Batch upsert namespaces
-        var namespaces = tagsToAdd.Select(t => t.Namespace ?? string.Empty).Distinct().ToList();
-        var upsertedNamespaces = await connection.QueryAsync<(int Id, string Value)>(upsertNamespaces, namespaces.Select(n => new { Value = n }));
-        var namespaceDict = upsertedNamespaces.ToDictionary(x => x.Value, x => x.Id);
+        foreach (var tag in tagsToAdd)
+        {
+            // Upsert namespace
+            var namespaceId = await connection.QuerySingleAsync<int>(upsertNamespace, new { Value = tag.Namespace ?? string.Empty });
 
-        // Batch upsert subtags
-        var subtags = tagsToAdd.Select(t => t.Subtag).Distinct().ToList();
-        var upsertedSubtags = await connection.QueryAsync<(int Id, string Value)>(upsertSubtags, subtags.Select(s => new { Value = s }));
-        var subtagDict = upsertedSubtags.ToDictionary(x => x.Value, x => x.Id);
+            // Upsert subtag
+            var subtagId = await connection.QuerySingleAsync<int>(upsertSubtag, new { Value = tag.Subtag });
 
-        // Batch upsert tags
-        var tagPairs = tagsToAdd.Select(t => new
-            {
-                NamespaceId = namespaceDict[t.Namespace ?? string.Empty],
-                SubtagId = subtagDict[t.Subtag]
-            })
-            .Distinct()
-            .ToList();
-        
-        var tagIds = await connection.QueryAsync<int>(upsertTags, tagPairs);
+            // Upsert tag
+            var tagId = await connection.QuerySingleAsync<int>(upsertTag, new { NamespaceId = namespaceId, SubtagId = subtagId });
 
-        // Batch insert mappings
-        await connection.ExecuteAsync(insertMappings, new { TagIds = tagIds, HashId = hashId });
+            // Insert mapping
+            await connection.ExecuteAsync(insertMapping, new { TagId = tagId, HashId = hashId });
+        }
     }
 }
