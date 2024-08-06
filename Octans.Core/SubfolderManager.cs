@@ -1,0 +1,60 @@
+using System.IO.Abstractions;
+using Microsoft.Extensions.Configuration;
+
+namespace Octans.Core;
+
+public class SubfolderManager
+{
+    private const string Hexadecimal = "0123456789abcdef";
+
+    private readonly string _hashFolderPath;
+
+    private readonly IDirectoryInfoFactory _directory;
+    private readonly IPath _path;
+
+    public SubfolderManager(IConfiguration config, IDirectoryInfoFactory directory, IPath path)
+    {
+        _directory = directory;
+        _path = path;
+        
+        _hashFolderPath = _path.Join(config.GetValue<string>("DatabaseRoot"), "db", "files");
+    }
+
+    public void MakeSubfolders()
+    {
+        // Perform a Cartesian join, i.e. get every permutation of chars in the string.
+        var query = 
+            from a in Hexadecimal
+            from b in Hexadecimal
+            select string.Concat(a, b);
+
+        var permutations = query.ToList();
+
+        var root = _directory.New(_hashFolderPath);
+        
+        foreach (var permutation in permutations)
+        {
+            var fileDirectory = string.Concat("f", permutation);
+            var thumbnailDirectory = string.Concat("t", permutation);
+            
+            root.CreateSubdirectory(fileDirectory);
+            root.CreateSubdirectory(thumbnailDirectory);
+        }
+    }
+    
+    public Uri GetSubfolder(HashedBytes hashed)
+    {
+        var path = _path.Join(_hashFolderPath, hashed.Bucket);
+        
+        return new(path);
+    }
+
+    public IFileInfo? GetFilepath(HashedBytes hashed)
+    {
+        var subfolder = GetSubfolder(hashed);
+
+        return _directory.New(subfolder.AbsolutePath)
+            .EnumerateFiles()
+            .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hashed.Hexadecimal);
+    }
+}
