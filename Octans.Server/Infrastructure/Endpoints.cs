@@ -53,7 +53,7 @@ public static class Endpoints
             {
                 var results = await deleter.ProcessDeletion(request);
 
-                var response = new DeleteResponse(request.DeleteId, results);
+                var response = new DeleteResponse(results);
                 
                 return Results.Ok(response);
             })
