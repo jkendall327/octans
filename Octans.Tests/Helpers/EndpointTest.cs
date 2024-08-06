@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NSubstitute;
+using Octans.Core;
 
 namespace Octans.Tests;
 
@@ -47,6 +49,13 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 services.RemoveAll(typeof(ChannelWriter<ThumbnailCreationRequest>));
 
                 services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
+                
+                services.RemoveAll(typeof(ISqlConnectionFactory));
+
+                var connectionFactory = Substitute.For<ISqlConnectionFactory>();
+                connectionFactory.GetConnection().Returns(_connection);
+
+                services.AddSingleton(connectionFactory);
                 
                 services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
 
