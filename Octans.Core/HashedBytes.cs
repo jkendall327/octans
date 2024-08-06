@@ -7,7 +7,7 @@ public class HashedBytes
     /// <summary>
     /// The underlying bytes, which have been hashed via SHA256.
     /// </summary>
-    public byte[] Bytes { get; }
+    public byte[] Bytes { get; private init; }
 
     /// <summary>
     /// A hexadecimal representation of the hashed bytes.
@@ -23,10 +23,16 @@ public class HashedBytes
     /// We then append the first two characters of the hexadecimal string: fa2, t4b, etc,</remarks>
     public string Bucket { get; }
 
-    public HashedBytes(byte[] source, ItemType type)
+    public HashedBytes(byte[] source, ItemType type, bool prehashed = false)
     {
         Type = type;
-        Bytes = SHA256.HashData(source);
+        Bytes = source;
+
+        if (!prehashed)
+        {
+            Bytes = SHA256.HashData(source);
+        }
+        
         Hexadecimal = Convert.ToHexString(Bytes);
 
         var discriminator = Type is ItemType.File ? "f" : "t";

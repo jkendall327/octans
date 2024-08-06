@@ -38,8 +38,7 @@ public class ItemDeleter
             return new(item.Id, false, "Hash not found");
         }
 
-        // TODO: this is hashing a hash!
-        var hashed = new HashedBytes(hashItem.Hash, ItemType.File);
+        var hashed = new HashedBytes(hashItem.Hash, ItemType.File, prehashed: true);
         var fileInfo = _subfolderManager.GetFilepath(hashed);
 
         if (fileInfo?.Exists == true)
