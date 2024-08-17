@@ -16,8 +16,8 @@ public class UpdateTagsEndpointTests : EndpointTest
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()
     {
-        // Arrange
         var client = _factory.CreateClient();
+        
         var hash = await SetupInitialData();
 
         var request = new UpdateTagsRequest
@@ -27,16 +27,17 @@ public class UpdateTagsEndpointTests : EndpointTest
             TagsToRemove = new[] { new TagModel { Namespace = "weapon", Subtag = "laser" } }
         };
 
-        // Act
         var response = await client.PutAsJsonAsync("/updateTags", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Verify database changes
         var updatedTags = await _context.Mappings
             .Where(m => m.Hash.Id == hash.Id)
-            .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
+            .Select(m => new
+            {
+                Namespace = m.Tag.Namespace.Value, 
+                Subtag = m.Tag.Subtag.Value
+            })
             .ToListAsync();
 
         updatedTags.Should().ContainSingle(t => t.Namespace == "character" && t.Subtag == "samus aran");
@@ -46,35 +47,45 @@ public class UpdateTagsEndpointTests : EndpointTest
     [Fact]
     public async Task UpdateTags_InvalidHashId_ReturnsNotFound()
     {
-        // Arrange
         var client = _factory.CreateClient();
+
+        var tag = new TagModel { Namespace = "new", Subtag = "tag" };
+        
         var request = new UpdateTagsRequest
         {
-            HashId = 999, // Non-existent hash ID
-            TagsToAdd = new[] { new TagModel { Namespace = "new", Subtag = "tag" } },
+            // Non-existent hash ID
+            HashId = 999, 
+            TagsToAdd = new[]
+            {
+                tag
+            },
             TagsToRemove = Array.Empty<TagModel>()
         };
 
-        // Act
         var response = await client.PutAsJsonAsync("/updateTags", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     private async Task<HashItem> SetupInitialData()
     {
-        var hash = new HashItem { Hash = new byte[] { 1, 2, 3, 4 } };
+        var hash = new HashItem { Hash = [1, 2, 3, 4] };
+        
         _context.Hashes.Add(hash);
 
         var tag = new Tag
         {
-            Namespace = new Namespace { Value = "weapon" },
-            Subtag = new Subtag { Value = "laser" }
+            Namespace = new() { Value = "weapon" },
+            Subtag = new() { Value = "laser" }
         };
+        
         _context.Tags.Add(tag);
 
-        _context.Mappings.Add(new Mapping { Hash = hash, Tag = tag });
+        _context.Mappings.Add(new()
+        {
+            Hash = hash, 
+            Tag = tag
+        });
 
         await _context.SaveChangesAsync();
 
