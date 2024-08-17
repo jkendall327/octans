@@ -1,3 +1,4 @@
+using System.IO.Abstractions;
 using Octans.Client;
 using Octans.Core;
 
@@ -7,7 +8,13 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<SubfolderManager>();
 
-builder.Services.AddHttpClient("ServerApi", (client) =>
+var filesystem = new FileSystem();
+
+builder.Services.AddSingleton(filesystem.DirectoryInfo);
+builder.Services.AddSingleton(filesystem.Path);
+builder.Services.AddSingleton(filesystem.Directory);
+
+builder.Services.AddHttpClient<ServerClient>(client =>
 {
     client.BaseAddress = new("http://localhost:5185");
 });

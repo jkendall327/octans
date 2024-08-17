@@ -11,12 +11,12 @@ public class IndexModel : PageModel
     public List<IFileInfo> Filepaths { get; set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ServerClient _client;
     
-    public IndexModel(SubfolderManager subfolderManager, IHttpClientFactory httpClientFactory)
+    public IndexModel(SubfolderManager subfolderManager, ServerClient client)
     {
         _subfolderManager = subfolderManager;
-        _httpClientFactory = httpClientFactory;
+        _client = client;
     }
     
     public async Task<IActionResult> OnGetFilePreview(Uri path)
@@ -27,10 +27,8 @@ public class IndexModel : PageModel
     
     public async Task<IActionResult> OnGetAsync()
     {
-        var client = _httpClientFactory.CreateClient();
-        
         // TODO: don't hardcode this
-        var response = await client.GetFromJsonAsync<List<HashItem>>("http://localhost:5185/getAll");
+        var response = await _client.GetAll();
 
         if (response is null)
         {
