@@ -6,10 +6,8 @@ using Octans.Core.Models;
 
 namespace Octans.Tests;
 
-public class DeleteEndpointTests : EndpointTest
+public class DeleteEndpointTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
 {
-    public DeleteEndpointTests(WebApplicationFactory<Program> factory) : base(factory) { }
-
     [Fact]
     public async Task Delete_ExistingFile_ReturnsSuccessAndRemovesFile()
     {

@@ -7,10 +7,8 @@ using Octans.Core.Importing;
 
 namespace Octans.Tests;
 
-public class MultiEndpointIntegrationTests : EndpointTest
+public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
 {
-    public MultiEndpointIntegrationTests(WebApplicationFactory<Program> factory) : base(factory) { }
-
     [Fact]
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {

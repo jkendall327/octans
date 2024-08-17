@@ -9,13 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Octans.Tests;
 
-public class ReimportTests : EndpointTest
+public class ReimportTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
 {
-    public ReimportTests(WebApplicationFactory<Program> factory) : base(factory)
-    {
-
-    }
-
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
@@ -77,7 +72,6 @@ public class ReimportTests : EndpointTest
 
         var item = new ImportItem
         {
-            // Need to use the mock filesystem to point at a file made with the minimal JPEG.
             Source = new("C:/myfile.jpeg"),
             Tags = [new() { Namespace = "test", Subtag = "reimport" }]
         };

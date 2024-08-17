@@ -8,12 +8,8 @@ using Octans.Core;
 
 namespace Octans.Tests;
 
-public class ImportEndpointTests : EndpointTest
+public class ImportEndpointTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
 {
-    public ImportEndpointTests(WebApplicationFactory<Program> factory) : base(factory)
-    {
-    }
-    
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
@@ -31,7 +27,11 @@ public class ImportEndpointTests : EndpointTest
     {
         _ = await SendSimpleValidRequest();
 
-        var expectedPath = _fileSystem.Path.Join(_appRoot, "db", "files", "f61", "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
+        var expectedPath = _fileSystem.Path.Join(_appRoot,
+            "db",
+            "files",
+            "f61",
+            "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
         
         var file = _fileSystem.GetFile(expectedPath);
 
@@ -66,7 +66,9 @@ public class ImportEndpointTests : EndpointTest
         
         var thumbnailRequest = _spyChannel.WrittenItems.Single();
 
-        thumbnailRequest.Bytes.Should().BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
+        thumbnailRequest.Bytes
+            .Should()
+            .BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
     }
     
     private async Task<(ImportRequest request, HttpResponseMessage response)> SendSimpleValidRequest()
@@ -90,24 +92,21 @@ public class ImportEndpointTests : EndpointTest
 
     private ImportRequest BuildRequest(string source, string? @namespace, string subtag)
     {
+        var tag = new TagModel
+        {
+            Namespace = @namespace,
+            Subtag = subtag
+        };
+
+        var item = new ImportItem
+        {
+            Source = new(source),
+            Tags = [tag]
+        };
+        
         var request = new ImportRequest
         {
-            Items =
-            [
-                new()
-                {
-                    Source = new(source),
-                    Tags =
-                    [
-                        new()
-                        {
-                            Namespace = @namespace,
-                            Subtag = subtag
-                        }
-                    ]
-                }
-            ],
-            
+            Items = [item],
             DeleteAfterImport = false
         };
 

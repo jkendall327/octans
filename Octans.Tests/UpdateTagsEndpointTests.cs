@@ -9,10 +9,8 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Tests;
 
-public class UpdateTagsEndpointTests : EndpointTest
+public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
 {
-    public UpdateTagsEndpointTests(WebApplicationFactory<Program> factory) : base(factory) { }
-
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()
     {

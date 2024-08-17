@@ -22,22 +22,13 @@ public class ThumbnailCreationTests
     {
         var config = new ConfigurationManager();
         
-        config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            {
-                "DatabaseRoot", "C:/app"
-            }
-        });
+        config.AddInMemoryCollection(new Dictionary<string, string?> {{"DatabaseRoot", "C:/app"}});
         
         var subfolderManager = new SubfolderManager(config, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path);
         
         subfolderManager.MakeSubfolders();
         
-        _sut = new(
-            _channel.Reader,
-            subfolderManager,
-            _mockFileSystem.File,
-            _logger);
+        _sut = new(_channel.Reader, subfolderManager, _mockFileSystem.File, _logger);
     }
 
     [Fact]
