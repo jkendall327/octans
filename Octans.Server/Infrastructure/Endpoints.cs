@@ -15,6 +15,8 @@ public static class Endpoints
             .WithDescription("Processes an import request")
             .WithOpenApi();
 
+        app.MapGet("/getAll", async (FileFinder service) => await service.GetAll());
+        
         app.MapGet("/getFile", async (int id, FileFinder service) =>
             {
                 var file = await service.GetFile(id);

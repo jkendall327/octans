@@ -17,6 +17,12 @@ public class FileFinder
         _context = context;
     }
 
+
+    public async Task<List<HashItem>> GetAll()
+    {
+        return await _context.Hashes.ToListAsync();
+    }
+    
     public async Task<string?> GetFile(int id)
     {
         var hashItem = await _context.FindAsync<HashItem>(id);

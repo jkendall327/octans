@@ -27,7 +27,6 @@ public class IndexModel : PageModel
     
     public async Task<IActionResult> OnGetAsync()
     {
-        // TODO: don't hardcode this
         var response = await _client.GetAll();
 
         if (response is null)
