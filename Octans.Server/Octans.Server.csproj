@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <WarningsAsErrors>CS4014</WarningsAsErrors>
     </PropertyGroup>
 
     <ItemGroup>
