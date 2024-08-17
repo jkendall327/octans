@@ -1,119 +1,76 @@
-using Dapper;
-using Microsoft.Data.Sqlite;
-using System.Data;
+using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Models;
+using Octans.Core.Models.Tagging;
 
 public class TagUpdater
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
+    private readonly ServerDbContext _context;
 
-    public TagUpdater(ISqlConnectionFactory connectionFactory)
+    public TagUpdater(ServerDbContext context)
     {
-        _connectionFactory = connectionFactory;
+        _context = context;
     }
 
     public async Task<bool> UpdateTags(UpdateTagsRequest request)
     {
-        await using var connection = _connectionFactory.GetConnection();
-        await connection.OpenAsync();
-
-        var hash = await GetHash(connection, request.HashId);
+        var hash = await _context.Hashes.FindAsync(request.HashId);
 
         if (hash == null)
         {
             return false;
         }
+
+        RemoveTags(request.TagsToRemove, hash);
+        await AddTags(request.TagsToAdd, hash);
+
+        await _context.SaveChangesAsync();
         
-        await using var transaction = connection.BeginTransaction();
+        return true;
+    }
 
-        try
+    private void RemoveTags(IEnumerable<TagModel> tagsToRemove, HashItem hash)
+    {
+        var all = _context.Mappings
+            .Include(m => m.Tag)
+            .ThenInclude(t => t.Namespace)
+            .Include(m => m.Tag)
+            .ThenInclude(t => t.Subtag);
+
+        var forThisHash = all.Where(m => m.Hash.Id == hash.Id);
+
+        var mappingsToRemove = forThisHash.Where(m => tagsToRemove.Any(t =>
+                ((t.Namespace == null && m.Tag.Namespace.Value == "") || (t.Namespace != null && m.Tag.Namespace.Value == t.Namespace)) 
+                && m.Tag.Subtag.Value == t.Subtag));
+        
+        _context.Mappings.RemoveRange(mappingsToRemove);
+    }
+
+    private async Task AddTags(IEnumerable<TagModel> tagsToAdd, HashItem hash)
+    {
+        foreach (var tagModel in tagsToAdd)
         {
-            var removalChunked = request.TagsToRemove.Chunk(500);
-            
-            foreach (var tagModels in removalChunked)
+            var @namespace = await _context.Namespaces
+                .FirstOrDefaultAsync(n => n.Value == (tagModel.Namespace ?? ""))
+                ?? new Namespace { Value = tagModel.Namespace ?? "" };
+
+            var subtag = await _context.Subtags
+                .FirstOrDefaultAsync(s => s.Value == tagModel.Subtag)
+                ?? new Subtag { Value = tagModel.Subtag };
+
+            var tag = await _context.Tags
+                .FirstOrDefaultAsync(t => t.Namespace == @namespace && t.Subtag == subtag);
+
+            if (tag == null)
             {
-                await RemoveTags(connection, tagModels, request.HashId);
+                tag = new Tag { Namespace = @namespace, Subtag = subtag };
+                _context.Tags.Add(tag);
             }
-            
-            await AddTags(connection, request.TagsToAdd.ToList(), request.HashId);
 
-            transaction.Commit();
-            
-            return true;
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
-    }
-
-    private async Task<HashItem?> GetHash(IDbConnection connection, int hashId)
-    {
-        return await connection.QuerySingleOrDefaultAsync<HashItem>(
-            "SELECT * FROM Hashes WHERE Id = @HashId", new { HashId = hashId });
-    }
-
-    private async Task RemoveTags(IDbConnection connection, IEnumerable<TagModel> tagsToRemove, int hashId)
-    {
-        var query = @"
-    DELETE FROM Mappings
-    WHERE HashId = @HashId
-    AND TagId IN (
-        SELECT Tags.Id
-        FROM Tags
-        JOIN Namespaces ON Tags.NamespaceId = Namespaces.Id
-        JOIN Subtags ON Tags.SubtagId = Subtags.Id
-        WHERE (Namespaces.Value = @Namespace OR (@Namespace IS NULL AND Namespaces.Value = ''))
-          AND Subtags.Value = @Subtag
-    )";
-
-        foreach (var tag in tagsToRemove)
-        {
-            await connection.ExecuteAsync(query, new 
-            { 
-                HashId = hashId, 
-                Namespace = tag.Namespace, 
-                Subtag = tag.Subtag 
-            });
-        }
-    }
-
-    private async Task AddTags(IDbConnection connection, IList<TagModel> tagsToAdd, int hashId)
-    {
-        var upsertNamespace = @"
-    INSERT OR IGNORE INTO Namespaces (Value) 
-    VALUES (@Value);
-    SELECT Id FROM Namespaces WHERE Value = @Value;";
-
-        var upsertSubtag = @"
-    INSERT OR IGNORE INTO Subtags (Value) 
-    VALUES (@Value);
-    SELECT Id FROM Subtags WHERE Value = @Value;";
-
-        var upsertTag = @"
-    INSERT OR IGNORE INTO Tags (NamespaceId, SubtagId) 
-    VALUES (@NamespaceId, @SubtagId);
-    SELECT Id FROM Tags WHERE NamespaceId = @NamespaceId AND SubtagId = @SubtagId;";
-
-        var insertMapping = @"
-    INSERT OR IGNORE INTO Mappings (TagId, HashId)
-    VALUES (@TagId, @HashId);";
-
-        foreach (var tag in tagsToAdd)
-        {
-            // Upsert namespace
-            var namespaceId = await connection.QuerySingleAsync<int>(upsertNamespace, new { Value = tag.Namespace ?? string.Empty });
-
-            // Upsert subtag
-            var subtagId = await connection.QuerySingleAsync<int>(upsertSubtag, new { Value = tag.Subtag });
-
-            // Upsert tag
-            var tagId = await connection.QuerySingleAsync<int>(upsertTag, new { NamespaceId = namespaceId, SubtagId = subtagId });
-
-            // Insert mapping
-            await connection.ExecuteAsync(insertMapping, new { TagId = tagId, HashId = hashId });
+            if (!await _context.Mappings.AnyAsync(m => m.Hash == hash && m.Tag == tag))
+            {
+                _context.Mappings.Add(new Mapping { Hash = hash, Tag = tag });
+            }
         }
     }
 }
