@@ -23,12 +23,15 @@ public class ReimportTests(WebApplicationFactory<Program> factory) : EndpointTes
         var result = await SendRequest(request);
 
         result.Should().NotBeNull();
-        result!.Results.Single().Ok.Should().BeFalse();
+        result!.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
 
         var dbHash = await _context.Hashes.FindAsync(hash.Id);
-        await _context.Entry(dbHash).ReloadAsync();
 
-        dbHash.Should().NotBeNull();
+        dbHash.Should().NotBeNull("hashes for deleted files remain in the DB to prevent reimports");
+
+        await _context.Entry(dbHash!).ReloadAsync();
+
+        dbHash!.DeletedAt.Should().NotBeNull("reimporting wasn't allowed, so it should still be marked as deleted");
     }
 
     [Fact]
@@ -43,13 +46,16 @@ public class ReimportTests(WebApplicationFactory<Program> factory) : EndpointTes
         var result = await SendRequest(request);
         
         result.Should().NotBeNull();
-        result!.Results.Single().Ok.Should().BeTrue();
+        result!.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
         
+        var dbHash = await _context.Hashes.FindAsync(hash.Id);
+        
+        dbHash.Should().NotBeNull();
+
         // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
-        var dbHash = await _context.Hashes.FindAsync(hash.Id) ?? throw new InvalidOperationException("Should always exist");
-        await _context.Entry(dbHash).ReloadAsync();
+        await _context.Entry(dbHash!).ReloadAsync();
         
-        dbHash.DeletedAt.Should().BeNull();
+        dbHash!.DeletedAt.Should().BeNull("reimporting was allowed, so its soft-deletion mark should be gone");
     }
 
     private async Task<HashItem> SetupDeletedImage()
