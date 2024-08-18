@@ -21,11 +21,11 @@ public class IndexModel : PageModel
     
     public async Task<IActionResult> OnGetFilePreview(Uri path)
     {
-        var bytes = await System.IO.File.ReadAllBytesAsync(path.AbsolutePath);
+        var bytes = await System.IO.File.ReadAllBytesAsync(path.ToString());
         return File(bytes, "application/octet-stream", "1.jpg");
     }
     
-    public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnPostAsync()
     {
         var response = await _client.GetAll();
 
