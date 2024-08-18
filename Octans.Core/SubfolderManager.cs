@@ -11,13 +11,15 @@ public class SubfolderManager
     private readonly string _hashFolderPath;
 
     private readonly IDirectoryInfoFactory _directory;
+    private readonly IFileInfoFactory _fileInfoFactory;
     private readonly IPath _path;
 
-    public SubfolderManager(IOptions<GlobalSettings> settings, IDirectoryInfoFactory directory, IPath path)
+    public SubfolderManager(IOptions<GlobalSettings> settings, IDirectoryInfoFactory directory, IPath path, IFileInfoFactory fileInfoFactory)
     {
         _directory = directory;
         _path = path;
-        
+        _fileInfoFactory = fileInfoFactory;
+
         _hashFolderPath = _path.Join(settings.Value.AppRoot, "db", "files");
     }
 
@@ -52,10 +54,8 @@ public class SubfolderManager
 
     public IFileInfo? GetFilepath(HashedBytes hashed)
     {
-        var subfolder = GetSubfolder(hashed);
+        var path = _path.Join(_hashFolderPath, hashed.ContentLocation);
 
-        return _directory.New(subfolder.AbsolutePath)
-            .EnumerateFiles()
-            .SingleOrDefault(f => f.Name.Replace(f.Extension, string.Empty) == hashed.Hexadecimal);
+        return _fileInfoFactory.New(path);
     }
 }

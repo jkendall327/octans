@@ -27,7 +27,7 @@ public class ThumbnailCreationTests
             AppRoot = "C:/app"
         });
         
-        var subfolderManager = new SubfolderManager(_options, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path);
+        var subfolderManager = new SubfolderManager(_options, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path, _mockFileSystem.FileInfo);
         
         subfolderManager.MakeSubfolders();
         

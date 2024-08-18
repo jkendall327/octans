@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton(filesystem.Path);
         builder.Services.AddSingleton(filesystem.DirectoryInfo);
         builder.Services.AddSingleton(filesystem.File);
+        builder.Services.AddSingleton(filesystem.FileInfo);
     }
 
     public static void AddChannels(this WebApplicationBuilder builder)

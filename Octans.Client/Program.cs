@@ -13,6 +13,7 @@ var filesystem = new FileSystem();
 builder.Services.AddSingleton(filesystem.DirectoryInfo);
 builder.Services.AddSingleton(filesystem.Path);
 builder.Services.AddSingleton(filesystem.Directory);
+builder.Services.AddSingleton(filesystem.FileInfo);
 
 builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection("GlobalSettings"));
 
