@@ -14,20 +14,17 @@ public static class ServiceCollectionExtensions
     {
         builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
         {
+            var config = s.GetRequiredService<IConfiguration>();
+            
+            var root = config.GetValue<string>("DatabaseRoot");
+            
             var path = s.GetRequiredService<IPath>();
             
-            if (builder.Environment.IsDevelopment())
-            {
-                opt.UseInMemoryDatabase("db");
-            }
-            else
-            {
-                var dbFolder = path.Join(AppDomain.CurrentDomain.BaseDirectory, "db");
+            var dbFolder = path.Join(root, "db");
 
-                var db = path.Join(dbFolder, "octans.db");
+            var db = path.Join(dbFolder, "octans.db");
 
-                opt.UseSqlite($"Data Source={db};");
-            }
+            opt.UseSqlite($"Data Source={db};");
         });
         
         builder.Services

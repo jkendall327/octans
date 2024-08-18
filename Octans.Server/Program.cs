@@ -1,4 +1,5 @@
 using Octans.Core;
+using Octans.Core.Models;
 using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +29,12 @@ app.AddEndpoints();
 // Ensure subfolders are initialised.
 var manager = app.Services.GetRequiredService<SubfolderManager>();
 manager.MakeSubfolders();
+
+// Ensure database is initialised.
+var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+await db.Database.EnsureCreatedAsync();
+scope.Dispose();
 
 app.Run();
 
