@@ -14,6 +14,8 @@ builder.Services.AddSingleton(filesystem.DirectoryInfo);
 builder.Services.AddSingleton(filesystem.Path);
 builder.Services.AddSingleton(filesystem.Directory);
 
+builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection("GlobalSettings"));
+
 builder.Services.AddHttpClient<ServerClient>(client =>
 {
     client.BaseAddress = new("http://localhost:5185");
