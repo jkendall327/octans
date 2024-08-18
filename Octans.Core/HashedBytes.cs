@@ -24,9 +24,9 @@ public class HashedBytes
 
     public FileType MimeType { get; }
 
-    public string ContentLocation => "f" + Location;
-    public string ThumbnailLocation => "t" + Location;
-    private string Location => Bucket + Path.DirectorySeparatorChar + Hexadecimal + "." + MimeType.Extension;
+    public string ContentLocation => "f" + Location + MimeType.Extension;
+    public string ThumbnailLocation => "t" + Location + "jpeg";
+    private string Location => Bucket + Path.DirectorySeparatorChar + Hexadecimal + ".";
 
     private HashedBytes(byte[] source)
     {

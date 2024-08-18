@@ -62,7 +62,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory) : EndpointTes
     {
         var hash = new HashItem
         {
-            Hash = new HashedBytes(TestingConstants.MinimalJpeg, ItemType.File).Bytes,
+            Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg).Bytes,
             DeletedAt = DateTime.UtcNow.AddDays(-1)
         };
 

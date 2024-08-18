@@ -54,7 +54,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory) : Endpo
         mapping.Tag.Namespace.Value.Should().Be("category", "the namespace should be linked the tag");
         mapping.Tag.Subtag.Value.Should().Be("example", "the subtag should be linked to the tag");
 
-        var hashed = new HashedBytes(TestingConstants.MinimalJpeg, ItemType.File);
+        var hashed = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg);
         
         mapping.Hash.Hash.Should().BeEquivalentTo(hashed.Bytes, "we should be persisting the hashed bytes");
     }

@@ -13,7 +13,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory) : Endpo
     {
         // Add file to filesystem
         var fileBytes = TestingConstants.MinimalJpeg;
-        var hashed = new HashedBytes(fileBytes, ItemType.File);
+        var hashed = HashedBytes.FromUnhashed(fileBytes);
         var filePath = _fileSystem.Path.Combine(_appRoot, "db", "files", hashed.Bucket, $"{hashed.Hexadecimal}.jpg");
         _fileSystem.AddFile(filePath, new(fileBytes));
 

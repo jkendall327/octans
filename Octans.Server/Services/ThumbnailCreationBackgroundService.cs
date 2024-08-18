@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using System.Threading.Channels;
+using Microsoft.Extensions.Options;
 using Octans.Core;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -16,18 +17,21 @@ public class ThumbnailCreationRequest
 public class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
-    private readonly SubfolderManager _subfolderManager;
+    private readonly IOptions<GlobalSettings> _globalSettings;
     private readonly IFile _file;
+    private readonly IPath _path;
     private readonly ILogger<ThumbnailCreationBackgroundService> _logger;
 
     public ThumbnailCreationBackgroundService(ChannelReader<ThumbnailCreationRequest> channel,
-        SubfolderManager subfolderManager,
         IFile file,
-        ILogger<ThumbnailCreationBackgroundService> logger)
+        ILogger<ThumbnailCreationBackgroundService> logger,
+        IOptions<GlobalSettings> globalSettings,
+        IPath path)
     {
         _channel = channel;
-        _subfolderManager = subfolderManager;
         _logger = logger;
+        _globalSettings = globalSettings;
+        _path = path;
         _file = file;
     }
 
@@ -71,11 +75,7 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         
         _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
         
-        var thumbnailHash = new HashedBytes(thumbnailBytes, ItemType.Thumbnail);
-
-        var folder = _subfolderManager.GetSubfolder(thumbnailHash);
-
-        var destination = Path.Join(folder.AbsolutePath, thumbnailHash.Hexadecimal + ".jpeg");
+        var destination = _path.Join(_globalSettings.Value.AppRoot, "db", "files", request.Hashed.ThumbnailLocation);
         
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         

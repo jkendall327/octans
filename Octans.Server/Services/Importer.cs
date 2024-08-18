@@ -80,7 +80,7 @@ public class Importer
             return filterResult;
         }
 
-        var hashed = new HashedBytes(bytes, ItemType.File);
+        var hashed = HashedBytes.FromUnhashed(bytes);
 
         var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
 
@@ -122,7 +122,7 @@ public class Importer
             return filterResult;
         }
         
-        var hashed = new HashedBytes(bytes, ItemType.File);
+        var hashed = HashedBytes.FromUnhashed(bytes);
 
         var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
 

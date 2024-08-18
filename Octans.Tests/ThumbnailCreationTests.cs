@@ -31,7 +31,7 @@ public class ThumbnailCreationTests
         
         subfolderManager.MakeSubfolders();
         
-        _sut = new(_channel.Reader, subfolderManager, _mockFileSystem.File, _logger);
+        _sut = new(_channel.Reader, _mockFileSystem.File, _logger, _options, _mockFileSystem.Path);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class ThumbnailCreationTests
         var request = new ThumbnailCreationRequest
         {
             Bytes = bytes,
-            Hashed = new(bytes, ItemType.Thumbnail)
+            Hashed = HashedBytes.FromUnhashed(bytes)
         };
         
         return request;

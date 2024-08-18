@@ -33,7 +33,7 @@ public class IndexModel : PageModel
             return NotFound();
         }
 
-        var hashed = response.Select(x => new HashedBytes(x.Hash, ItemType.File, prehashed: true));
+        var hashed = response.Select(x => HashedBytes.FromHashed(x.Hash));
 
         Filepaths = hashed
             .Select(hash => _subfolderManager.GetFilepath(hash))

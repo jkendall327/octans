@@ -32,7 +32,7 @@ public class FileFinder
             return null;
         }
 
-        var hashed = new HashedBytes(hashItem.Hash, ItemType.File);
+        var hashed = HashedBytes.FromHashed(hashItem.Hash);
         
         var subfolder = _subfolderManager.GetSubfolder(hashed);
 
