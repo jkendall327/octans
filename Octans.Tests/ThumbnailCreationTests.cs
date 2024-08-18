@@ -6,6 +6,7 @@ using Octans.Core;
 using Octans.Server;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using SixLabors.ImageSharp;
 
@@ -14,17 +15,19 @@ namespace Octans.Tests;
 public class ThumbnailCreationTests
 {
     private readonly ILogger<ThumbnailCreationBackgroundService>? _logger = Substitute.For<ILogger<ThumbnailCreationBackgroundService>>();
+    private readonly IOptions<GlobalSettings> _options = Substitute.For<IOptions<GlobalSettings>>();
     private readonly MockFileSystem _mockFileSystem = new();
     private readonly Channel<ThumbnailCreationRequest> _channel = Channel.CreateUnbounded<ThumbnailCreationRequest>();
     private readonly ThumbnailCreationBackgroundService _sut;
 
     public ThumbnailCreationTests()
     {
-        var config = new ConfigurationManager();
+        _options.Value.Returns(new GlobalSettings
+        {
+            AppRoot = "C:/app"
+        });
         
-        config.AddInMemoryCollection(new Dictionary<string, string?> {{"DatabaseRoot", "C:/app"}});
-        
-        var subfolderManager = new SubfolderManager(config, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path);
+        var subfolderManager = new SubfolderManager(_options, _mockFileSystem.DirectoryInfo, _mockFileSystem.Path);
         
         subfolderManager.MakeSubfolders();
         

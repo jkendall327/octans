@@ -8,6 +8,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
+builder.AddOptions();
 builder.AddFilesystem();
 builder.AddChannels();
 builder.AddDatabase();

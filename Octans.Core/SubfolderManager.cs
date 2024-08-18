@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Octans.Core;
 
@@ -12,12 +13,12 @@ public class SubfolderManager
     private readonly IDirectoryInfoFactory _directory;
     private readonly IPath _path;
 
-    public SubfolderManager(IConfiguration config, IDirectoryInfoFactory directory, IPath path)
+    public SubfolderManager(IOptions<GlobalSettings> settings, IDirectoryInfoFactory directory, IPath path)
     {
         _directory = directory;
         _path = path;
         
-        _hashFolderPath = _path.Join(config.GetValue<string>("DatabaseRoot"), "db", "files");
+        _hashFolderPath = _path.Join(settings.Value.AppRoot, "db", "files");
     }
 
     public void MakeSubfolders()

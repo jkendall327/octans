@@ -4,19 +4,26 @@ using Octans.Core;
 using Octans.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using Octans.Server.Services;
 
 namespace Octans.Server;
 
 public static class ServiceCollectionExtensions
 {
+    public static void AddOptions(this WebApplicationBuilder builder)
+    {
+        var configuration = builder.Configuration.GetSection("GlobalSettings");
+        builder.Services.Configure<GlobalSettings>(configuration);
+    }
+    
     public static void AddDatabase(this WebApplicationBuilder builder)
     {
         builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
         {
-            var config = s.GetRequiredService<IConfiguration>();
+            var config = s.GetRequiredService<IOptions<GlobalSettings>>();
             
-            var root = config.GetValue<string>("DatabaseRoot");
+            var root = config.Value.AppRoot;
             
             var path = s.GetRequiredService<IPath>();
             
