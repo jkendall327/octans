@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using MimeDetective.InMemory;
 
 namespace Octans.Core;
 
@@ -7,14 +8,12 @@ public class HashedBytes
     /// <summary>
     /// The underlying bytes, which have been hashed via SHA256.
     /// </summary>
-    public byte[] Bytes { get; private init; }
+    public byte[] Bytes { get; }
 
     /// <summary>
     /// A hexadecimal representation of the hashed bytes.
     /// </summary>
     public string Hexadecimal { get; }
-
-    public ItemType Type { get; }
 
     /// <summary>
     /// A code determining where in the filesystem this item would be stored.
@@ -23,27 +22,20 @@ public class HashedBytes
     /// We then append the first two characters of the hexadecimal string: fa2, t4b, etc,</remarks>
     public string Bucket { get; }
 
-    public HashedBytes(byte[] source, ItemType type, bool prehashed = false)
+    public FileType MimeType { get; }
+
+    public string ContentLocation => "f" + Location;
+    public string ThumbnailLocation => "t" + Location;
+    private string Location => Bucket + Path.DirectorySeparatorChar + Hexadecimal + "." + MimeType.Extension;
+
+    private HashedBytes(byte[] source)
     {
-        Type = type;
         Bytes = source;
-
-        if (!prehashed)
-        {
-            Bytes = SHA256.HashData(source);
-        }
-        
         Hexadecimal = Convert.ToHexString(Bytes);
-
-        var discriminator = Type is ItemType.File ? "f" : "t";
-        var tag = Hexadecimal[..2].ToLowerInvariant();
-        
-        Bucket = string.Concat(discriminator, tag);
+        Bucket = Hexadecimal[..2].ToLowerInvariant();
+        MimeType = source.DetectMimeType();
     }
-}
 
-public enum ItemType
-{
-    File,
-    Thumbnail
+    public static HashedBytes FromUnhashed(byte[] source) => new(SHA256.HashData(source));
+    public static HashedBytes FromHashed(byte[] source) => new(source);
 }
