@@ -19,10 +19,9 @@ public class IndexModel : PageModel
         _client = client;
     }
     
-    public async Task<IActionResult> OnGetFilePreview(Uri path)
+    public IActionResult OnGetFilePreview(Uri path)
     {
-        var bytes = await System.IO.File.ReadAllBytesAsync(path.ToString());
-        return File(bytes, "application/octet-stream", "1.jpg");
+        return PhysicalFile(path.ToString(), "image/jpeg");
     }
     
     public async Task<IActionResult> OnPostAsync()
