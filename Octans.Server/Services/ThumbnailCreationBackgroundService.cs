@@ -17,7 +17,6 @@ public class ThumbnailCreationRequest
 public class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
-    private readonly SubfolderManager _subfolderManager;
     private readonly IOptions<GlobalSettings> _globalSettings;
     private readonly IFile _file;
     private readonly IPath _path;
@@ -25,16 +24,14 @@ public class ThumbnailCreationBackgroundService : BackgroundService
 
     public ThumbnailCreationBackgroundService(ChannelReader<ThumbnailCreationRequest> channel,
         IFile file,
-        ILogger<ThumbnailCreationBackgroundService> logger,
-        IOptions<GlobalSettings> globalSettings,
         IPath path,
-        SubfolderManager subfolderManager)
+        IOptions<GlobalSettings> globalSettings,
+        ILogger<ThumbnailCreationBackgroundService> logger)
     {
         _channel = channel;
         _logger = logger;
         _globalSettings = globalSettings;
         _path = path;
-        _subfolderManager = subfolderManager;
         _file = file;
     }
 
