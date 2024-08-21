@@ -82,8 +82,7 @@ public class ThumbnailCreationBackgroundService : BackgroundService
             "db",
             "files",
             request.Hashed.ThumbnailBucket,
-            request.Hashed.Hexadecimal,
-            ".jpeg");
+            request.Hashed.Hexadecimal + ".jpeg");
         
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         
