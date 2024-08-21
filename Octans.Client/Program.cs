@@ -9,7 +9,6 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<SubfolderManager>();
 
 var filesystem = new FileSystem();
-
 builder.Services.AddSingleton<IFileSystem>(filesystem);
 builder.Services.AddSingleton(filesystem.DirectoryInfo);
 builder.Services.AddSingleton(filesystem.Path);
