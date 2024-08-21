@@ -31,14 +31,14 @@ public class ItemDeleter
     
     private async Task<DeleteResult> DeleteFile(DeleteItem item)
     {
-        var hashItem = await _context.Hashes.FindAsync(item.Id);
+        var entry = await _context.Hashes.FindAsync(item.Id);
         
-        if (hashItem is null)
+        if (entry is null)
         {
             return new(item.Id, false, "Hash not found");
         }
 
-        var hashed = HashedBytes.FromHashed(hashItem.Hash);
+        var hashed = HashedBytes.FromHashed(entry.Hash);
         
         var file = _subfolderManager.GetFilepath(hashed);
 
@@ -46,8 +46,15 @@ public class ItemDeleter
         {
             file.Delete();
         }
+        
+        var thumbnail = _subfolderManager.GetThumbnail(hashed);
 
-        hashItem.DeletedAt = DateTime.Now;
+        if (thumbnail?.Exists == true)
+        {
+            thumbnail.Delete();
+        }
+
+        entry.DeletedAt = DateTime.Now;
 
         return new(item.Id, true, null);
     }

@@ -34,7 +34,7 @@ public class IndexModel : PageModel
         }
 
         var hashed = response.Select(x => HashedBytes.FromHashed(x.Hash));
-
+        
         Filepaths = hashed
             .Select(hash => _subfolderManager.GetFilepath(hash))
             .OfType<IFileInfo>()
