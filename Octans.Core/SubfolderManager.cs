@@ -9,18 +9,14 @@ public class SubfolderManager
     private const string Hexadecimal = "0123456789abcdef";
 
     private readonly string _hashFolderPath;
+    
+    private readonly IFileSystem _fileSystem;
 
-    private readonly IDirectoryInfoFactory _directory;
-    private readonly IFileInfoFactory _fileInfoFactory;
-    private readonly IPath _path;
-
-    public SubfolderManager(IOptions<GlobalSettings> settings, IDirectoryInfoFactory directory, IPath path, IFileInfoFactory fileInfoFactory)
+    public SubfolderManager(IOptions<GlobalSettings> settings, IFileSystem fileSystem)
     {
-        _directory = directory;
-        _path = path;
-        _fileInfoFactory = fileInfoFactory;
+        _fileSystem = fileSystem;
 
-        _hashFolderPath = _path.Join(settings.Value.AppRoot, "db", "files");
+        _hashFolderPath = _fileSystem.Path.Join(settings.Value.AppRoot, "db", "files");
     }
 
     public void MakeSubfolders()
@@ -33,7 +29,7 @@ public class SubfolderManager
 
         var permutations = query.ToList();
 
-        var root = _directory.New(_hashFolderPath);
+        var root = _fileSystem.DirectoryInfo.New(_hashFolderPath);
         
         foreach (var permutation in permutations)
         {
@@ -47,7 +43,7 @@ public class SubfolderManager
     
     public Uri GetSubfolder(HashedBytes hashed)
     {
-        var path = _path.Join(_hashFolderPath, hashed.ContentBucket);
+        var path = _fileSystem.Path.Join(_hashFolderPath, hashed.ContentBucket);
         
         return new(path);
     }
@@ -56,24 +52,24 @@ public class SubfolderManager
     {
         var subfolder = GetSubfolder(hashed);
 
-        return _directory.New(subfolder.AbsolutePath)
+        return _fileSystem.DirectoryInfo.New(subfolder.AbsolutePath)
             .EnumerateFileSystemInfos()
             .FirstOrDefault(f =>
             {
-                var name = _path.GetFileNameWithoutExtension(f.Name);
+                var name = _fileSystem.Path.GetFileNameWithoutExtension(f.Name);
                 return name == hashed.Hexadecimal;
             });
     }
 
     public IFileSystemInfo? GetThumbnail(HashedBytes hashed)
     {
-        var path = _path.Join(_hashFolderPath, hashed.ThumbnailBucket);
+        var path = _fileSystem.Path.Join(_hashFolderPath, hashed.ThumbnailBucket);
         
-        return _directory.New(path)
+        return _fileSystem.DirectoryInfo.New(path)
             .EnumerateFileSystemInfos()
             .FirstOrDefault(f =>
             {
-                var name = _path.GetFileNameWithoutExtension(f.Name);
+                var name = _fileSystem.Path.GetFileNameWithoutExtension(f.Name);
                 return name == hashed.Hexadecimal;
             });
     }
