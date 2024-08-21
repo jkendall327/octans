@@ -47,15 +47,34 @@ public class SubfolderManager
     
     public Uri GetSubfolder(HashedBytes hashed)
     {
-        var path = _path.Join(_hashFolderPath, hashed.Bucket);
+        var path = _path.Join(_hashFolderPath, hashed.ContentBucket);
         
         return new(path);
     }
 
-    public IFileInfo? GetFilepath(HashedBytes hashed)
+    public IFileSystemInfo? GetFilepath(HashedBytes hashed)
     {
-        var path = _path.Join(_hashFolderPath, hashed.ContentLocation);
+        var subfolder = GetSubfolder(hashed);
 
-        return _fileInfoFactory.New(path);
+        return _directory.New(subfolder.ToString())
+            .EnumerateFileSystemInfos()
+            .FirstOrDefault(f =>
+            {
+                var name = _path.GetFileNameWithoutExtension(f.Name);
+                return name == hashed.Hexadecimal;
+            });
+    }
+
+    public IFileSystemInfo? GetThumbnail(HashedBytes hashed)
+    {
+        var path = _path.Join(_hashFolderPath, hashed.ThumbnailBucket);
+        
+        return _directory.New(path)
+            .EnumerateFileSystemInfos()
+            .FirstOrDefault(f =>
+            {
+                var name = _path.GetFileNameWithoutExtension(f.Name);
+                return name == hashed.Hexadecimal;
+            });
     }
 }

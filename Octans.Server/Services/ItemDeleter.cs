@@ -39,11 +39,12 @@ public class ItemDeleter
         }
 
         var hashed = HashedBytes.FromHashed(hashItem.Hash);
-        var fileInfo = _subfolderManager.GetFilepath(hashed);
+        
+        var file = _subfolderManager.GetFilepath(hashed);
 
-        if (fileInfo?.Exists == true)
+        if (file?.Exists == true)
         {
-            fileInfo.Delete();
+            file.Delete();
         }
 
         hashItem.DeletedAt = DateTime.Now;

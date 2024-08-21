@@ -17,6 +17,7 @@ public class ThumbnailCreationRequest
 public class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
+    private readonly SubfolderManager _subfolderManager;
     private readonly IOptions<GlobalSettings> _globalSettings;
     private readonly IFile _file;
     private readonly IPath _path;
@@ -26,12 +27,14 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         IFile file,
         ILogger<ThumbnailCreationBackgroundService> logger,
         IOptions<GlobalSettings> globalSettings,
-        IPath path)
+        IPath path,
+        SubfolderManager subfolderManager)
     {
         _channel = channel;
         _logger = logger;
         _globalSettings = globalSettings;
         _path = path;
+        _subfolderManager = subfolderManager;
         _file = file;
     }
 
@@ -75,7 +78,12 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         
         _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
         
-        var destination = _path.Join(_globalSettings.Value.AppRoot, "db", "files", request.Hashed.ThumbnailLocation);
+        var destination = _path.Join(_globalSettings.Value.AppRoot,
+            "db",
+            "files",
+            request.Hashed.ThumbnailBucket,
+            request.Hashed.Hexadecimal,
+            ".jpeg");
         
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         

@@ -31,7 +31,7 @@ public class ThumbnailCreationTests
         
         subfolderManager.MakeSubfolders();
         
-        _sut = new(_channel.Reader, _mockFileSystem.File, _logger, _options, _mockFileSystem.Path);
+        _sut = new(_channel.Reader, _mockFileSystem.File, _logger, _options, _mockFileSystem.Path, subfolderManager);
     }
 
     [Fact]

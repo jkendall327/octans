@@ -21,13 +21,11 @@ public class HashedBytes
     /// <remarks>This is composed of a tag for the item's type, either 'f' for file or 't' for thumbnail.
     /// We then append the first two characters of the hexadecimal string: fa2, t4b, etc,</remarks>
     public string Bucket { get; }
+    public string ContentBucket => "f" + Bucket;
+    public string ThumbnailBucket => "t" + Bucket;
 
     public FileType MimeType { get; }
-
-    public string ContentLocation => "f" + Location + MimeType.Extension;
-    public string ThumbnailLocation => "t" + Location + "jpeg";
-    private string Location => Bucket + Path.DirectorySeparatorChar + Hexadecimal + ".";
-
+    
     private HashedBytes(byte[] source)
     {
         Bytes = source;
