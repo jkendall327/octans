@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
     {
         var filesystem = new FileSystem();
 
+        builder.Services.AddSingleton<IFileSystem>(filesystem);
         builder.Services.AddSingleton(filesystem.Path);
         builder.Services.AddSingleton(filesystem.DirectoryInfo);
         builder.Services.AddSingleton(filesystem.File);
