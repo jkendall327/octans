@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Octans.Core;
 
 namespace Octans.Tests;
 
@@ -53,6 +55,13 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 {
                     options.UseSqlite(_connection);
                 });
+
+                services.RemoveAll(typeof(IOptions<GlobalSettings>));
+                
+                services.Configure<GlobalSettings>(s =>
+                {
+                    s.AppRoot = _appRoot;
+                });
                 
                 // Ensure the database is created
                 var sp = services.BuildServiceProvider();
@@ -70,6 +79,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                         "DatabaseRoot", _appRoot
                     }
                 });
+                
             });
         });
     }

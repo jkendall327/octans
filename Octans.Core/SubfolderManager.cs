@@ -56,7 +56,7 @@ public class SubfolderManager
     {
         var subfolder = GetSubfolder(hashed);
 
-        return _directory.New(subfolder.ToString())
+        return _directory.New(subfolder.AbsolutePath)
             .EnumerateFileSystemInfos()
             .FirstOrDefault(f =>
             {
