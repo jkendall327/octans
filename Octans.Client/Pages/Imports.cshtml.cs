@@ -34,22 +34,29 @@ public class Imports : PageModel
             return Page();
         }
 
+        ImportResults = await SendImportRequest(ImportUrls, Files);
+
+        return Page();
+    }
+
+    private async Task<List<string>> SendImportRequest(string importUrls, List<IFormFile> files)
+    {
         var importItems = new List<ImportItem>();
 
         // Process URLs
-        if (!string.IsNullOrWhiteSpace(ImportUrls))
+        if (!string.IsNullOrWhiteSpace(importUrls))
         {
             var urls = ImportUrls.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             importItems.AddRange(urls.Select(url => new ImportItem { Source = new(url) }));
         }
 
         // ASP.NET Core doesn't let us get the filepaths natively, so copy them over...
-        if (Files.Count > 0)
+        if (files.Count > 0)
         {
             var uploadPath = _fileSystem.Path.Combine(_environment.WebRootPath, "uploads");
             _fileSystem.Directory.CreateDirectory(uploadPath);
 
-            foreach (var file in Files)
+            foreach (var file in files)
             {
                 if (file.Length <= 0) continue;
                 
@@ -63,7 +70,7 @@ public class Imports : PageModel
         if (importItems.Count == 0)
         {
             ModelState.AddModelError(string.Empty, "Please provide at least one URL or file to import.");
-            return Page();
+            return ["Nothing to import."];
         }
         
         var importRequest = new ImportRequest
@@ -78,13 +85,9 @@ public class Imports : PageModel
         if (response.IsSuccessStatusCode)
         {
             var result = await response.Content.ReadFromJsonAsync<ImportResult>();
-            ImportResults = result?.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
-        }
-        else
-        {
-            ImportResults = new List<string> { "Failed to process import request." };
+            return result?.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
         }
 
-        return Page();
+        return ["Failed to process import request."];
     }
 }
