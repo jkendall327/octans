@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Hosting;
 using Octans.Core.Models;
 using Octans.Server;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -28,6 +29,8 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         await _connection.OpenAsync();
         
         _context = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        await _context.Database.EnsureCreatedAsync();
     }
 
     public async Task DisposeAsync() => await _connection.DisposeAsync();
@@ -36,53 +39,53 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            SetupFakeConfiguration(builder);
+
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll(typeof(IPath));
-                services.RemoveAll(typeof(IDirectoryInfo));
-                services.RemoveAll(typeof(IFile));
-                services.RemoveAll(typeof(IFileSystem));
-
-                services.AddSingleton(_fileSystem.Path);
-                services.AddSingleton(_fileSystem.DirectoryInfo);
-                services.AddSingleton(_fileSystem.File);
-                services.AddSingleton<IFileSystem>(_fileSystem);
-
-                services.RemoveAll(typeof(ChannelWriter<ThumbnailCreationRequest>));
-                services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
+                ReplaceNormalServices(services);
                 
-                services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
+                ReplaceConfiguredOptions(services);
 
-                services.AddDbContext<ServerDbContext>(options =>
-                {
-                    options.UseSqlite(_connection);
-                });
-
-                services.RemoveAll(typeof(IOptions<GlobalSettings>));
-                
-                services.Configure<GlobalSettings>(s =>
-                {
-                    s.AppRoot = _appRoot;
-                });
-                
-                // Ensure the database is created
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-                
-                db.Database.EnsureCreated();
+                AddFakeDatabase(services);
             });
-            
-            builder.ConfigureAppConfiguration((_, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    {
-                        "DatabaseRoot", _appRoot
-                    }
-                });
-                
-            });
+        });
+    }
+
+    private void ReplaceConfiguredOptions(IServiceCollection services)
+    {
+        services.RemoveAll(typeof(IOptions<GlobalSettings>));
+        services.Configure<GlobalSettings>(s =>
+        {
+            s.AppRoot = _appRoot;
+        });
+    }
+
+    private void ReplaceNormalServices(IServiceCollection services)
+    {
+        services.ReplaceExistingRegistrationsWith(_fileSystem.Path);
+        services.ReplaceExistingRegistrationsWith(_fileSystem.DirectoryInfo);
+        services.ReplaceExistingRegistrationsWith(_fileSystem.File);
+        services.ReplaceExistingRegistrationsWith<IFileSystem>(_fileSystem);
+        
+        services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
+    }
+
+    private void SetupFakeConfiguration(IWebHostBuilder builder)
+    {
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection([new("DatabaseRoot", _appRoot)]);
+        });
+    }
+
+    private void AddFakeDatabase(IServiceCollection services)
+    {
+        services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
+
+        services.AddDbContext<ServerDbContext>(options =>
+        {
+            options.UseSqlite(_connection);
         });
     }
 }
