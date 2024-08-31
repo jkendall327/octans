@@ -67,25 +67,18 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            SetupFakeConfiguration(builder);
-
             builder.ConfigureServices(services =>
             {
                 ReplaceNormalServices(services);
                 
-                ReplaceConfiguredOptions(services);
-
                 AddFakeDatabase(services);
-            });
-        });
-    }
 
-    private void ReplaceConfiguredOptions(IServiceCollection services)
-    {
-        services.RemoveAll(typeof(IOptions<GlobalSettings>));
-        services.Configure<GlobalSettings>(s =>
-        {
-            s.AppRoot = _appRoot;
+                // This will replace any IOptions<GlobalSettings> already configured.
+                services.Configure<GlobalSettings>(s =>
+                {
+                    s.AppRoot = _appRoot;
+                });
+            });
         });
     }
 
@@ -97,14 +90,6 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         services.ReplaceExistingRegistrationsWith<IFileSystem>(_fileSystem);
         
         services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
-    }
-
-    private void SetupFakeConfiguration(IWebHostBuilder builder)
-    {
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection([new("DatabaseRoot", _appRoot)]);
-        });
     }
 
     private void AddFakeDatabase(IServiceCollection services)
