@@ -41,10 +41,12 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 services.RemoveAll(typeof(IPath));
                 services.RemoveAll(typeof(IDirectoryInfo));
                 services.RemoveAll(typeof(IFile));
+                services.RemoveAll(typeof(IFileSystem));
 
                 services.AddSingleton(_fileSystem.Path);
                 services.AddSingleton(_fileSystem.DirectoryInfo);
                 services.AddSingleton(_fileSystem.File);
+                services.AddSingleton<IFileSystem>(_fileSystem);
 
                 services.RemoveAll(typeof(ChannelWriter<ThumbnailCreationRequest>));
                 services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
