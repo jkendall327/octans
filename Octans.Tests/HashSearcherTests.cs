@@ -52,6 +52,30 @@ public class HashSearcherTests : IAsyncLifetime
         result.Should().BeEquivalentTo(all);
     }
 
+    /// <summary>
+    /// Finds all hashes with a tag that has namespace "character" when we use the wildcard predicate "character:*"
+    /// </summary>
+    [Fact]
+    public void FindsHashes_WithMappingsForNamespace_WhenWildcardNamespaceUsed()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Finds all hashes with tag "character:samus aran" when the predicate is precisely "character:samus aran"
+    /// </summary>
+    [Fact]
+    public void FindsHashes_WithExactMatchForTag_WhenExactTagUsed()
+    {
+        throw new NotImplementedException();
+    }
+
+    [Fact]
+    public void ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
+    {
+        throw new NotImplementedException();
+    }
+
     private static HashItem GenerateRandomHashItem()
     {
         var random = Random.Shared;
