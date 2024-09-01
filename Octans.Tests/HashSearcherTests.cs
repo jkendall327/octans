@@ -47,7 +47,7 @@ public class HashSearcherTests : IAsyncLifetime
 
         await _db.SaveChangesAsync();
         
-        var result = await _sut.Search(new List<Predicate>());
+        var result = await _sut.Search(new());
 
         result.Should().BeEquivalentTo(all);
     }
