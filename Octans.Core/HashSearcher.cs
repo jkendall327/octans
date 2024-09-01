@@ -134,4 +134,59 @@ public class HashSearcher
             var _ => throw new InvalidOperationException("Splitting a tag resulted in >2 entries"),
         };
     }
+
+    private List<Predicate> ConvertTagListToPredicates(List<string> tags)
+    {
+        var predicates = new List<Predicate>();
+        
+        var systemPredicates = tags.Where(s => s.StartsWith("system:")).ToList();
+
+        foreach (var systemPredicate in systemPredicates)
+        {
+            predicates.Add(new SystemPredicate());
+        }
+        
+        foreach (var tag in tags.Except(systemPredicates))
+        {
+            var inclusive = tag.StartsWith('-');
+
+            (var space, var subtag) = SplitTag(tag);
+
+            if (tag.Contains(WILDCARD.ToString()))
+            {
+                if (subtag == WILDCARD.ToString())
+                {
+                    //tag = namespace
+                    //predicate_type = ClientSearch.PREDICATE_TYPE_NAMESPACE
+                }
+                else
+                {
+                    // predicate_type = ClientSearch.PREDICATE_TYPE_WILDCARD
+                }
+            }
+            else
+            {
+                // predicate_type = ClientSearch.PREDICATE_TYPE_TAG
+            }
+            
+            // predicates.append( ClientSearch.Predicate( predicate_type = predicate_type, value = tag, inclusive = inclusive ) )
+            predicates.Add(new TagPredicate());
+        }
+        
+        return predicates;
+    }
+}
+
+public class Predicate
+{
+}
+
+public class SystemPredicate : Predicate
+{
+}
+
+public class TagPredicate : Predicate
+{
+    public string Value { get; set; }
+    public bool Inclusive { get; set; }
 }
