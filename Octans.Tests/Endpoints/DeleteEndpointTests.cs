@@ -3,10 +3,11 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Octans.Core;
 using Octans.Core.Models;
+using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class DeleteEndpointTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
+public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task Delete_ExistingFile_ReturnsSuccessAndRemovesFile()

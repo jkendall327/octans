@@ -6,10 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
+using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
+public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()

@@ -10,8 +10,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octans.Core;
+using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
@@ -30,6 +32,31 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     // Channels
     protected readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
 
+    protected EndpointTest(WebApplicationFactory<Program> factory, ITestOutputHelper testOutputHelper)
+    {
+        _factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddProvider(new XUnitLoggerProvider(testOutputHelper));
+            });
+            
+            builder.ConfigureServices(services =>
+            {
+                ReplaceNormalServices(services);
+                
+                AddFakeDatabase(services);
+
+                // This will replace any IOptions<GlobalSettings> already configured.
+                services.Configure<GlobalSettings>(s =>
+                {
+                    s.AppRoot = _appRoot;
+                });
+            });
+        });
+    }
+    
     /// <summary>
     /// Checks we've correctly set things up with fakes rather than the real DB, filesystem etc.
     /// </summary>
@@ -61,25 +88,6 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     {
         await _context.DisposeAsync();
         await _connection.DisposeAsync();
-    }
-
-    protected EndpointTest(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                ReplaceNormalServices(services);
-                
-                AddFakeDatabase(services);
-
-                // This will replace any IOptions<GlobalSettings> already configured.
-                services.Configure<GlobalSettings>(s =>
-                {
-                    s.AppRoot = _appRoot;
-                });
-            });
-        });
     }
 
     private void ReplaceNormalServices(IServiceCollection services)

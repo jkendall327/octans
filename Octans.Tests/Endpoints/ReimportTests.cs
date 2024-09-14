@@ -6,10 +6,11 @@ using Octans.Core.Importing;
 using Octans.Core.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class ReimportTests(WebApplicationFactory<Program> factory) : EndpointTest(factory)
+public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
