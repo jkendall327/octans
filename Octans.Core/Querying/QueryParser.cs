@@ -2,10 +2,11 @@ using System.Text.RegularExpressions;
 
 namespace Octans.Core.Querying;
 
+/// <summary>
+/// Converts raw strings represent components of a query into strongly-typed predicates.
+/// </summary>
 public class QueryParser
 {
-    public const char NAMESPACE_DELIMITER = ':';
-
     public List<IPredicate> Parse(IEnumerable<string> queries)
     {
         var predicates = new List<IPredicate>();
@@ -40,12 +41,6 @@ public class QueryParser
         
         // run each of these recursively through the parser...
 
-        if (query.Exclusive)
-        {
-            // return all of the components as separate exclusive predicates as that is simpler and equivalent.
-            // no, do this later in a dedicated service for simplifying/reducing query plans.
-        }
-        
         throw new NotImplementedException();
         return [new OrPredicate()];
     }
@@ -67,9 +62,9 @@ public class QueryParser
         var cleaned = tag.Trim();
         cleaned = Regex.Replace(cleaned, @"\s+", " ");
 
-        var exclusive = cleaned.StartsWith('-');
+        var exclusive = cleaned.StartsWith(Constants.QUERY_NEGATION);
         
-        var split = cleaned.Split(NAMESPACE_DELIMITER);
+        var split = cleaned.Split(Constants.NAMESPACE_DELIMITER);
 
         (var ns, var st) = split.Length switch
         {

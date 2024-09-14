@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
+using Octans.Core.Querying;
 
 namespace Octans.Tests;
 
