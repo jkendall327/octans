@@ -6,8 +6,8 @@ namespace Octans.Core;
 
 public class SearchRequest
 {
-    public List<int> SystemPredicates { get; set; }
-    public List<int> OrPredicates { get; set; }
+    public List<string> SystemPredicates { get; set; }
+    public List<string> OrPredicates { get; set; }
     public List<string> TagsToInclude { get; set; }
     public List<string> TagsToExclude { get; set; }
     public List<string> NamespacesToInclude { get; set; }
