@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+
 namespace Octans.Core.Querying;
 
 /// <summary>
@@ -6,9 +8,44 @@ namespace Octans.Core.Querying;
 /// </summary>
 public class QueryPlanner
 {
-    public void OptimiseQuery(IEnumerable<IPredicate> predicates)
+    private readonly IMemoryCache _cache;
+
+    public QueryPlanner(IMemoryCache memoryCache)
+    {
+        _cache = memoryCache;
+    }
+
+    public QueryPlan OptimiseQuery(IList<IPredicate> predicates)
+    {
+        var hashes = predicates
+            .Select(p => p.GetHashCode())
+            .OrderBy(h => h);
+        
+        var cacheKey = string.Join("|", hashes);
+
+        if (_cache.TryGetValue(cacheKey, out QueryPlan? cachedPlan) && cachedPlan is not null)
+        {
+            return cachedPlan;
+        }
+
+        var plan = Optimise(predicates);
+
+        var cacheEntryOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(5));
+
+        _cache.Set(cacheKey, plan, cacheEntryOptions);
+
+        return plan;
+    }
+    
+    private string GenerateCacheKey(IEnumerable<IPredicate> predicates)
+    {
+        return string.Join("|", predicates.Select(p => p.GetHashCode()).OrderBy(h => h));
+    }
+    
+    private QueryPlan Optimise(IEnumerable<IPredicate> predicates)
     {
         // negative ORs are isomorphic to two separate negatives.
+        return null;
     }
 }
 
