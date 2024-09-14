@@ -52,6 +52,9 @@ public class QueryPlanner
         }
 
         // negative ORs are isomorphic to two separate negatives.
+        
+        // see the query optimisation doc for guidelines here
+        
         return new()
         {
             Predicates = predicates.ToList()
