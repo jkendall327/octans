@@ -42,7 +42,7 @@ public class QueryParser
 
     private IPredicate ParseOrPredicate(RawQuery query)
     {
-        var components = query.Query.Split("OR");
+        var components = query.Query.Split(Constants.OR_SEPARATOR);
         
         var raw = components.Select(StringToRawQuery);
         
@@ -66,18 +66,18 @@ public class QueryParser
         return predicate;
     }
     
-    private RawQuery StringToRawQuery(string tag)
+    private RawQuery StringToRawQuery(string raw)
     {
-        var cleaned = tag.Trim();
-        cleaned = Regex.Replace(cleaned, @"\s+", " ");
+        // Remove leading/trailing whitespace and collapse multiple consecutive whitespace.
+        var cleaned = Regex.Replace(raw.Trim(), @"\s+", " ");
 
         var exclusive = cleaned.StartsWith(Constants.QUERY_NEGATION);
         
         var split = cleaned.Split(Constants.NAMESPACE_DELIMITER);
 
-        (var ns, var st) = split.Length switch
+        (var prefix, var query) = split.Length switch
         {
-            0 => throw new InvalidOperationException("Somehow, splitting a tag resulted in an empty array"),
+            0 => throw new InvalidOperationException("Somehow, splitting a raw query resulted in an empty array"),
             1 => (string.Empty, split.First()),
             2 => (split.First(), split.Last()),
             // OR queries will have multiple namespace delimiters.
@@ -89,8 +89,8 @@ public class QueryParser
         return new()
         {
             Exclusive = exclusive,
-            Prefix = ns,
-            Query = st
+            Prefix = prefix,
+            Query = query
         };
     }
 }
@@ -101,7 +101,7 @@ public class QueryParser
 /// </summary>
 public class RawQuery
 {
-    public string Query { get; set; }
     public string Prefix { get; set; }
+    public string Query { get; set; }
     public bool Exclusive { get; set; }
 }
