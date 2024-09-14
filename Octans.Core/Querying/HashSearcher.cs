@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Octans.Core.Models;
 
 namespace Octans.Core.Querying;
@@ -16,6 +17,24 @@ public class HashSearcher
 
     public async Task<HashSet<HashItem>> Search(QueryPlan request, CancellationToken token = default)
     {
+        if (request == QueryPlan.NoResults)
+        {
+            return new();
+        }
+
+        if (request == QueryPlan.GetEverything)
+        {
+            var everything = await _context.Hashes.ToListAsync(token);
+            return everything.ToHashSet();
+        }
+        
+        /*
+         * do we still need to boil down the query plan into raw tags we search for?
+         * is it better to do system predicates first?
+         * do specific tags before wildcards as they cut down more stuff.
+         * don't try to do everything in the database.
+         */
+
         throw new NotImplementedException();
     }
 }

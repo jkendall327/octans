@@ -9,6 +9,13 @@ public class TagPredicate : IPredicate
     public string NamespacePattern { get; set; }
     public string SubtagPattern { get; set; }
     public bool IsExclusive { get; set; }
+
+    public bool IsWildcard()
+    {
+        return NamespacePattern.Contains(Constants.WILDCARD) || SubtagPattern.Contains(Constants.WILDCARD);
+    }
+
+    public bool IsSpecificTag() => !IsWildcard();
 }
 
 public abstract class SystemPredicate : IPredicate
