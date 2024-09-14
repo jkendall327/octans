@@ -76,6 +76,8 @@ public class QueryParser
         // Remove leading/trailing whitespace and collapse multiple consecutive whitespace.
         var cleaned = Regex.Replace(raw.Trim(), @"\s+", " ");
 
+        // TODO: this should also replace multiple consecutive wildcards with just one.
+        
         var exclusive = cleaned.StartsWith(Constants.QUERY_NEGATION);
         
         var split = cleaned.Split(Constants.NAMESPACE_DELIMITER);
