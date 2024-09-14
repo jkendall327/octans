@@ -18,43 +18,52 @@ public class QueryParser
 
         return Task.FromResult(searchRequest);
     }
+
+    private SystemPredicate ParseSystemPredicate(string query)
+    {
+        return new FilesizePredicate();
+    }
+
+    private OrPredicate ParseOrPredicate(string query)
+    {
+        return new OrPredicate();
+    }
+
+    private TagPredicate ParseTagPredicate(string space, string subtag)
+    {
+        var exclusive = space.StartsWith('-');
+
+        var predicate = new TagPredicate
+        {
+            IsExclusive = exclusive,
+            NamespacePattern = space,
+            SubtagPattern = subtag
+        };
+
+        return predicate;
+    }
     
     private List<IPredicate> ConvertRawQueriesToPredicates(List<string> queries)
     {
         var predicates = new List<IPredicate>();
-        
-        var systemPredicates = queries.Where(s => s.StartsWith("system:")).ToList();
 
-        foreach (var systemPredicate in systemPredicates)
-        {
-            predicates.Add(new FilesizePredicate());
-        }
-        
-        var orPredicates = queries.Where(s => s.StartsWith("or:")).ToList();
-        
-        foreach (var orPredicate in orPredicates)
-        {
-            predicates.Add(new OrPredicate());
-        }
-        
-        foreach (var tag in queries.Except(systemPredicates))
-        {
-            var clean = tag.Trim();
-            clean = Regex.Replace(clean, @"\s+", " ");
-            
-            var exclusive = clean.StartsWith('-');
+        var cleaned = queries
+            .Select(s => s.Trim())
+            .Select(s => Regex.Replace(s, @"\s+", " "));
 
-            (var space, var subtag) = SplitTag(clean);
-
-            var predicate = new TagPredicate
-            {
-                IsExclusive = exclusive,
-                NamespacePattern = space,
-                SubtagPattern = subtag
-            };
-            
-            predicates.Add(predicate);
-        }
+        var split = cleaned.Select(SplitTag);
+        
+       foreach ((var space, var subtag) in split)
+       {
+           IPredicate result = space switch
+           {
+               "system" => ParseSystemPredicate(subtag),
+               "or" => ParseOrPredicate(subtag),
+               var _ => ParseTagPredicate(space, subtag)
+           };
+           
+           predicates.Add(result);
+       }
         
         return predicates;
     }
