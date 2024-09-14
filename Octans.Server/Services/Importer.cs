@@ -41,6 +41,11 @@ public class Importer
 
     public async Task<ImportResult> ProcessImport(ImportRequest request)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["ImportId"] = request.ImportId
+        });
+        
         _logger.LogInformation("Processing import with {ImportCount} items", request.Items.Count);
 
         var results = new List<ImportItemResult>();
@@ -73,10 +78,13 @@ public class Importer
 
         var bytes = await client.GetByteArrayAsync(url);
 
+        _logger.LogDebug("Downloaded {SizeInBytes} total bytes", bytes.Length);
+
         var filterResult = await ApplyFilters(request, bytes);
 
         if (filterResult is not null)
         {
+            _logger.LogInformation("File rejected by import filters");
             return filterResult;
         }
 
@@ -86,6 +94,7 @@ public class Importer
 
         if (existing is not null)
         {
+            _logger.LogInformation("File already exists; exiting");
             return existing;
         }
         
@@ -115,10 +124,13 @@ public class Importer
 
         var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
         
+        _logger.LogDebug("Total file size: {SizeInBytes}", bytes.Length);
+        
         var filterResult = await ApplyFilters(request, bytes);
 
         if (filterResult is not null)
         {
+            _logger.LogInformation("File rejected by import filters");
             return filterResult;
         }
         
@@ -128,6 +140,7 @@ public class Importer
 
         if (existing is not null)
         {
+            _logger.LogInformation("File already exists; exiting");
             return existing;
         }
         
@@ -204,6 +217,8 @@ public class Importer
         {
             var result = await filter.PassesFilter(request.FilterData, bytes);
 
+            _logger.LogDebug("{FilterName} result: {FilterResult}", filter.GetType().Name, result);
+            
             if (!result)
             {
                 return new()
