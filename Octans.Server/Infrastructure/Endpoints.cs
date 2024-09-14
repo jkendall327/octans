@@ -10,7 +10,7 @@ public static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
-        app.MapPost("/import", async (ImportRequest request, Importer service) => await service.ProcessImport(request))
+        app.MapPost("/import", async (ImportRequest request, Importer service, CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
             .WithDescription("Processes an import request")
             .WithOpenApi();

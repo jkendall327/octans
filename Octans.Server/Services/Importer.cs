@@ -45,7 +45,7 @@ public sealed class Importer
         _path = path;
     }
 
-    public async Task<ImportResult> ProcessImport(ImportRequest request)
+    public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
     {
         using var scope = _logger.BeginScope(new Dictionary<string, object>
         {
@@ -58,6 +58,8 @@ public sealed class Importer
         
         foreach (var item in request.Items)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            
             try
             {
                 var result = await ImportIndividualItem(request, item);
