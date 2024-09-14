@@ -9,6 +9,12 @@ using MimeDetective.InMemory;
 
 namespace Octans.Server;
 
+public enum SourceType
+{
+    LocalFile,
+    WebUrl
+}
+
 /// <summary>
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
@@ -52,34 +58,19 @@ public class Importer
         
         foreach (var item in request.Items)
         {
-            if (item.Source.IsFile)
-            {
-                var result = await ImportLocalFile(request, item);
-                results.Add(result);
-            }
-
-            if (item.Source.IsWebUrl())
-            {
-                var result = await ImportRemoteFile(request, item);
-                results.Add(result);
-            }
+            var result = await ImportIndividualItem(request, item);
+            results.Add(result);
         }
 
         return new(request.ImportId, results);
     }
 
-    private async Task<ImportItemResult> ImportRemoteFile(ImportRequest request, ImportItem item)
+    private async Task<ImportItemResult> ImportIndividualItem(ImportRequest request, ImportItem item)
     {
-        var url = item.Source.AbsoluteUri;
-        
-        _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
-        
-        var client = _clientFactory.CreateClient();
-
-        var bytes = await client.GetByteArrayAsync(url);
-
-        _logger.LogDebug("Downloaded {SizeInBytes} total bytes", bytes.Length);
-
+        var sourceType = GetSourceType(item);
+            
+        var bytes = await GetRawBytes(item, sourceType);
+            
         var filterResult = await ApplyFilters(request, bytes);
 
         if (filterResult is not null)
@@ -87,7 +78,7 @@ public class Importer
             _logger.LogInformation("File rejected by import filters");
             return filterResult;
         }
-
+        
         var hashed = HashedBytes.FromUnhashed(bytes);
 
         var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
@@ -97,76 +88,79 @@ public class Importer
             _logger.LogInformation("File already exists; exiting");
             return existing;
         }
-        
-        await AddItemToDatabase(item, hashed);
 
         var destination = GetDestination(hashed, bytes);
-        
+            
         await _file.WriteAllBytesAsync(destination, bytes);
-
-        await _thumbnailChannel.WriteAsync(new()
-        {
-            Bytes = bytes,
-            Hashed = hashed
-        });
-        
-        return new()
-        {
-            Ok = true
-        };
-    }
-
-    private async Task<ImportItemResult> ImportLocalFile(ImportRequest request, ImportItem item)
-    {
-        var filepath = item.Source;
-     
-        _logger.LogInformation("Importing local file from {LocalUri}", filepath);
-
-        var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
-        
-        _logger.LogDebug("Total file size: {SizeInBytes}", bytes.Length);
-        
-        var filterResult = await ApplyFilters(request, bytes);
-
-        if (filterResult is not null)
-        {
-            _logger.LogInformation("File rejected by import filters");
-            return filterResult;
-        }
-        
-        var hashed = HashedBytes.FromUnhashed(bytes);
-
-        var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
-
-        if (existing is not null)
-        {
-            _logger.LogInformation("File already exists; exiting");
-            return existing;
-        }
-        
-        var destination = GetDestination(hashed, bytes);
-        
-        _file.Copy(filepath.AbsolutePath, destination, true);
-
+            
         await AddItemToDatabase(item, hashed);
 
-        if (request.DeleteAfterImport)
+        if (request.DeleteAfterImport && sourceType is SourceType.LocalFile)
         {
             _logger.LogInformation("Deleting original local file");
             _file.Delete(item.Source.AbsolutePath);
         }
-        
+            
         await _thumbnailChannel.WriteAsync(new()
         {
             Bytes = bytes,
             Hashed = hashed
         });
         
-        return new()
+        var result = new ImportItemResult
         {
-            Ok = true,
-            Message = "Image imported"
+            Ok = true
         };
+
+        return result;
+    }
+
+    private SourceType GetSourceType(ImportItem item)
+    {
+        if (item.Source.IsFile)
+        {
+            return SourceType.LocalFile;
+        }
+
+        if (item.Source.IsWebUrl())
+        {
+            return SourceType.WebUrl;
+        }
+        
+        throw new InvalidOperationException("File source not recognised");
+    }
+
+    private async Task<byte[]> GetRawBytes(ImportItem item, SourceType sourceType)
+    {
+        if (sourceType is SourceType.LocalFile)
+        {
+            var filepath = item.Source;
+     
+            _logger.LogInformation("Importing local file from {LocalUri}", filepath);
+
+            var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
+        
+            _logger.LogDebug("Total file size: {SizeInBytes}", bytes.Length);
+
+            return bytes;
+        }
+
+        if (sourceType is SourceType.WebUrl)
+        {
+            var url = item.Source.AbsoluteUri;
+        
+            _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
+        
+            var client = _clientFactory.CreateClient();
+
+            var bytes = await client.GetByteArrayAsync(url);
+
+            _logger.LogDebug("Downloaded {SizeInBytes} total bytes", bytes.Length);
+
+            return bytes;
+        }
+
+        throw new InvalidOperationException("File source not recognised");
     }
 
     private async Task<ImportItemResult?> CheckIfPreviouslyDeleted(HashedBytes hashed, bool allowReimportDeleted)
