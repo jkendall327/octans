@@ -20,6 +20,11 @@ public class FilesizePredicate : SystemPredicate
     
 }
 
+public class EverythingPredicate : SystemPredicate
+{
+    
+}
+
 public class OrPredicate : IPredicate
 {
     public List<IPredicate> Predicates { get; set; }

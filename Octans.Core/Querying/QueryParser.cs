@@ -37,6 +37,11 @@ public class QueryParser
 
     private IPredicate ParseSystemPredicate(RawQuery query)
     {
+        if (query.Query is "everything")
+        {
+            return new EverythingPredicate();
+        }
+        
         throw new NotImplementedException();
     }
 

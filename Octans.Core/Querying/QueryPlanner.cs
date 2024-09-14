@@ -37,11 +37,6 @@ public class QueryPlanner
         return plan;
     }
     
-    private string GenerateCacheKey(IEnumerable<IPredicate> predicates)
-    {
-        return string.Join("|", predicates.Select(p => p.GetHashCode()).OrderBy(h => h));
-    }
-    
     private QueryPlan Optimise(IEnumerable<IPredicate> predicates)
     {
         // negative ORs are isomorphic to two separate negatives.
