@@ -9,9 +9,16 @@ public class QueryParser
 {
     public List<IPredicate> Parse(IEnumerable<string> queries)
     {
-        var predicates = new List<IPredicate>();
+        var cleaned = queries.Select(StringToRawQuery);
+        
+        var predicates = ConvertRawQueriesToPredicates(cleaned);
+        
+        return predicates;
+    }
 
-        var cleaned = queries.Select(CleanAndInitialParse);
+    private List<IPredicate> ConvertRawQueriesToPredicates(IEnumerable<RawQuery> cleaned)
+    {
+        var predicates = new List<IPredicate>();
         
         foreach (var query in cleaned)
         {
@@ -22,30 +29,32 @@ public class QueryParser
                 var _ => ParseTagPredicate(query)
             };
            
-            predicates.AddRange(result);
+            predicates.Add(result);
         }
-        
+
         return predicates;
     }
-    
-    private IEnumerable<IPredicate> ParseSystemPredicate(RawQuery query)
+
+    private IPredicate ParseSystemPredicate(RawQuery query)
     {
         throw new NotImplementedException();
-        return [new FilesizePredicate()];
     }
 
-    private IEnumerable<IPredicate> ParseOrPredicate(RawQuery query)
+    private IPredicate ParseOrPredicate(RawQuery query)
     {
         var components = query.Query.Split("OR");
-        var raw = components.Select(CleanAndInitialParse);
         
-        // run each of these recursively through the parser...
+        var raw = components.Select(StringToRawQuery);
+        
+        var parsed = ConvertRawQueriesToPredicates(raw);
 
-        throw new NotImplementedException();
-        return [new OrPredicate()];
+        return new OrPredicate
+        {
+            Predicates = parsed,
+        };
     }
 
-    private IEnumerable<IPredicate> ParseTagPredicate(RawQuery query)
+    private IPredicate ParseTagPredicate(RawQuery query)
     {
         var predicate = new TagPredicate
         {
@@ -54,10 +63,10 @@ public class QueryParser
             SubtagPattern = query.Query
         };
 
-        return [predicate];
+        return predicate;
     }
     
-    private RawQuery CleanAndInitialParse(string tag)
+    private RawQuery StringToRawQuery(string tag)
     {
         var cleaned = tag.Trim();
         cleaned = Regex.Replace(cleaned, @"\s+", " ");
