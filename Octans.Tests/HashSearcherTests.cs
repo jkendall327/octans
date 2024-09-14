@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Models;
+using Octans.Core.Models.Tagging;
 
 namespace Octans.Tests;
 
@@ -36,16 +37,9 @@ public class HashSearcherTests : IAsyncLifetime
     [Fact(Skip = "Not implemented yet")]
     public async Task ReturnsEverythingWhenPredicateIsEmpty()
     {
-        var all = new List<HashItem>
-        {
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem()
-        };
-        
-        _db.AddRange(all);
+        await SeedData();
 
-        await _db.SaveChangesAsync();
+        var all = await _db.Hashes.ToListAsync();
         
         var result = await _sut.Search(new());
 
@@ -56,24 +50,103 @@ public class HashSearcherTests : IAsyncLifetime
     /// Finds all hashes with a tag that has namespace "character" when we use the wildcard predicate "character:*"
     /// </summary>
     [Fact(Skip = "Not implemented yet")]
-    public void FindsHashes_WithMappingsForNamespace_WhenWildcardNamespaceUsed()
+    public async Task FindsHashes_WithMappingsForNamespace_WhenWildcardNamespaceUsed()
     {
-        throw new NotImplementedException();
-    }
+        await SeedData();
 
+        var items = await GetRandomItems(3);
+
+        var firstSubtag = items.Take(2).ToArray();
+        var secondSubtag = items.Except(firstSubtag).ToArray();
+
+        firstSubtag.Should().NotBeEmpty();
+        secondSubtag.Should().NotBeEmpty();
+        
+        await AddMappings("character", "samus aran", firstSubtag);
+        await AddMappings("character", "bayonetta", secondSubtag);
+
+        var request = new SearchRequest
+        {
+            NamespacesToInclude = ["character"]
+        };
+        
+        var results = await _sut.Search(request);
+
+        results.Should().BeEquivalentTo(items, "the items all have the character subtag");
+    }
+    
     /// <summary>
     /// Finds all hashes with tag "character:samus aran" when the predicate is precisely "character:samus aran"
     /// </summary>
     [Fact(Skip = "Not implemented yet")]
-    public void FindsHashes_WithExactMatchForTag_WhenExactTagUsed()
+    public async Task FindsHashes_WithExactMatchForTag_WhenExactTagUsed()
     {
-        throw new NotImplementedException();
+        await SeedData();
+
+        var items = await GetRandomItems(1);
+
+        var item = items.Single();
+        
+        await AddMappings("character", "samus aran", item);
+        
+        var request = new SearchRequest
+        {
+            NamespacesToInclude = ["character"],
+            TagsToInclude = ["samus aran"]
+        };
+        
+        var results = await _sut.Search(request);
+
+        results.Single().Should().Be(item, "it is the only item with this namespace/tag pairing");
     }
 
     [Fact(Skip = "Not implemented yet")]
     public void ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
     {
         throw new NotImplementedException();
+    }
+    
+    private async Task SeedData()
+    {
+        var all = new List<HashItem>
+        {
+            GenerateRandomHashItem(),
+            GenerateRandomHashItem(),
+            GenerateRandomHashItem(),
+            GenerateRandomHashItem(),
+            GenerateRandomHashItem(),
+        };
+        
+        _db.AddRange(all);
+        
+        await _db.SaveChangesAsync();
+    }
+    
+    private async Task<List<HashItem>> GetRandomItems(int count)
+    {
+        return await _db.Hashes.OrderBy(i => Guid.NewGuid()).Take(count).ToListAsync();
+    }
+    
+    private async Task AddMappings(string @namespace, string subtag, params HashItem[] items)
+    {
+        var ns = new Namespace { Value = @namespace };
+        var st = new Subtag { Value = subtag };
+        var tag = new Tag { Namespace = ns, Subtag = st };
+        
+        _db.Tags.Add(tag);
+
+        foreach (var item in items)
+        {
+            var mapping = new Mapping
+            {
+                Hash = item,
+                Tag = tag
+            };
+
+            _db.Mappings.Add(mapping);
+        }
+        
+        await _db.SaveChangesAsync();
     }
 
     private static HashItem GenerateRandomHashItem()

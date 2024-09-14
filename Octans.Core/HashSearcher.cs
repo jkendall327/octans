@@ -8,12 +8,12 @@ public class SearchRequest
 {
     public List<int> SystemPredicates { get; set; }
     public List<int> OrPredicates { get; set; }
-    public List<TagModel> TagsToInclude { get; set; }
-    public List<int> TagsToExclude { get; set; }
-    public List<int> NamespacesToInclude { get; set; }
-    public List<int> NamespacesToExclude { get; set; }
-    public List<int> WildcardsToInclude { get; set; }
-    public List<int> WildcardsToExclude { get; set; }
+    public List<string> TagsToInclude { get; set; }
+    public List<string> TagsToExclude { get; set; }
+    public List<string> NamespacesToInclude { get; set; }
+    public List<string> NamespacesToExclude { get; set; }
+    public List<string> WildcardsToInclude { get; set; }
+    public List<string> WildcardsToExclude { get; set; }
 }
 
 public class HashSearcher
