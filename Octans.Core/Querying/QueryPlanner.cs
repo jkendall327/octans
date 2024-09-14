@@ -8,7 +8,7 @@ public class QueryPlanner
 {
     public void OptimiseQuery(IEnumerable<IPredicate> predicates)
     {
-        
+        // negative ORs are isomorphic to two separate negatives.
     }
 }
 

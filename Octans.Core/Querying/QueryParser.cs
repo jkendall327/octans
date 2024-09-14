@@ -4,6 +4,8 @@ namespace Octans.Core.Querying;
 
 public class QueryParser
 {
+    public const char NAMESPACE_DELIMITER = ':';
+
     public List<IPredicate> Parse(IEnumerable<string> queries)
     {
         var predicates = new List<IPredicate>();
@@ -12,29 +14,23 @@ public class QueryParser
         
         foreach (var query in cleaned)
         {
-            if (query.Prefix is "or")
-            {
-                var results = ParseOrPredicate(query);
-                predicates.AddRange(results);
-                continue;
-            }
-            
-            IPredicate result = query.Query switch
+            var result = query.Query switch
             {
                 "system" => ParseSystemPredicate(query),
+                "or" => ParseOrPredicate(query),
                 var _ => ParseTagPredicate(query)
             };
            
-            predicates.Add(result);
+            predicates.AddRange(result);
         }
         
         return predicates;
     }
     
-    private SystemPredicate ParseSystemPredicate(RawQuery query)
+    private IEnumerable<IPredicate> ParseSystemPredicate(RawQuery query)
     {
         throw new NotImplementedException();
-        return new FilesizePredicate();
+        return [new FilesizePredicate()];
     }
 
     private IEnumerable<IPredicate> ParseOrPredicate(RawQuery query)
@@ -54,7 +50,7 @@ public class QueryParser
         return [new OrPredicate()];
     }
 
-    private TagPredicate ParseTagPredicate(RawQuery query)
+    private IEnumerable<IPredicate> ParseTagPredicate(RawQuery query)
     {
         var predicate = new TagPredicate
         {
@@ -63,11 +59,9 @@ public class QueryParser
             SubtagPattern = query.Query
         };
 
-        return predicate;
+        return [predicate];
     }
     
-    public const char NAMESPACE_DELIMITER = ':';
-
     private RawQuery CleanAndInitialParse(string tag)
     {
         var cleaned = tag.Trim();

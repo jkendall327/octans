@@ -22,6 +22,5 @@ public class FilesizePredicate : SystemPredicate
 
 public class OrPredicate : IPredicate
 {
-    // negative ORs are isomorphic to two separate negatives.
     public List<IPredicate> Predicates { get; set; }
 }
