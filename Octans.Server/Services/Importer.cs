@@ -18,7 +18,7 @@ public enum SourceType
 /// <summary>
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
-public class Importer
+public sealed class Importer
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
@@ -58,8 +58,21 @@ public class Importer
         
         foreach (var item in request.Items)
         {
-            var result = await ImportIndividualItem(request, item);
-            results.Add(result);
+            try
+            {
+                var result = await ImportIndividualItem(request, item);
+                results.Add(result);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Exception during file import");
+                
+                results.Add(new()
+                {
+                    Ok = false,
+                    Message = e.Message
+                });
+            }
         }
 
         return new(request.ImportId, results);
@@ -67,10 +80,19 @@ public class Importer
 
     private async Task<ImportItemResult> ImportIndividualItem(ImportRequest request, ImportItem item)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["ItemImportId"] = Guid.NewGuid(),
+        });
+        
         var sourceType = GetSourceType(item);
-            
+        
+        _logger.LogDebug("Source {RawSource} determined to be {SourceType}", item.Source, sourceType);
+        
         var bytes = await GetRawBytes(item, sourceType);
-            
+        
+        _logger.LogDebug("Total size: {SizeInBytes}", bytes.Length);
+
         var filterResult = await ApplyFilters(request, bytes);
 
         if (filterResult is not null)
@@ -81,6 +103,8 @@ public class Importer
         
         var hashed = HashedBytes.FromUnhashed(bytes);
 
+        _logger.LogDebug("Created hash: {@HashDetails}", new { hashed.Hexadecimal, hashed.Bucket, hashed.MimeType });
+        
         var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
 
         if (existing is not null)
@@ -90,7 +114,8 @@ public class Importer
         }
 
         var destination = GetDestination(hashed, bytes);
-            
+        
+        _logger.LogInformation("Writing bytes to disk");
         await _file.WriteAllBytesAsync(destination, bytes);
             
         await AddItemToDatabase(item, hashed);
@@ -100,12 +125,16 @@ public class Importer
             _logger.LogInformation("Deleting original local file");
             _file.Delete(item.Source.AbsolutePath);
         }
-            
+        
+        _logger.LogInformation("Sending thumbnail creation request");
+        
         await _thumbnailChannel.WriteAsync(new()
         {
             Bytes = bytes,
             Hashed = hashed
         });
+        
+        _logger.LogInformation("Import successful");
         
         var result = new ImportItemResult
         {
@@ -139,8 +168,6 @@ public class Importer
             _logger.LogInformation("Importing local file from {LocalUri}", filepath);
 
             var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
-        
-            _logger.LogDebug("Total file size: {SizeInBytes}", bytes.Length);
 
             return bytes;
         }
@@ -154,8 +181,6 @@ public class Importer
             var client = _clientFactory.CreateClient();
 
             var bytes = await client.GetByteArrayAsync(url);
-
-            _logger.LogDebug("Downloaded {SizeInBytes} total bytes", bytes.Length);
 
             return bytes;
         }
@@ -179,13 +204,12 @@ public class Importer
             };
         }
 
-        // Reactivate the previously deleted hash
         existingHash.DeletedAt = null;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
 
-        // Would still need to copy the actual content back in if it's not there.
+        // TODO: still need to copy the actual content back in if it's not there.
         return new()
         {
             Ok = true,
@@ -236,8 +260,8 @@ public class Importer
 
         var destination = _path.Join(subfolder.AbsolutePath, fileName);
         
-        _logger.LogInformation("Import item will be persisted to subfolder {Subfolder}", subfolder.AbsolutePath);
-
+        _logger.LogDebug("File will be persisted to {Destination}", destination);
+        
         return destination;
     }
     
@@ -249,6 +273,8 @@ public class Importer
 
         AddTags(item, hashItem);
 
+        _logger.LogInformation("Persisting item to database");
+        
         await _context.SaveChangesAsync();
     }
 
