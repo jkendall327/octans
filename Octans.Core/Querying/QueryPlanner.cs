@@ -37,11 +37,14 @@ public class QueryPlanner
         return plan;
     }
     
-    private QueryPlan Optimise(IEnumerable<IPredicate> predicates)
+    private QueryPlan Optimise(IList<IPredicate> predicates)
     {
-        var partitioned = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
+        if (!predicates.Any())
+        {
+            return QueryPlan.NoResults;
+        }
         
-        (var system, var tags, var ors) = (partitioned.Item1, partitioned.Item2, partitioned.Item3); 
+        (var system, var tags, var ors) = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>(); 
 
         if (system.OfType<EverythingPredicate>().Any())
         {
@@ -49,14 +52,17 @@ public class QueryPlanner
         }
 
         // negative ORs are isomorphic to two separate negatives.
-        throw new NotImplementedException();
+        return new()
+        {
+            Predicates = predicates.ToList()
+        };
     }
 }
 
 public class QueryPlan
 {
-    public List<IPredicate> Predicates { get; set; }
+    public required List<IPredicate> Predicates { get; init; }
 
-    public static QueryPlan NoResults = null;
-    public static QueryPlan GetEverything = null;
+    public static readonly QueryPlan NoResults = new() { Predicates = []};
+    public static readonly QueryPlan GetEverything = new() { Predicates = [new EverythingPredicate()]};
 }
