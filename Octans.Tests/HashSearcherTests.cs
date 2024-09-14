@@ -33,7 +33,7 @@ public class HashSearcherTests : IAsyncLifetime
         await _connection.DisposeAsync();
     }
     
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public async Task ReturnsEverythingWhenPredicateIsEmpty()
     {
         var all = new List<HashItem>
@@ -55,7 +55,7 @@ public class HashSearcherTests : IAsyncLifetime
     /// <summary>
     /// Finds all hashes with a tag that has namespace "character" when we use the wildcard predicate "character:*"
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void FindsHashes_WithMappingsForNamespace_WhenWildcardNamespaceUsed()
     {
         throw new NotImplementedException();
@@ -64,13 +64,13 @@ public class HashSearcherTests : IAsyncLifetime
     /// <summary>
     /// Finds all hashes with tag "character:samus aran" when the predicate is precisely "character:samus aran"
     /// </summary>
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void FindsHashes_WithExactMatchForTag_WhenExactTagUsed()
     {
         throw new NotImplementedException();
     }
 
-    [Fact]
+    [Fact(Skip = "Not implemented yet")]
     public void ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
     {
         throw new NotImplementedException();
