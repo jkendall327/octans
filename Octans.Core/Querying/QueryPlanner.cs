@@ -39,8 +39,17 @@ public class QueryPlanner
     
     private QueryPlan Optimise(IEnumerable<IPredicate> predicates)
     {
+        var partitioned = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
+        
+        (var system, var tags, var ors) = (partitioned.Item1, partitioned.Item2, partitioned.Item3); 
+
+        if (system.OfType<EverythingPredicate>().Any())
+        {
+            return QueryPlan.GetEverything;
+        }
+
         // negative ORs are isomorphic to two separate negatives.
-        return null;
+        throw new NotImplementedException();
     }
 }
 
