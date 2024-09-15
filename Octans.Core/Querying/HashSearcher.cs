@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using Octans.Core.Models;
 
 namespace Octans.Core.Querying;
@@ -17,17 +18,6 @@ public class HashSearcher
 
     public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken token = default)
     {
-        // if (request == QueryPlan.NoResults)
-        // {
-        //     return new();
-        // }
-        //
-        // if (request == QueryPlan.GetEverything)
-        // {
-        //     var everything = await _context.Hashes.ToListAsync(token);
-        //     return everything.ToHashSet();
-        // }
-        
         /*
          * do we still need to boil down the query plan into raw tags we search for?
          * is it better to do system predicates first?
@@ -35,6 +25,21 @@ public class HashSearcher
          * don't try to do everything in the database.
          */
 
-        throw new NotImplementedException();
+        var tags = await _context.Tags
+            .Select(t => new TagModel{ Namespace = t.Namespace.Value, Subtag = t.Subtag.Value })
+            .ToListAsync(token);
+
+        var matching = tags
+            .Join(request.TagsToInclude, 
+                s => s.Namespace + ':' + s.Subtag, 
+                tm => tm.Namespace + ':' + tm.Subtag, 
+                (tag, _) => tag)
+            .ToList();
+
+        matching = matching.Except(request.TagsToExclude).ToList();
+
+        var items = await _context.Hashes.ToListAsync(token);
+        
+        return items.ToHashSet();
     }
 }
