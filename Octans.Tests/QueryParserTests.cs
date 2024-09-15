@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Octans.Core;
 using Octans.Core.Querying;
 
@@ -11,38 +12,33 @@ public class QueryParserTests
     [Fact]
     public void Parse_SingleTagQuery_ReturnsTagPredicate()
     {
-        var result = _parser.Parse(["character:mario"]);
+        var results = _parser.Parse(["character:mario"]);
 
-        result.Single()
-            .Should().BeOfType<TagPredicate>()
-            .Which.Should()
-            .Match<TagPredicate>(tp => tp.NamespacePattern == "character" && tp.SubtagPattern == "mario" && !tp.IsExclusive);
+        var result = results.OfType<TagPredicate>().Single();
+        
+        result.Should().Match<TagPredicate>(tp => 
+            tp.NamespacePattern == "character" && tp.SubtagPattern == "mario" && !tp.IsExclusive);
     }
 
     [Fact]
     public void Parse_ExclusiveTagQuery_ReturnsExclusiveTagPredicate()
     {
-        var result = _parser.Parse(["-character:bowser"]);
+        var results = _parser.Parse(["-character:bowser"]);
 
-        result.Should().HaveCount(1);
-        result[0].Should().BeOfType<TagPredicate>()
-            .Which.Should().Match<TagPredicate>(tp =>
-                tp.NamespacePattern == "character" &&
-                tp.SubtagPattern == "bowser" &&
-                tp.IsExclusive);
+        var result = results.OfType<TagPredicate>().Single();
+
+        result.Should().Match<TagPredicate>(tp =>
+            tp.NamespacePattern == "character" && tp.SubtagPattern == "bowser" && tp.IsExclusive);
     }
 
     [Fact]
     public void Parse_WildcardTagQuery_ReturnsWildcardTagPredicate()
     {
-        var result = _parser.Parse(["character:mario*"]);
+        var results = _parser.Parse(["character:mario*"]);
+        var result = results.OfType<TagPredicate>().Single();
 
-        result.Should().HaveCount(1);
-        result[0].Should().BeOfType<TagPredicate>()
-            .Which.Should().Match<TagPredicate>(tp =>
-                tp.NamespacePattern == "character" &&
-                tp.SubtagPattern == "mario*" &&
-                tp.IsWildcard());
+        result.Should().Match<TagPredicate>(tp =>
+            tp.NamespacePattern == "character" && tp.SubtagPattern == "mario*" && tp.IsWildcard());
     }
 
     [Fact]
@@ -50,19 +46,17 @@ public class QueryParserTests
     {
         var result = _parser.Parse(["system:everything"]);
 
-        result.Should().HaveCount(1);
-        result[0].Should().BeOfType<EverythingPredicate>();
+        result.Single().Should().BeOfType<EverythingPredicate>();
     }
 
     [Fact]
     public void Parse_OrQuery_ReturnsOrPredicate()
     {
-        var result = _parser.Parse(["or:character:mario OR character:luigi"]);
+        var results = _parser.Parse(["or:character:mario OR character:luigi"]);
 
-        result.Should().HaveCount(1);
-        result[0].Should().BeOfType<OrPredicate>()
-            .Which.Predicates.Should().HaveCount(2)
-            .And.AllBeOfType<TagPredicate>();
+        var result = results.OfType<OrPredicate>().Single();
+
+        result.Predicates.Should().HaveCount(2).And.AllBeOfType<TagPredicate>();
     }
 
     [Fact]
@@ -71,21 +65,19 @@ public class QueryParserTests
         var result = _parser.Parse(["character:mario", "-stage:mushroom_kingdom", "system:everything"]);
 
         result.Should().HaveCount(3);
+        
         result[0].Should().BeOfType<TagPredicate>();
-        result[1].Should().BeOfType<TagPredicate>()
-            .Which.IsExclusive.Should().BeTrue();
+        result[1].Should().BeOfType<TagPredicate>().Which.IsExclusive.Should().BeTrue();
         result[2].Should().BeOfType<EverythingPredicate>();
     }
 
     [Fact]
     public void Parse_QueryWithExtraWhitespace_TrimsAndParsesCorrectly()
     {
-        var result = _parser.Parse(["  character  :  mario  "]);
+        var results = _parser.Parse(["  character  :  mario  "]);
 
-        result.Should().HaveCount(1);
-        result[0].Should().BeOfType<TagPredicate>()
-            .Which.Should().Match<TagPredicate>(tp =>
-                tp.NamespacePattern == "character" &&
-                tp.SubtagPattern == "mario");
+        var result = results.OfType<TagPredicate>().Single();
+
+        result.Should().Match<TagPredicate>(tp => tp.NamespacePattern == "character" && tp.SubtagPattern == "mario");
     }
 }
