@@ -22,7 +22,7 @@ public class QueryParser
         
         foreach (var query in cleaned)
         {
-            var result = query.Query switch
+            var result = query.Prefix switch
             {
                 "system" => ParseSystemPredicate(query),
                 "or" => ParseOrPredicate(query),
@@ -93,11 +93,13 @@ public class QueryParser
             var _ => (split.First(), string.Join(':', split.Skip(1))),
         };
 
+        prefix = prefix.Replace("-", string.Empty);
+        
         return new()
         {
             Exclusive = exclusive,
-            Prefix = prefix,
-            Query = query
+            Prefix = prefix.Trim(),
+            Query = query.Trim()
         };
     }
 }

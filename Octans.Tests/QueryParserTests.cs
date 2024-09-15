@@ -6,12 +6,7 @@ namespace Octans.Tests;
 
 public class QueryParserTests
 {
-    private readonly QueryParser _parser;
-
-    public QueryParserTests()
-    {
-        _parser = new QueryParser();
-    }
+    private readonly QueryParser _parser = new();
 
     [Fact]
     public void Parse_SingleTagQuery_ReturnsTagPredicate()
