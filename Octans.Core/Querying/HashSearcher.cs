@@ -15,18 +15,18 @@ public class HashSearcher
         _context = context;
     }
 
-    public async Task<HashSet<HashItem>> Search(QueryPlan request, CancellationToken token = default)
+    public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken token = default)
     {
-        if (request == QueryPlan.NoResults)
-        {
-            return new();
-        }
-
-        if (request == QueryPlan.GetEverything)
-        {
-            var everything = await _context.Hashes.ToListAsync(token);
-            return everything.ToHashSet();
-        }
+        // if (request == QueryPlan.NoResults)
+        // {
+        //     return new();
+        // }
+        //
+        // if (request == QueryPlan.GetEverything)
+        // {
+        //     var everything = await _context.Hashes.ToListAsync(token);
+        //     return everything.ToHashSet();
+        // }
         
         /*
          * do we still need to boil down the query plan into raw tags we search for?

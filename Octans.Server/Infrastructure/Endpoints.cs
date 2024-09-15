@@ -2,6 +2,7 @@ using Octans.Core;
 using Octans.Core.Importing;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
+using Octans.Core.Querying;
 using Octans.Server.Services;
 
 namespace Octans.Server;
@@ -27,11 +28,11 @@ public static class Endpoints
             .WithDescription("Get a single file by its ID")
             .WithOpenApi();
 
-        app.MapGet("/query", async (IEnumerable<Tag> tags, FileFinder service) =>
+        app.MapGet("/query", async (IEnumerable<string> queries, QueryService service) =>
             {
-                var files = await service.GetFilesByTagQuery(tags);
+                var files = await service.Query(queries);
 
-                if (files is null || !files.Any())
+                if (!files.Any())
                 {
                     return Results.NotFound();
                 }

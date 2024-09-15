@@ -53,6 +53,9 @@ public class QueryPlanner
 
         // negative ORs are isomorphic to two separate negatives.
         
+        // we don't want to remove specific tags in favour of wildcard tags
+        // as specific tags are probably way cheaper to search for and cut down the results massively.
+        
         // see the query optimisation doc for guidelines here
         
         return new()
