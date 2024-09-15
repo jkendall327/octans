@@ -6,77 +6,91 @@ namespace Octans.Tests;
 
 public class QueryParserTests
 {
-    private readonly QueryParser _sut;
+    private readonly QueryParser _parser;
 
     public QueryParserTests()
     {
-        _sut = new QueryParser();
-    }
-
-    /*[Fact]
-    public async Task SingleFullyFormedTag()
-    {
-        var result = await _sut.Parse([ "character:samus aran"]);
-
-        result.TagsToInclude.Should().Contain("character:samus aran");
-    }
-    
-    [Theory]
-    [InlineData("character:*")]
-    [InlineData("character: *")]
-    [InlineData("character:* ")]
-    [InlineData("character: * ")]
-    [InlineData(" character:*")]
-    [InlineData("cHaracter:*")]
-    [InlineData("CHARACTER:*")]
-    public async Task SingleNamespace(string input)
-    {
-        var result = await _sut.Parse([input]);
-        
-        result.NamespacesToInclude.Should().Contain("character");
+        _parser = new QueryParser();
     }
 
     [Fact]
-    public async Task NamespaceAndWildcard()
+    public void Parse_SingleTagQuery_ReturnsTagPredicate()
     {
-        var result = await _sut.Parse(["character:samus*"]);
-        
-        result.NamespacesToInclude.Should().Contain("character");
-        result.WildcardsToInclude.Should().Contain("samus*");
-    }
-    
-    [Fact]
-    public async Task WildcardInNamespace()
-    {
-        var result = await _sut.Parse(["char*:samus*"]);
-        
-        result.WildcardsToInclude.Should().Contain("char*:samus*");
-    }
-    
-    [Fact]
-    public async Task MultipleFullyFormedTags()
-    {
-        var result = await _sut.Parse([ "character:samus aran", "character:bayonetta", "series:animal crossing"]);
-        
-        result.TagsToInclude.Should().BeEquivalentTo("character:samus aran", "character:bayonetta", "series:animal crossing");
+        var result = _parser.Parse(["character:mario"]);
+
+        result.Single()
+            .Should().BeOfType<TagPredicate>()
+            .Which.Should()
+            .Match<TagPredicate>(tp => tp.NamespacePattern == "character" && tp.SubtagPattern == "mario" && !tp.IsExclusive);
     }
 
     [Fact]
-    public async Task SingleFullyFormedExclusion()
+    public void Parse_ExclusiveTagQuery_ReturnsExclusiveTagPredicate()
     {
-        var result = await _sut.Parse([ "-character:samus aran"]);
-        
-        result.TagsToExclude.Should().Contain("character:samus aran");
-    }
-    
-    [Fact]
-    public async Task SingleFullyFormedORClause()
-    {
-        var result = await _sut.Parse([ "character:samus aran OR series:animal crossing"]);
-        
-        result.OrPredicates.Should().Contain("character:samus aran OR series:animal crossing");
-        result.NamespacesToInclude.Should().BeEmpty();
-        result.TagsToInclude.Should().BeEmpty();
-    }*/
+        var result = _parser.Parse(["-character:bowser"]);
 
+        result.Should().HaveCount(1);
+        result[0].Should().BeOfType<TagPredicate>()
+            .Which.Should().Match<TagPredicate>(tp =>
+                tp.NamespacePattern == "character" &&
+                tp.SubtagPattern == "bowser" &&
+                tp.IsExclusive);
+    }
+
+    [Fact]
+    public void Parse_WildcardTagQuery_ReturnsWildcardTagPredicate()
+    {
+        var result = _parser.Parse(["character:mario*"]);
+
+        result.Should().HaveCount(1);
+        result[0].Should().BeOfType<TagPredicate>()
+            .Which.Should().Match<TagPredicate>(tp =>
+                tp.NamespacePattern == "character" &&
+                tp.SubtagPattern == "mario*" &&
+                tp.IsWildcard());
+    }
+
+    [Fact]
+    public void Parse_SystemQuery_ReturnsEverythingPredicate()
+    {
+        var result = _parser.Parse(["system:everything"]);
+
+        result.Should().HaveCount(1);
+        result[0].Should().BeOfType<EverythingPredicate>();
+    }
+
+    [Fact]
+    public void Parse_OrQuery_ReturnsOrPredicate()
+    {
+        var result = _parser.Parse(["or:character:mario OR character:luigi"]);
+
+        result.Should().HaveCount(1);
+        result[0].Should().BeOfType<OrPredicate>()
+            .Which.Predicates.Should().HaveCount(2)
+            .And.AllBeOfType<TagPredicate>();
+    }
+
+    [Fact]
+    public void Parse_MultipleQueries_ReturnsMultiplePredicates()
+    {
+        var result = _parser.Parse(["character:mario", "-stage:mushroom_kingdom", "system:everything"]);
+
+        result.Should().HaveCount(3);
+        result[0].Should().BeOfType<TagPredicate>();
+        result[1].Should().BeOfType<TagPredicate>()
+            .Which.IsExclusive.Should().BeTrue();
+        result[2].Should().BeOfType<EverythingPredicate>();
+    }
+
+    [Fact]
+    public void Parse_QueryWithExtraWhitespace_TrimsAndParsesCorrectly()
+    {
+        var result = _parser.Parse(["  character  :  mario  "]);
+
+        result.Should().HaveCount(1);
+        result[0].Should().BeOfType<TagPredicate>()
+            .Which.Should().Match<TagPredicate>(tp =>
+                tp.NamespacePattern == "character" &&
+                tp.SubtagPattern == "mario");
+    }
 }
