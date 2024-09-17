@@ -48,14 +48,20 @@ public class QueryParser
     private IPredicate ParseOrPredicate(RawQuery query)
     {
         var components = query.Query.Split(Constants.OR_SEPARATOR);
+
+        var head = components.First();
+        var tail = string.Join("OR", components.Skip(1));
         
-        var raw = components.Select(StringToRawQuery);
+        tail = tail.Replace("(", "").Replace(")", "");
+
+        var rawHead = StringToRawQuery(head);
+        var rawTail = StringToRawQuery(tail);
         
-        var parsed = ConvertRawQueriesToPredicates(raw);
+        var parsedHead = ConvertRawQueriesToPredicates([rawHead, rawTail]);
 
         return new OrPredicate
         {
-            Predicates = parsed,
+            Predicates = parsedHead,
         };
     }
 
