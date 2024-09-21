@@ -50,10 +50,9 @@ public class DownloaderFactory
 
         var functions = new Dictionary<string, Lua>();
         
-        // TODO actual parse/extract this.
         var metadata = new DownloaderMetadata();
         
-        foreach (var name in names.Except(["metadata"]))
+        foreach (var name in names)
         {
             var file = sources.SingleOrDefault(s =>
             {
@@ -64,6 +63,15 @@ public class DownloaderFactory
             if (file is null) continue;
             
             var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
+
+            if (name is "metadata")
+            {
+                metadata = ExtractMetadata(raw);
+                
+                if (metadata is null) return null;
+                
+                continue;
+            }
             
             var lua = new Lua();
             
@@ -84,8 +92,19 @@ public class DownloaderFactory
         return new(functions, metadata);
     }
     
-    private DownloaderMetadata ExtractMetadata(Lua lua)
+    private DownloaderMetadata? ExtractMetadata(string raw)
     {
+        Lua lua = new();
+
+        try
+        {
+            lua.DoString(raw);
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+        
         var downloaderTable = lua.GetTable("Downloader");
 
         if (downloaderTable == null)
