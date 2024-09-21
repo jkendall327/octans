@@ -26,19 +26,25 @@ public class HashSearcher
         var toInclude = request.TagsToInclude.Select(ToTagDto).ToList();
         var toExclude = request.TagsToExclude.Select(ToTagDto).ToList();
 
-        var matching = await tags
+        var all = await tags.AsNoTracking().ToListAsync(cancellationToken);
+        
+        var matching = all
             .Join(toInclude,
                 s => s.Namespace.Value + ":" + s.Subtag.Value,
                 s => s.Namespace.Value + ":" + s.Subtag.Value,
                 (s, t) => s)
-            .ToListAsync(cancellationToken);
+            .ToList();
         
         matching = matching.Except(toExclude).ToList();
 
-        var mappings = await _context.Mappings
+        var allMappings = await _context.Mappings
             .Include(m => m.Hash)
-            .Join(matching, m => m.Tag, t => t, (m, t) => m)
+            .Include(mapping => mapping.Tag)
             .ToListAsync(cancellationToken);
+        
+        var mappings = allMappings
+            .Join(matching, m => m.Tag, t => t, (m, t) => m)
+            .ToList();
 
         var hashes = mappings.Select(x => x.Hash).ToHashSet();
         
