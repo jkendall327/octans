@@ -5,6 +5,7 @@ using Octans.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Octans.Core.Querying;
 using Octans.Server.Services;
 
 namespace Octans.Server;
@@ -70,5 +71,14 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<Importer>();
         builder.Services.AddScoped<ItemDeleter>();
         builder.Services.AddScoped<TagUpdater>();
+        
+        // Queries
+        builder.Services.AddScoped<QueryService>();
+        builder.Services.AddScoped<QueryParser>();
+        builder.Services.AddScoped<QueryPlanner>();
+        builder.Services.AddScoped<QueryTagConverter>();
+        builder.Services.AddScoped<HashSearcher>();
+
+        builder.Services.AddMemoryCache();
     }
 }

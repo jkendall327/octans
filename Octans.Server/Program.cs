@@ -4,6 +4,13 @@ using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddOptions<ServiceProviderOptions>()
+    .Configure(options =>
+    {
+        options.ValidateScopes = true;
+        options.ValidateOnBuild = true;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
