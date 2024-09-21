@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Octans.Core.Models;
+using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Querying;
 
@@ -16,30 +17,46 @@ public class HashSearcher
         _context = context;
     }
 
-    public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken token = default)
+    public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
-        /*
-         * do we still need to boil down the query plan into raw tags we search for?
-         * is it better to do system predicates first?
-         * do specific tags before wildcards as they cut down more stuff.
-         * don't try to do everything in the database.
-         */
+        var tags = _context.Tags
+            .Include(tag => tag.Namespace)
+            .Include(tag => tag.Subtag);
 
-        var tags = await _context.Tags
-            .Select(t => new TagModel{ Namespace = t.Namespace.Value, Subtag = t.Subtag.Value })
-            .ToListAsync(token);
+        var toInclude = request.TagsToInclude.Select(ToTagDto).ToList();
+        var toExclude = request.TagsToExclude.Select(ToTagDto).ToList();
 
-        var matching = tags
-            .Join(request.TagsToInclude, 
-                s => s.Namespace + ':' + s.Subtag, 
-                tm => tm.Namespace + ':' + tm.Subtag, 
-                (tag, _) => tag)
-            .ToList();
-
-        matching = matching.Except(request.TagsToExclude).ToList();
-
-        var items = await _context.Hashes.ToListAsync(token);
+        var matching = await tags
+            .Join(toInclude,
+                s => s.Namespace.Value + ":" + s.Subtag.Value,
+                s => s.Namespace.Value + ":" + s.Subtag.Value,
+                (s, t) => s)
+            .ToListAsync(cancellationToken);
         
-        return items.ToHashSet();
+        matching = matching.Except(toExclude).ToList();
+
+        var mappings = await _context.Mappings
+            .Include(m => m.Hash)
+            .Join(matching, m => m.Tag, t => t, (m, t) => m)
+            .ToListAsync(cancellationToken);
+
+        var hashes = mappings.Select(x => x.Hash).ToHashSet();
+        
+        return hashes;
+    }
+
+    private Tag ToTagDto(TagModel s)
+    {
+        return new()
+        {
+            Namespace = new()
+            {
+                Value = s.Namespace ?? string.Empty
+            },
+            Subtag = new()
+            {
+                Value = s.Subtag
+            }
+        };
     }
 }
