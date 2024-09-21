@@ -21,4 +21,8 @@
     <ItemGroup>
       <ProjectReference Include="..\Octans.Data\Octans.Data.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Downloaders\" />
+    </ItemGroup>
 </Project>
