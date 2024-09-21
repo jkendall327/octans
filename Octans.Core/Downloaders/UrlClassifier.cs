@@ -35,6 +35,12 @@ public class DownloaderFactory
     private readonly IFileSystem _fileSystem;
     private readonly GlobalSettings _globalSettings;
 
+    public DownloaderFactory(IFileSystem fileSystem, GlobalSettings globalSettings)
+    {
+        _fileSystem = fileSystem;
+        _globalSettings = globalSettings;
+    }
+
     public async Task<List<Downloader>> GetDownloaders()
     {
         var downloaders = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
@@ -94,7 +100,7 @@ public class Downloader
 
     public bool MatchesUrl(string url)
     {
-        var res = _matchUrl.Call(url)?.First();
+        var res = _matchUrl.Call(url)?.FirstOrDefault();
 
         if (res is bool b)
         {

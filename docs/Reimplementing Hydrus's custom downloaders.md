@@ -13,6 +13,18 @@ We should try to sandbox the Lua code somewhat to prevent it from doing abjectly
 Users will package their custom downloaders as a simple folder which contains Lua text files.
 The text files will adhere to set patterns ('gug.lua', 'parser.lua', etc.) which Octans will look for.
 
+# Metadata
+// metadata.lua
+
+```
+Downloader = {
+    name = "Twitter",
+    creator = "Jane Doe",
+    version = 1.0.0,
+    homepage = "www.example.com"
+}
+```
+
 # URL Classes
 
 Implement a flexible URL matching and classification system similar to Hydrus
