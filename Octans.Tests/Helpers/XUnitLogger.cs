@@ -21,6 +21,12 @@ public class XUnitLogger : ILogger
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {
+        if (exception is not null)
+        {
+            _testOutputHelper.WriteLine(exception.Message);
+            _testOutputHelper.WriteLine(exception.StackTrace);
+        }
+        
         var message = formatter(state, exception);
         _testOutputHelper.WriteLine($"{DateTime.UtcNow:o} {logLevel} {_categoryName} - {message}");
     }
