@@ -16,24 +16,35 @@ public class DownloaderFactory
 
     public async Task<List<Downloader>> GetDownloaders()
     {
-        var downloaders = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
-        var dirs = _fileSystem.DirectoryInfo.New(downloaders);
+        var path = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
+        var downloaders = _fileSystem.DirectoryInfo.New(path);
 
+        if (!downloaders.Exists)
+        {
+            throw new InvalidOperationException();
+        }
+        
         var d = new List<Downloader>();
         
-        foreach (var subdir in dirs.EnumerateDirectories())
+        foreach (var subdir in downloaders.EnumerateDirectories())
         {
             var files = subdir.EnumerateFiles("*.lua", SearchOption.TopDirectoryOnly).ToList();
 
             var downloader = await Create(files);
 
+            if (downloader is null)
+            {
+                // exception on creation
+                continue;
+            }
+            
             d.Add(downloader);
         }
 
         return d;
     }
 
-    private async Task<Downloader> Create(List<IFileInfo> sources)
+    private async Task<Downloader?> Create(List<IFileInfo> sources)
     {
         string[] names = ["metadata", "classifier", "parser", "gug", "api"];
 
@@ -41,15 +52,26 @@ public class DownloaderFactory
         
         foreach (var name in names)
         {
-            var file = sources.SingleOrDefault(s => string.Equals(s.Name, name, StringComparison.InvariantCultureIgnoreCase));
+            var file = sources.SingleOrDefault(s =>
+            {
+                var clean = _fileSystem.Path.GetFileNameWithoutExtension(s.Name).ToLower();
+                return string.Equals(clean, name, StringComparison.InvariantCultureIgnoreCase);
+            });
 
             if (file is null) continue;
             
-            var raw = await File.ReadAllTextAsync(file.FullName);
+            var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
             
             var lua = new Lua();
 
-            lua.DoString(raw);
+            try
+            {
+                lua.DoString(raw);
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
             
             functions.Add(name, lua);
         }
