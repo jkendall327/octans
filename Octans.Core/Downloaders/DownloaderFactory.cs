@@ -50,6 +50,8 @@ public class DownloaderFactory
 
         var functions = new Dictionary<string, Lua>();
         
+        var metadata = new Dictionary<string, object>();
+
         foreach (var name in names)
         {
             var file = sources.SingleOrDefault(s =>
@@ -67,15 +69,41 @@ public class DownloaderFactory
             try
             {
                 lua.DoString(raw);
+
+                if (name == "metadata")
+                {
+                    metadata = ExtractMetadata(lua);
+                }
+                else
+                {
+                    functions.Add(name, lua);
+                }
             }
             catch (Exception e)
             {
+                Console.WriteLine($"Error processing {name}.lua: {e.Message}");
                 return null;
             }
             
             functions.Add(name, lua);
         }
 
-        return new(functions);
+        return new(functions, metadata);
+    }
+    
+    private Dictionary<string, object> ExtractMetadata(Lua lua)
+    {
+        var metadata = new Dictionary<string, object>();
+        var downloaderTable = lua.GetTable("Downloader");
+
+        if (downloaderTable != null)
+        {
+            foreach (var key in downloaderTable.Keys)
+            {
+                metadata[key.ToString()] = downloaderTable[key];
+            }
+        }
+
+        return metadata;
     }
 }
