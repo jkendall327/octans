@@ -2,9 +2,17 @@ using NLua;
 
 namespace Octans.Core.Downloaders;
 
-public class Downloader
+public class DownloaderMetadata
 {
-    private readonly Dictionary<string, object> _metadata;
+    public string Name { get; set; } = string.Empty;
+    public string Creator { get; set; } = string.Empty;
+    public Version Version { get; set; } = new Version(0, 0);
+    public string Homepage { get; set; } = string.Empty;
+}
+
+public class Downloader : IDisposable
+{
+    private readonly DownloaderMetadata _metadata;
     
     private readonly LuaFunction _matchUrl;
     private readonly LuaFunction _classifyUrl;
@@ -12,7 +20,7 @@ public class Downloader
     private readonly LuaFunction _generateGalleryUrl;
     private readonly LuaFunction _processApiQuery;
 
-    public Downloader(Dictionary<string, Lua> functions, Dictionary<string, object> metadata)
+    public Downloader(Dictionary<string, Lua> functions, DownloaderMetadata metadata)
     {
         _metadata = metadata;
         
@@ -74,5 +82,14 @@ public class Downloader
         var result = _processApiQuery.Call(query)?.FirstOrDefault() as LuaTable;
 
         return string.Empty;
+    }
+
+    public void Dispose()
+    {
+        _matchUrl.Dispose();
+        _classifyUrl.Dispose();
+        _parseHtml.Dispose();
+        _generateGalleryUrl.Dispose();
+        _processApiQuery.Dispose();
     }
 }

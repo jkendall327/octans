@@ -50,9 +50,10 @@ public class DownloaderFactory
 
         var functions = new Dictionary<string, Lua>();
         
-        var metadata = new Dictionary<string, object>();
-
-        foreach (var name in names)
+        // TODO actual parse/extract this.
+        var metadata = new DownloaderMetadata();
+        
+        foreach (var name in names.Except(["metadata"]))
         {
             var file = sources.SingleOrDefault(s =>
             {
@@ -65,23 +66,15 @@ public class DownloaderFactory
             var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
             
             var lua = new Lua();
-
+            
             try
             {
                 lua.DoString(raw);
 
-                if (name == "metadata")
-                {
-                    metadata = ExtractMetadata(lua);
-                }
-                else
-                {
-                    functions.Add(name, lua);
-                }
+                functions.Add(name, lua);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error processing {name}.lua: {e.Message}");
                 return null;
             }
             
@@ -91,17 +84,25 @@ public class DownloaderFactory
         return new(functions, metadata);
     }
     
-    private Dictionary<string, object> ExtractMetadata(Lua lua)
+    private DownloaderMetadata ExtractMetadata(Lua lua)
     {
-        var metadata = new Dictionary<string, object>();
         var downloaderTable = lua.GetTable("Downloader");
 
-        if (downloaderTable != null)
+        if (downloaderTable == null)
         {
-            foreach (var key in downloaderTable.Keys)
-            {
-                metadata[key.ToString()] = downloaderTable[key];
-            }
+            throw new InvalidOperationException("Downloader metadata table not found");
+        }
+
+        var metadata = new DownloaderMetadata
+        {
+            Name = downloaderTable["name"]?.ToString() ?? string.Empty,
+            Creator = downloaderTable["creator"]?.ToString() ?? string.Empty,
+            Homepage = downloaderTable["homepage"]?.ToString() ?? string.Empty
+        };
+
+        if (Version.TryParse(downloaderTable["version"]?.ToString(), out var version))
+        {
+            metadata.Version = version;
         }
 
         return metadata;
