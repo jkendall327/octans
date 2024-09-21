@@ -43,7 +43,7 @@ public class HashSearcher
             .ToListAsync(cancellationToken);
         
         var mappings = allMappings
-            .Join(matching, m => m.Tag, t => t, (m, t) => m)
+            .Join(matching, m => m.Tag.Id, t => t.Id, (m, t) => m)
             .ToList();
 
         var hashes = mappings.Select(x => x.Hash).ToHashSet();
