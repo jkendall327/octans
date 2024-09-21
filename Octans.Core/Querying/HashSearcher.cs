@@ -19,6 +19,12 @@ public class HashSearcher
 
     public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
+        if (request.IsEmpty())
+        {
+            var allHashes = await _context.Hashes.ToListAsync(cancellationToken);
+            return allHashes.ToHashSet();
+        }
+        
         var tags = _context.Tags
             .Include(tag => tag.Namespace)
             .Include(tag => tag.Subtag);
@@ -34,6 +40,21 @@ public class HashSearcher
                 s => s.Namespace.Value + ":" + s.Subtag.Value,
                 (s, t) => s)
             .ToList();
+
+        if (request.WildcardNamespacesToInclude.Any())
+        {
+            var spaces = await _context.Namespaces.Join(request.WildcardNamespacesToInclude,
+                    s => s.Value,
+                    t => t,
+                    (s, t) => s)
+                .ToListAsync(cancellationToken);
+
+            var namespaceTags = all
+                .Join(spaces, t => t.Namespace.Id, n => n.Id, (s, t) => s)
+                .ToList();
+            
+            matching.AddRange(namespaceTags);
+        }
         
         matching = matching.Except(toExclude).ToList();
 
@@ -41,12 +62,12 @@ public class HashSearcher
             .Include(m => m.Hash)
             .Include(mapping => mapping.Tag)
             .ToListAsync(cancellationToken);
-        
-        var mappings = allMappings
+
+        allMappings = allMappings
             .Join(matching, m => m.Tag.Id, t => t.Id, (m, t) => m)
             .ToList();
 
-        var hashes = mappings.Select(x => x.Hash).ToHashSet();
+        var hashes = allMappings.Select(x => x.Hash).ToHashSet();
         
         return hashes;
     }
