@@ -79,14 +79,14 @@ public class QueryTagConverter
 
 public class DecomposedQuery
 {
-    public List<SystemPredicate> SystemPredicates { get; set; }
-    public HashSet<TagModel> TagsToInclude { get; set; }
-    public HashSet<TagModel> TagsToExclude { get; set; }
+    public List<SystemPredicate> SystemPredicates { get; set; } = [];
+    public HashSet<TagModel> TagsToInclude { get; set; } = [];
+    public HashSet<TagModel> TagsToExclude { get; set; } = [];
     
-    public HashSet<string> WildcardNamespacesToInclude { get; set; }
-    public HashSet<string> WildcardNamespacesToExclude { get; set; }
-    public HashSet<string> WildcardSubtagsToInclude { get; set; }
-    public HashSet<string> WildcardSubtagsToExclude { get; set; }
-    public HashSet<string> WildcardDoublesToInclude { get; set; }
-    public HashSet<string> WildcardDoublesToExclude { get; set; }
+    public HashSet<string> WildcardNamespacesToInclude { get; set; } = [];
+    public HashSet<string> WildcardNamespacesToExclude { get; set; } = [];
+    public HashSet<string> WildcardSubtagsToInclude { get; set; } = [];
+    public HashSet<string> WildcardSubtagsToExclude { get; set; } = [];
+    public HashSet<string> WildcardDoublesToInclude { get; set; } = [];
+    public HashSet<string> WildcardDoublesToExclude { get; set; } = [];
 }

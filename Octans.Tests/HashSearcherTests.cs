@@ -35,22 +35,22 @@ public class HashSearcherTests : IAsyncLifetime
         await _connection.DisposeAsync();
     }
     
-    [Fact(Skip = "Not implemented yet")]
+    [Fact]
     public async Task ReturnsEverythingWhenPredicateIsEmpty()
     {
         await SeedData();
 
         var all = await _db.Hashes.ToListAsync();
         
-        //var result = await _sut.Search(new());
+        var result = await _sut.Search(new());
 
-        //result.Should().BeEquivalentTo(all);
+        result.Should().BeEquivalentTo(all);
     }
 
     /// <summary>
     /// Finds all hashes with a tag that has namespace "character" when we use the wildcard predicate "character:*"
     /// </summary>
-    [Fact(Skip = "Not implemented yet")]
+    [Fact]
     public async Task FindsHashes_WithMappingsForNamespace_WhenWildcardNamespaceUsed()
     {
         await SeedData();
@@ -66,20 +66,20 @@ public class HashSearcherTests : IAsyncLifetime
         await AddMappings("character", "samus aran", firstSubtag);
         await AddMappings("character", "bayonetta", secondSubtag);
 
-        // var request = new SearchRequest
-        // {
-        //     NamespacesToInclude = ["character"]
-        // };
-        //
-        // var results = await _sut.Search(request);
-        //
-        // results.Should().BeEquivalentTo(items, "the items all have the character subtag");
+        var request = new DecomposedQuery
+        {
+            WildcardNamespacesToInclude = ["character"]
+        };
+        
+        var results = await _sut.Search(request);
+        
+        results.Should().BeEquivalentTo(items, "the items all have the character subtag");
     }
     
     /// <summary>
     /// Finds all hashes with tag "character:samus aran" when the predicate is precisely "character:samus aran"
     /// </summary>
-    [Fact(Skip = "Not implemented yet")]
+    [Fact]
     public async Task FindsHashes_WithExactMatchForTag_WhenExactTagUsed()
     {
         await SeedData();
@@ -90,15 +90,14 @@ public class HashSearcherTests : IAsyncLifetime
         
         await AddMappings("character", "samus aran", item);
         
-        // var request = new SearchRequest
-        // {
-        //     NamespacesToInclude = ["character"],
-        //     TagsToInclude = ["samus aran"]
-        // };
-        //
-        // var results = await _sut.Search(request);
-        //
-        // results.Single().Should().Be(item, "it is the only item with this namespace/tag pairing");
+        var request = new DecomposedQuery()
+        {
+            TagsToInclude = [new(){ Namespace = "character", Subtag = "samus aran" }]
+        };
+        
+        var results = await _sut.Search(request);
+        
+        results.Single().Should().Be(item, "it is the only item with this namespace/tag pairing");
     }
 
     [Fact(Skip = "Not implemented yet")]
@@ -125,7 +124,8 @@ public class HashSearcherTests : IAsyncLifetime
     
     private async Task<List<HashItem>> GetRandomItems(int count)
     {
-        return await _db.Hashes.OrderBy(i => Guid.NewGuid()).Take(count).ToListAsync();
+        var all = await _db.Hashes.ToListAsync();
+        return all.OrderBy(i => Guid.NewGuid()).Take(count).ToList();
     }
     
     private async Task AddMappings(string @namespace, string subtag, params HashItem[] items)
