@@ -116,7 +116,7 @@ public class QueryParser
 /// </summary>
 public class RawQuery
 {
-    public string Prefix { get; set; }
-    public string Query { get; set; }
+    public required string Prefix { get; set; }
+    public required string Query { get; set; }
     public bool Exclusive { get; set; }
 }
