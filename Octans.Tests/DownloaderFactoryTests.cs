@@ -22,14 +22,18 @@ public class DownloaderFactoryTests
         _sut = new(_fileSystem, globalSettings, NullLogger<DownloaderFactory>.Instance);
     }
     
+    private readonly MockFileData _classifier = new ("function match_url(url) return true end");
+    private readonly MockFileData _parser = new ("function parse(content) return content end");
+    private readonly MockFileData _invalid = new ("This is not valid Lua code");
+    
     [Fact]
     public async Task ShouldReturnCorrectNumberOfDownloaders()
     {
         var first = _downloaders.CreateSubdirectory("first");
         var second = _downloaders.CreateSubdirectory("second");
         
-        _fileSystem.AddFile(first.FullName + "/classifier.lua", new("function match_url(url) return true end"));
-        _fileSystem.AddFile(second.FullName + "/classifier.lua", new("function match_url(url) return false end"));
+        AddFileToSubdir(first, "classifier", _classifier);
+        AddFileToSubdir(second, "classifier", _classifier);
         
         var downloaders = await _sut.GetDownloaders();
 
@@ -41,8 +45,8 @@ public class DownloaderFactoryTests
     {
         var subdir = _downloaders.CreateSubdirectory("first");
         
-        _fileSystem.AddFile(subdir.FullName + "/classifier.lua", new("function match_url(url) return true end"));
-        _fileSystem.AddFile(subdir.FullName + "/parser.lua", new("function parse(content) return content end"));
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", _parser);
 
         var downloaders = await _sut.GetDownloaders();
 
@@ -63,11 +67,16 @@ public class DownloaderFactoryTests
         var first = _downloaders.CreateSubdirectory("first");
         var second = _downloaders.CreateSubdirectory("second");
         
-        _fileSystem.AddFile(first.FullName + "/classifier.lua", new("This is not valid Lua code"));
-        _fileSystem.AddFile(second.FullName + "/classifier.lua", new("function match_url(url) return true end"));
+        AddFileToSubdir(first, "classifier", _invalid);
+        AddFileToSubdir(second, "classifier", _classifier);
         
         var downloaders = await _sut.GetDownloaders();
 
         downloaders.Single().Invoking(d => d.MatchesUrl("https://example.com")).Should().NotThrow();
+    }
+
+    private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)
+    {
+        _fileSystem.AddFile(dir.FullName + $"/{filename}.lua", data);
     }
 }
