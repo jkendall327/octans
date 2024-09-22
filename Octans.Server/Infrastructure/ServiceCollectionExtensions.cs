@@ -26,7 +26,7 @@ public static class ServiceCollectionExtensions
             
             var root = config.Value.AppRoot;
             
-            var path = s.GetRequiredService<IPath>();
+            var path = s.GetRequiredService<IFileSystem>().Path;
             
             var dbFolder = path.Join(root, "db");
 
@@ -44,13 +44,7 @@ public static class ServiceCollectionExtensions
 
     public static void AddFilesystem(this WebApplicationBuilder builder)
     {
-        var filesystem = new FileSystem();
-
-        builder.Services.AddSingleton<IFileSystem>(filesystem);
-        builder.Services.AddSingleton(filesystem.Path);
-        builder.Services.AddSingleton(filesystem.DirectoryInfo);
-        builder.Services.AddSingleton(filesystem.File);
-        builder.Services.AddSingleton(filesystem.FileInfo);
+        builder.Services.AddSingleton<IFileSystem>(new FileSystem());
     }
 
     public static void AddChannels(this WebApplicationBuilder builder)

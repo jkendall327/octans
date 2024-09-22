@@ -6,14 +6,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<SubfolderManager>();
 
-var filesystem = new FileSystem();
-builder.Services.AddSingleton<IFileSystem>(filesystem);
-builder.Services.AddSingleton(filesystem.DirectoryInfo);
-builder.Services.AddSingleton(filesystem.Path);
-builder.Services.AddSingleton(filesystem.Directory);
-builder.Services.AddSingleton(filesystem.FileInfo);
+builder.Services.AddScoped<SubfolderManager>();
+builder.Services.AddSingleton<IFileSystem>(new FileSystem());
 builder.Services.AddSingleton<ImportRequestSender>();
 
 builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection("GlobalSettings"));

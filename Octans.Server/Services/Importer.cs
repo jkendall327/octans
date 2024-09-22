@@ -24,16 +24,14 @@ public sealed class Importer
     private readonly ServerDbContext _context;
     private readonly IHttpClientFactory _clientFactory;
     private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
-    private readonly IFile _file;
-    private readonly IPath _path;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger<Importer> _logger;
 
     public Importer(SubfolderManager subfolderManager,
         ServerDbContext context,
         IHttpClientFactory clientFactory,
-        IFile file,
-        IPath path,
         ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
+        IFileSystem fileSystem,
         ILogger<Importer> logger)
     {
         _subfolderManager = subfolderManager;
@@ -41,8 +39,7 @@ public sealed class Importer
         _clientFactory = clientFactory;
         _logger = logger;
         _thumbnailChannel = thumbnailChannel;
-        _file = file;
-        _path = path;
+        _fileSystem = fileSystem;
     }
 
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
@@ -118,14 +115,14 @@ public sealed class Importer
         var destination = GetDestination(hashed, bytes);
         
         _logger.LogInformation("Writing bytes to disk");
-        await _file.WriteAllBytesAsync(destination, bytes);
+        await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
             
         await AddItemToDatabase(item, hashed);
 
         if (request.DeleteAfterImport && sourceType is SourceType.LocalFile)
         {
             _logger.LogInformation("Deleting original local file");
-            _file.Delete(item.Source.AbsolutePath);
+            _fileSystem.File.Delete(item.Source.AbsolutePath);
         }
         
         _logger.LogInformation("Sending thumbnail creation request");
@@ -169,7 +166,7 @@ public sealed class Importer
      
             _logger.LogInformation("Importing local file from {LocalUri}", filepath);
 
-            var bytes = await _file.ReadAllBytesAsync(filepath.AbsolutePath);
+            var bytes = await _fileSystem.File.ReadAllBytesAsync(filepath.AbsolutePath);
 
             return bytes;
         }
@@ -260,7 +257,7 @@ public sealed class Importer
 
         var subfolder = _subfolderManager.GetSubfolder(hashed);
 
-        var destination = _path.Join(subfolder.AbsolutePath, fileName);
+        var destination = _fileSystem.Path.Join(subfolder.AbsolutePath, fileName);
         
         _logger.LogDebug("File will be persisted to {Destination}", destination);
         

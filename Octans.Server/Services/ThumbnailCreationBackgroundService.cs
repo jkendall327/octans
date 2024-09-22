@@ -18,21 +18,18 @@ public class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
     private readonly IOptions<GlobalSettings> _globalSettings;
-    private readonly IFile _file;
-    private readonly IPath _path;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger<ThumbnailCreationBackgroundService> _logger;
 
     public ThumbnailCreationBackgroundService(ChannelReader<ThumbnailCreationRequest> channel,
-        IFile file,
-        IPath path,
+        IFileSystem fileSystem,
         IOptions<GlobalSettings> globalSettings,
         ILogger<ThumbnailCreationBackgroundService> logger)
     {
         _channel = channel;
         _logger = logger;
         _globalSettings = globalSettings;
-        _path = path;
-        _file = file;
+        _fileSystem = fileSystem;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -75,7 +72,7 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         
         _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
         
-        var destination = _path.Join(_globalSettings.Value.AppRoot,
+        var destination = _fileSystem.Path.Join(_globalSettings.Value.AppRoot,
             "db",
             "files",
             request.Hashed.ThumbnailBucket,
@@ -83,7 +80,7 @@ public class ThumbnailCreationBackgroundService : BackgroundService
         
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
         
-        await _file.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
+        await _fileSystem.File.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
     }
 
     private async Task<byte[]> SaveThumbnailAsync(Image image, CancellationToken stoppingToken)

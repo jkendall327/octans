@@ -6,22 +6,19 @@ namespace Octans.Client;
 public class ImportFolderBackgroundService : BackgroundService
 {
     private readonly IHttpClientFactory _clientFactory;
-    private readonly IDirectory _directory;
-    private readonly IPath _path;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger<ImportFolderBackgroundService> _logger;
 
     private readonly string[] _importFolders;
     
     public ImportFolderBackgroundService(IConfiguration configuration,
         IHttpClientFactory clientFactory,
-        IDirectory directory,
-        IPath path,
+        IFileSystem fileSystem,
         ILogger<ImportFolderBackgroundService> logger)
     {
         _logger = logger;
         _clientFactory = clientFactory;
-        _directory = directory;
-        _path = path;
+        _fileSystem = fileSystem;
 
         _importFolders = configuration.GetValue<string[]>("importFolders") ?? Array.Empty<string>();
     }
@@ -52,13 +49,13 @@ public class ImportFolderBackgroundService : BackgroundService
         
         foreach (var folder in _importFolders)
         {
-            if (!_directory.Exists(folder))
+            if (!_fileSystem.Directory.Exists(folder))
             {
                 _logger.LogWarning("Import folder does not exist: {Folder}", folder);
                 continue;
             }
 
-            var imports = _directory
+            var imports = _fileSystem.Directory
                 .GetFiles(folder, "*.*", SearchOption.AllDirectories)
                 .Where(IsImageFile)
                 .Select(file => new ImportItem 
@@ -92,7 +89,7 @@ public class ImportFolderBackgroundService : BackgroundService
 
     private bool IsImageFile(string filePath)
     {
-        var extension = _path.GetExtension(filePath).ToLowerInvariant();
+        var extension = _fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
         return new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(extension);
     }
 }
