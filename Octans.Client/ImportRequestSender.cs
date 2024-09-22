@@ -23,7 +23,8 @@ public class ImportRequestSender
         // Process URLs
         if (!string.IsNullOrWhiteSpace(importUrls))
         {
-            var urls = importUrls.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+            char[]? separator = ['\r', '\n'];
+            var urls = importUrls.Split(separator, StringSplitOptions.RemoveEmptyEntries);
             importItems.AddRange(urls.Select(url => new ImportItem { Source = new(url) }));
         }
 

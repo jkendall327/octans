@@ -31,6 +31,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Octans.Client\Octans.Client.csproj" />
         <ProjectReference Include="..\Octans.Server\Octans.Server.csproj" />
     </ItemGroup>
 
