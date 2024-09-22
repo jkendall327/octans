@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Octans.Core;
 using Octans.Core.Downloaders;
 
@@ -18,7 +19,7 @@ public class DownloaderFactoryTests
         
         _downloaders = _fileSystem.Directory.CreateDirectory("C:/App/downloaders");
         
-        _sut = new(_fileSystem, globalSettings);
+        _sut = new(_fileSystem, globalSettings, NullLogger<DownloaderFactory>.Instance);
     }
     
     [Fact]

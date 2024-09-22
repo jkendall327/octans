@@ -1,4 +1,5 @@
 using System.IO.Abstractions;
+using Microsoft.Extensions.Logging;
 using NLua;
 
 namespace Octans.Core.Downloaders;
@@ -7,11 +8,13 @@ public class DownloaderFactory
 {
     private readonly IFileSystem _fileSystem;
     private readonly GlobalSettings _globalSettings;
+    private readonly ILogger<DownloaderFactory> _logger;
 
-    public DownloaderFactory(IFileSystem fileSystem, GlobalSettings globalSettings)
+    public DownloaderFactory(IFileSystem fileSystem, GlobalSettings globalSettings, ILogger<DownloaderFactory> logger)
     {
         _fileSystem = fileSystem;
         _globalSettings = globalSettings;
+        _logger = logger;
     }
 
     public async Task<List<Downloader>> GetDownloaders()
@@ -21,6 +24,7 @@ public class DownloaderFactory
 
         if (!downloaders.Exists)
         {
+            _logger.LogError("Downloader folder doesn't exist");
             throw new InvalidOperationException();
         }
         
@@ -28,6 +32,8 @@ public class DownloaderFactory
         
         foreach (var subdir in downloaders.EnumerateDirectories())
         {
+            _logger.LogInformation("Creating downloader from {DownloaderDirectory}", subdir.Name);
+            
             var files = subdir.EnumerateFiles("*.lua", SearchOption.TopDirectoryOnly).ToList();
 
             var downloader = await Create(files);
@@ -41,6 +47,8 @@ public class DownloaderFactory
             d.Add(downloader);
         }
 
+        _logger.LogInformation("Created {DownloaderCount} downloaders", d.Count);
+        
         return d;
     }
 
@@ -62,6 +70,8 @@ public class DownloaderFactory
 
             if (file is null) continue;
             
+            _logger.LogInformation("Read file content for {LuaFile}", file.Name);
+            
             var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
 
             if (name is "metadata")
@@ -81,9 +91,11 @@ public class DownloaderFactory
             }
             catch (Exception e)
             {
+                _logger.LogError(e, "Error loading raw Lua string");
                 return null;
             }
             
+            _logger.LogInformation("Instantiated Lua from {LuaFile}", file.Name);
             functions.Add(name, lua);
         }
 
