@@ -10,7 +10,7 @@ public interface IImportFilter
 
 public class ResolutionFilter : IImportFilter
 {
-    public async Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
+    public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         var image = Image.Load(bytes);
 
@@ -18,25 +18,25 @@ public class ResolutionFilter : IImportFilter
 
         if (request.MinHeight is not null && request.MinHeight > height)
         {
-            return false;
+            return Task.FromResult(false);
         }
         
         if (request.MinWidth is not null && request.MinWidth > width)
         {
-            return false;
+            return Task.FromResult(false);
         }
 
         if (request.MaxHeight is not null && request.MaxHeight < height)
         {
-            return false;
+            return Task.FromResult(false);
         }
 
         if (request.MaxWidth is not null && request.MaxWidth < height)
         {
-            return false;
+            return Task.FromResult(false);
         }
         
-        return true;
+        return Task.FromResult(true);
     }
 }
 
@@ -63,25 +63,25 @@ public class FiletypeFilter : IImportFilter
 
 public class FilesizeFilter : IImportFilter
 {
-    public async Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
+    public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         (var max, var min) = (request.MaxFileSize, request.MinFileSize);
         
         if (max is null && min is null)
         {
-            return true;
+            return Task.FromResult(true);
         }
 
         if (max is not null && bytes.Length > max)
         {
-            return false;
+            return Task.FromResult(false);
         }
 
         if (min is not null && bytes.Length < min)
         {
-            return false;
+            return Task.FromResult(false);
         }
 
-        return true;
+        return Task.FromResult(true);
     }
 }

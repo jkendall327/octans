@@ -82,12 +82,18 @@ public class Imports : PageModel
         var client = _clientFactory.CreateClient();
         var response = await client.PostAsJsonAsync("http://localhost:5185/import", importRequest);
 
-        if (response.IsSuccessStatusCode)
-        {
-            var result = await response.Content.ReadFromJsonAsync<ImportResult>();
-            return result?.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
-        }
+        if (!response.IsSuccessStatusCode) return ["Failed to process import request."];
+        
+        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
 
-        return ["Failed to process import request."];
+        if (result is null)
+        {
+            throw new InvalidOperationException("Deserializing import result failed");
+        }
+            
+        var sendImportRequest = result.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
+            
+        return sendImportRequest;
+
     }
 }

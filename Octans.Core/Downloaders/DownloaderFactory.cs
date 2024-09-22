@@ -112,6 +112,7 @@ public class DownloaderFactory
         }
         catch (Exception e)
         {
+            _logger.LogError(e, "Error extracting metadata");
             return null;
         }
         
