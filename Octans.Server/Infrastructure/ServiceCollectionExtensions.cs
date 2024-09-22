@@ -65,6 +65,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<Importer>();
         builder.Services.AddScoped<ItemDeleter>();
         builder.Services.AddScoped<TagUpdater>();
+        builder.Services.AddScoped<ThumbnailCreator>();
         
         // Queries
         builder.Services.AddScoped<QueryService>();

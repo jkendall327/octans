@@ -7,38 +7,31 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Octans.Server;
 
-public class ThumbnailCreationRequest
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public required byte[] Bytes { get; set; }
-    public required HashedBytes Hashed { get; set; }
-}
+
 
 public class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
-    private readonly IOptions<GlobalSettings> _globalSettings;
-    private readonly IFileSystem _fileSystem;
     private readonly ILogger<ThumbnailCreationBackgroundService> _logger;
+    private readonly ThumbnailCreator _thumbnailCreator;
 
-    public ThumbnailCreationBackgroundService(ChannelReader<ThumbnailCreationRequest> channel,
-        IFileSystem fileSystem,
-        IOptions<GlobalSettings> globalSettings,
+    public ThumbnailCreationBackgroundService(
+        ThumbnailCreator creator,
+        ChannelReader<ThumbnailCreationRequest> channel,
         ILogger<ThumbnailCreationBackgroundService> logger)
     {
+        _thumbnailCreator = creator;
         _channel = channel;
         _logger = logger;
-        _globalSettings = globalSettings;
-        _fileSystem = fileSystem;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach(var request in _channel.ReadAllAsync(stoppingToken))
+        await foreach (var request in _channel.ReadAllAsync(stoppingToken))
         {
             try
             {
-                await ProcessThumbnailRequestAsync(request, stoppingToken);
+                await _thumbnailCreator.ProcessThumbnailRequestAsync(request, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -49,46 +42,5 @@ public class ThumbnailCreationBackgroundService : BackgroundService
                 _logger.LogError(ex, "Error processing thumbnail request");
             }
         }
-    }
-    
-    private async Task ProcessThumbnailRequestAsync(ThumbnailCreationRequest request, CancellationToken stoppingToken)
-    {
-        using var _ = _logger.BeginScope(new Dictionary<string, object>
-        {
-            ["RequestId"] = request.Id
-        });
-
-        _logger.LogInformation("Starting thumbnail creation");
-        
-        using var image = Image.Load(request.Bytes);
-        
-        image.Mutate(x => x.Resize(new ResizeOptions
-        {
-            Size = new(200, 200),
-            Mode = ResizeMode.Max
-        }));
-
-        var thumbnailBytes = await SaveThumbnailAsync(image, stoppingToken);
-        
-        _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
-        
-        var destination = _fileSystem.Path.Join(_globalSettings.Value.AppRoot,
-            "db",
-            "files",
-            request.Hashed.ThumbnailBucket,
-            request.Hashed.Hexadecimal + ".jpeg");
-        
-        _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
-        
-        await _fileSystem.File.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
-    }
-
-    private async Task<byte[]> SaveThumbnailAsync(Image image, CancellationToken stoppingToken)
-    {
-        using var memoryStream = new MemoryStream();
-        
-        await image.SaveAsJpegAsync(memoryStream, stoppingToken);
-        
-        return memoryStream.ToArray();
     }
 }
