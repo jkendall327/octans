@@ -21,9 +21,13 @@ public class DownloaderFactoryTests
         
         _sut = new(_fileSystem, globalSettings, NullLogger<DownloaderFactory>.Instance);
     }
+
+    private readonly MockFileData _classifier = new("""
+                                                    function match_url(url) return true end;
+                                                    function classify_url(url) return false end;
+                                                    """);
     
-    private readonly MockFileData _classifier = new ("function match_url(url) return true end");
-    private readonly MockFileData _parser = new ("function parse(content) return content end");
+    private readonly MockFileData _parser = new ("function parse_html(content) return content end");
     private readonly MockFileData _invalid = new ("This is not valid Lua code");
     
     [Fact]
@@ -33,7 +37,9 @@ public class DownloaderFactoryTests
         var second = _downloaders.CreateSubdirectory("second");
         
         AddFileToSubdir(first, "classifier", _classifier);
+        AddFileToSubdir(first, "parser", _parser);
         AddFileToSubdir(second, "classifier", _classifier);
+        AddFileToSubdir(second, "parser", _parser);
         
         var downloaders = await _sut.GetDownloaders();
 
@@ -68,7 +74,9 @@ public class DownloaderFactoryTests
         var second = _downloaders.CreateSubdirectory("second");
         
         AddFileToSubdir(first, "classifier", _invalid);
+        
         AddFileToSubdir(second, "classifier", _classifier);
+        AddFileToSubdir(second, "parser", _parser);
         
         var downloaders = await _sut.GetDownloaders();
 

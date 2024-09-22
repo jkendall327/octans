@@ -6,34 +6,30 @@ public class DownloaderMetadata
 {
     public string Name { get; set; } = string.Empty;
     public string Creator { get; set; } = string.Empty;
-    public Version Version { get; set; } = new Version(0, 0);
+    public Version Version { get; set; } = new(0, 0);
     public string Homepage { get; set; } = string.Empty;
 }
 
-public class Downloader : IDisposable
+public sealed class Downloader : IDisposable
 {
     private readonly DownloaderMetadata _metadata;
     
     private readonly LuaFunction _matchUrl;
     private readonly LuaFunction _classifyUrl;
     private readonly LuaFunction _parseHtml;
-    private readonly LuaFunction _generateGalleryUrl;
-    private readonly LuaFunction _processApiQuery;
+    private readonly LuaFunction? _generateGalleryUrl;
+    private readonly LuaFunction? _processApiQuery;
 
     public Downloader(Dictionary<string, Lua> functions, DownloaderMetadata metadata)
     {
         _metadata = metadata;
         
-        if (functions.TryGetValue("classifier", out var classifier))
-        {
-            _matchUrl = GetLuaFunction(classifier, "match_url");
-            _classifyUrl = GetLuaFunction(classifier, "classify_url");
-        }
+        var classifier = functions["classifier"];
+        
+        _matchUrl = GetLuaFunction(classifier, "match_url");
+        _classifyUrl = GetLuaFunction(classifier, "classify_url");
 
-        if (functions.TryGetValue("parser", out var parser))
-        {
-            _parseHtml = GetLuaFunction(parser, "parse_html");
-        }
+        _parseHtml = GetLuaFunction(functions["parser"], "parse_html");
 
         if (functions.TryGetValue("gug", out var gug))
         {
@@ -46,9 +42,9 @@ public class Downloader : IDisposable
         }
     }
     
-    private LuaFunction? GetLuaFunction(Lua lua, string functionName)
+    private LuaFunction GetLuaFunction(Lua lua, string functionName)
     {
-        return lua[functionName] as LuaFunction;
+        return lua[functionName] as LuaFunction ?? throw new InvalidOperationException($"{functionName} not found in Lua blob");
     }
 
     public bool MatchesUrl(string url)
@@ -72,6 +68,11 @@ public class Downloader : IDisposable
 
     public string GenerateGalleryUrl(string input, int page)
     {
+        if (_generateGalleryUrl is null)
+        {
+            throw new InvalidOperationException("No GUG provided for downloader");
+        }
+        
         var result = _generateGalleryUrl.Call(input, page)?.FirstOrDefault() as string;
 
         return result ?? throw new InvalidOperationException("Failed to generate gallery URL");
@@ -79,6 +80,11 @@ public class Downloader : IDisposable
 
     public string ProcessApiQuery(string query)
     {
+        if (_processApiQuery is null)
+        {
+            throw new InvalidOperationException("No API component provided for downloader");
+        }
+        
         var result = _processApiQuery.Call(query)?.FirstOrDefault() as LuaTable;
 
         return string.Empty;
@@ -89,7 +95,7 @@ public class Downloader : IDisposable
         _matchUrl.Dispose();
         _classifyUrl.Dispose();
         _parseHtml.Dispose();
-        _generateGalleryUrl.Dispose();
-        _processApiQuery.Dispose();
+        _generateGalleryUrl?.Dispose();
+        _processApiQuery?.Dispose();
     }
 }
