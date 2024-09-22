@@ -3,6 +3,6 @@ namespace Octans.Core.Models.Tagging;
 public class Tag
 {
     public int Id { get; set; }
-    public Namespace Namespace { get; set; }
-    public Subtag Subtag { get; set; }
+    public required Namespace Namespace { get; set; }
+    public required Subtag Subtag { get; set; }
 }
