@@ -46,9 +46,9 @@ public class Downloader : IDisposable
         }
     }
     
-    private LuaFunction GetLuaFunction(Lua lua, string functionName)
+    private LuaFunction? GetLuaFunction(Lua lua, string functionName)
     {
-        return lua[functionName] as LuaFunction ?? throw new InvalidOperationException($"{functionName} function not found");
+        return lua[functionName] as LuaFunction;
     }
 
     public bool MatchesUrl(string url)

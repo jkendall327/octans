@@ -78,8 +78,6 @@ public class DownloaderFactory
             try
             {
                 lua.DoString(raw);
-
-                functions.Add(name, lua);
             }
             catch (Exception e)
             {
