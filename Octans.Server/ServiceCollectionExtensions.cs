@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         // Imports
         builder.Services.AddScoped<ImportRouter>();
         builder.Services.AddScoped<SimpleImporter>();
+        builder.Services.AddScoped<FileImporter>();
         builder.Services.AddSingleton<ThumbnailCreator>();
         builder.Services.AddScoped<DownloaderFactory>();
         
