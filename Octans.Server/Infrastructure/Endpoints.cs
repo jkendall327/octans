@@ -12,56 +12,35 @@ public static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
-        app.MapPost("/import", async (ImportRequest request, Importer service, CancellationToken token) => await service.ProcessImport(request, token))
-            .WithName("Import")
-            .WithDescription("Processes an import request")
-            .WithOpenApi();
+        MapFileEndpoints(app);
 
-        app.MapGet("/getAll", async (FileFinder service) => await service.GetAll());
+        MapTagEndpoints(app);
         
-        app.MapGet("/getFile", async (int id, FileFinder service) =>
-            {
-                var file = await service.GetFile(id);
+        MapDownloaderEndpoints(app);
 
-                return file is null ? Results.NotFound() : Results.Ok(file);
-            })
-            .WithName("GetFile")
-            .WithDescription("Get a single file by its ID")
-            .WithOpenApi();
+        MapInfrastructureEndpoints(app);
+    }
 
-        app.MapGet("/query", 
-                async (IEnumerable<string> queries, QueryService service) => await service.Query(queries))
-            .WithName("Search by Query")
-            .WithDescription("Retrieve files found by a tag query search")
-            .WithOpenApi();
-        
-        app.MapPut("/updateTags", async (UpdateTagsRequest request, TagUpdater updater) =>
+    private static void MapTagEndpoints(WebApplication app)
+    {
+        app.MapPost("/tags", async (UpdateTagsRequest request, TagUpdater updater) =>
             {
                 var success = await updater.UpdateTags(request);
-                return success ? Results.Ok() : Results.NotFound();
+                return success ? Results.Ok() : Results.BadRequest();
             })
             .WithName("UpdateTags")
             .WithDescription("Add and remove tags for a specific image")
             .WithOpenApi();
-        
-        app.MapPost("/delete", async (DeleteRequest request, ItemDeleter deleter) =>
-            {
-                var results = await deleter.ProcessDeletion(request);
+    }
 
-                var response = new DeleteResponse(results);
-                
-                return Results.Ok(response);
-            })
-            .WithName("DeleteFiles")
-            .WithDescription("Delete one or more files and their associated data")
-            .WithOpenApi();
-
+    private static void MapDownloaderEndpoints(WebApplication app)
+    {
         app.MapGet("/downloaders", async (DownloaderFactory ds) =>
         {
             var downloaders = await ds.GetDownloaders();
             return downloaders.Select(d => d.Metadata);
         });
-        
+
         app.MapGet("/downloaders/{name}", async (string name, DownloaderFactory ds) =>
         {
             var downloaders = await ds.GetDownloaders();
@@ -70,7 +49,45 @@ public static class Endpoints
             
             return downloader;
         });
+    }
+
+    private static void MapFileEndpoints(WebApplication app)
+    {
+        app.MapGet("/files", async (FileFinder service) => await service.GetAll());
         
+        app.MapGet("/files/{id:int}", async (int id, FileFinder service) =>
+            {
+                var file = await service.GetFile(id);
+
+                return file is null ? Results.NotFound() : Results.Ok(file);
+            })
+            .WithDescription("Get a single file by its ID")
+            .WithOpenApi();
+
+        app.MapPost("/files/query", 
+                async (IEnumerable<string> queries, QueryService service) => await service.Query(queries))
+            .WithName("Search by Query")
+            .WithDescription("Retrieve files found by a tag query search")
+            .WithOpenApi();
+        
+        app.MapPost("/files", 
+                async (ImportRequest request, Importer service, CancellationToken token) => await service.ProcessImport(request, token))
+            .WithName("Import")
+            .WithDescription("Processes an import request")
+            .WithOpenApi();
+        
+        app.MapDelete("/files", async (DeleteRequest request, ItemDeleter deleter) =>
+            {
+                var results = await deleter.ProcessDeletion(request);
+
+                return new DeleteResponse(results);
+            })
+            .WithDescription("Delete one or more files and their associated data")
+            .WithOpenApi();
+    }
+
+    private static void MapInfrastructureEndpoints(WebApplication app)
+    {
         app.MapPost("/clearAllData",
             async (ServerDbContext db) =>
             {
