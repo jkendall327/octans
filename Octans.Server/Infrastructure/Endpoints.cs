@@ -77,9 +77,9 @@ public static class Endpoints
             .WithDescription("Processes an import request")
             .WithOpenApi();
         
-        app.MapDelete("/files", async ([FromBody] DeleteRequest request, [FromServices] ItemDeleter deleter) =>
+        app.MapDelete("/files", async ([FromBody] IEnumerable<int> ids, [FromServices] ItemDeleter deleter) =>
             {
-                var results = await deleter.ProcessDeletion(request);
+                var results = await deleter.ProcessDeletion(ids);
 
                 return new DeleteResponse(results);
             })

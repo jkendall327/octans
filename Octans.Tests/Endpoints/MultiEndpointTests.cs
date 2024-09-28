@@ -96,7 +96,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     {
         var client = _factory.CreateClient();
 
-        var request = new DeleteRequest([hashId]);
+        var request = new List<int>([hashId]);
 
         var mappings = await _context.Mappings.Where(m => m.Hash.Id == hashId).ToListAsync();
         

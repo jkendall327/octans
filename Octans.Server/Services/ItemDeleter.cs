@@ -14,13 +14,13 @@ public class ItemDeleter
         _context = context;
     }
 
-    public async Task<List<DeleteResult>> ProcessDeletion(DeleteRequest request)
+    public async Task<List<DeleteResult>> ProcessDeletion(IEnumerable<int> request)
     {
         var results = new List<DeleteResult>();
 
-        foreach (var item in request.Items)
+        foreach (var id in request)
         {
-            var result = await DeleteFile(item);
+            var result = await DeleteFile(id);
             results.Add(result);
         }
 
