@@ -15,35 +15,29 @@ namespace Octans.Server;
 /// </summary>
 public sealed class SimpleImporter
 {
-    private readonly SubfolderManager _subfolderManager;
-    private readonly ServerDbContext _context;
-    private readonly DatabaseImporter _databaseImporter;
+    private readonly DatabaseWriter _databaseWriter;
+    private readonly FilesystemWriter _filesystemWriter;
+    private readonly ReimportChecker _reimportChecker;
+    private readonly ImportFilterService _importFilterService;
     private readonly IHttpClientFactory _clientFactory;
     private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
-    private readonly IFileSystem _fileSystem;
-    private readonly ReimportChecker _reimportChecker;
     private readonly ILogger<SimpleImporter> _logger;
-    private readonly ImportFilterService _importFilterService;
 
-    public SimpleImporter(SubfolderManager subfolderManager,
-        ServerDbContext context,
+    public SimpleImporter(DatabaseWriter databaseWriter,
+        FilesystemWriter filesystemWriter,
+        ReimportChecker reimportChecker,
+        ImportFilterService importFilterService,
         IHttpClientFactory clientFactory,
         ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
-        IFileSystem fileSystem,
-        ILogger<SimpleImporter> logger,
-        ReimportChecker reimportChecker,
-        DatabaseImporter databaseImporter,
-        ImportFilterService importFilterService)
+        ILogger<SimpleImporter> logger)
     {
-        _subfolderManager = subfolderManager;
-        _context = context;
-        _clientFactory = clientFactory;
-        _logger = logger;
+        _databaseWriter = databaseWriter;
+        _filesystemWriter = filesystemWriter;
         _reimportChecker = reimportChecker;
-        _databaseImporter = databaseImporter;
         _importFilterService = importFilterService;
+        _clientFactory = clientFactory;
         _thumbnailChannel = thumbnailChannel;
-        _fileSystem = fileSystem;
+        _logger = logger;
     }
 
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
@@ -96,7 +90,6 @@ public sealed class SimpleImporter
 
         if (filterResult is not null)
         {
-            _logger.LogInformation("File rejected by import filters");
             return filterResult;
         }
 
@@ -118,14 +111,9 @@ public sealed class SimpleImporter
             return existing;
         }
 
-        var destination = _subfolderManager.GetDestination(hashed, bytes);
+        await _filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
 
-        _logger.LogDebug("File will be persisted to {Destination}", destination);
-        
-        _logger.LogInformation("Writing bytes to disk");
-        await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
-
-        await _databaseImporter.AddItemToDatabase(item, hashed);
+        await _databaseWriter.AddItemToDatabase(item, hashed);
 
         _logger.LogInformation("Sending thumbnail creation request");
 

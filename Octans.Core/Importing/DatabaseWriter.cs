@@ -4,12 +4,12 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Importing;
 
-public class DatabaseImporter
+public class DatabaseWriter
 {
     private readonly ServerDbContext _context;
-    private readonly ILogger<DatabaseImporter> _logger;
+    private readonly ILogger<DatabaseWriter> _logger;
 
-    public DatabaseImporter(ServerDbContext context, ILogger<DatabaseImporter> logger)
+    public DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
     {
         _context = context;
         _logger = logger;

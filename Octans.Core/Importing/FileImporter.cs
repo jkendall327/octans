@@ -11,32 +11,29 @@ namespace Octans.Core.Importing;
 
 public class FileImporter
 {
-    private readonly ILogger<FileImporter> _logger;
-    private readonly IFileSystem _fileSystem;
-    private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
-    private readonly SubfolderManager _subfolderManager;
-    private readonly DatabaseImporter _databaseImporter;
-    private readonly ServerDbContext _context;
     private readonly ImportFilterService _filterService;
     private readonly ReimportChecker _reimportChecker;
+    private readonly DatabaseWriter _databaseWriter;
+    private readonly FilesystemWriter _filesystemWriter;
+    private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
+    private readonly IFileSystem _fileSystem;
+    private readonly ILogger<FileImporter> _logger;
 
-    public FileImporter(ILogger<FileImporter> logger,
-        IFileSystem fileSystem,
-        ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
-        SubfolderManager subfolderManager,
-        ServerDbContext context,
+    public FileImporter(ImportFilterService filterService,
         ReimportChecker reimportChecker,
-        DatabaseImporter databaseImporter,
-        ImportFilterService filterService)
+        DatabaseWriter databaseWriter,
+        FilesystemWriter filesystemWriter,
+        ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
+        IFileSystem fileSystem,
+        ILogger<FileImporter> logger)
     {
-        _logger = logger;
-        _fileSystem = fileSystem;
-        _thumbnailChannel = thumbnailChannel;
-        _subfolderManager = subfolderManager;
-        _context = context;
-        _reimportChecker = reimportChecker;
-        _databaseImporter = databaseImporter;
         _filterService = filterService;
+        _reimportChecker = reimportChecker;
+        _databaseWriter = databaseWriter;
+        _filesystemWriter = filesystemWriter;
+        _thumbnailChannel = thumbnailChannel;
+        _fileSystem = fileSystem;
+        _logger = logger;
     }
 
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
@@ -82,7 +79,6 @@ public class FileImporter
 
         if (filterResult is not null)
         {
-            _logger.LogInformation("File rejected by import filters");
             return filterResult;
         }
 
@@ -104,15 +100,9 @@ public class FileImporter
             return existing;
         }
 
-        var destination = _subfolderManager.GetDestination(hashed, bytes);
+        await _filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
 
-        _logger.LogDebug("File will be persisted to {Destination}", destination);
-
-        _logger.LogInformation("Writing bytes to disk");
-        
-        await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
-
-        await _databaseImporter.AddItemToDatabase(item, hashed);
+        await _databaseWriter.AddItemToDatabase(item, hashed);
 
         if (request.DeleteAfterImport)
         {
@@ -120,13 +110,7 @@ public class FileImporter
             _fileSystem.File.Delete(item.Source.AbsolutePath);
         }
 
-        _logger.LogInformation("Sending thumbnail creation request");
-
-        await _thumbnailChannel.WriteAsync(new()
-        {
-            Bytes = bytes,
-            Hashed = hashed
-        });
+        await MakeThumbnail(bytes, hashed);
 
         _logger.LogInformation("Import successful");
 
@@ -136,6 +120,17 @@ public class FileImporter
         };
 
         return result;
+    }
+
+    private async Task MakeThumbnail(byte[] bytes, HashedBytes hashed)
+    {
+        _logger.LogInformation("Sending thumbnail creation request");
+
+        await _thumbnailChannel.WriteAsync(new()
+        {
+            Bytes = bytes,
+            Hashed = hashed
+        });
     }
 
     private async Task<byte[]> GetRawBytes(ImportItem item)
