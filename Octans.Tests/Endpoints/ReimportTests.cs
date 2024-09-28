@@ -1,11 +1,8 @@
-using System.IO.Abstractions.TestingHelpers;
-using System.Net.Http.Json;
 using FluentAssertions;
 using Octans.Core;
 using Octans.Core.Importing;
 using Octans.Core.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -21,10 +18,10 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
 
         request.AllowReimportDeleted = false;
         
-        var result = await SendRequest(request);
+        var result = await _api.ProcessImport(request);
 
-        result.Should().NotBeNull();
-        result!.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
+        result.Content.Should().NotBeNull();
+        result.Content!.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
 
         var dbHash = await _context.Hashes.FindAsync(hash.Id);
 
@@ -44,10 +41,10 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
 
         request.AllowReimportDeleted = true;
 
-        var result = await SendRequest(request);
+        var result = await _api.ProcessImport(request);
         
-        result.Should().NotBeNull();
-        result!.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
+        result.Content.Should().NotBeNull();
+        result.Content!.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
         
         var dbHash = await _context.Hashes.FindAsync(hash.Id);
         
@@ -91,14 +88,5 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
         };
         
         return request;
-    }
-    
-    private async Task<ImportResult?> SendRequest(ImportRequest request)
-    {
-        var response = await _factory.CreateClient().PostAsJsonAsync("/files", request);
-
-        response.EnsureSuccessStatusCode();
-        
-        return await response.Content.ReadFromJsonAsync<ImportResult>();
     }
 }

@@ -1,12 +1,8 @@
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Importing;
-using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -16,7 +12,6 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     [Fact]
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {
-        // Add a test file.
         var imagePath = "C:/test_image.jpg";
         _fileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
@@ -38,8 +33,6 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
     private async Task ImportFile(string imagePath, string expectedFilePath)
     {
-        var client = _factory.CreateClient();
-
         var item = new ImportItem
         {
             Source = new(imagePath),
@@ -52,22 +45,16 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             DeleteAfterImport = false
         };
 
-        var response = await client.PostAsJsonAsync("/files", request);
+        var result = await _api.ProcessImport(request);
         
-        response.EnsureSuccessStatusCode();
-        
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
-        
-        result.Should().NotBeNull();
-        result!.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
+        result.Content.Should().NotBeNull();
+        result.Content!.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
         
         _fileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
     }
     
     private async Task UpdateTags(int hashId)
     {
-        var client = _factory.CreateClient();
-
         var updateTagsRequest = new UpdateTagsRequest
         {
             HashId = hashId,
@@ -75,10 +62,8 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             TagsToRemove = [new() { Namespace = "category", Subtag = "test" }]
         };
 
-        var updateResponse = await client.PostAsJsonAsync("/tags", updateTagsRequest);
+         await _api.UpdateTags(updateTagsRequest);
         
-        updateResponse.EnsureSuccessStatusCode();
-
         var tags = await _context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
@@ -97,23 +82,14 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     
     private async Task DeleteItem(int hashId, string expectedFilepath)
     {
-        var client = _factory.CreateClient();
-
-        var request = new List<int>([hashId]);
-
-        var mappings = await _context.Mappings.Where(m => m.Hash.Id == hashId).ToListAsync();
+        var mappings = await _context.Mappings
+            .Where(m => m.Hash.Id == hashId)
+            .ToListAsync();
         
-        var message = new HttpRequestMessage(HttpMethod.Delete, client.BaseAddress + "files");
-        message.Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
-
-        var response = await client.SendAsync(message);
+        var result = await _api.DeleteFiles(new([hashId]));
         
-        response.EnsureSuccessStatusCode();
-        
-        var result = await response.Content.ReadFromJsonAsync<DeleteResponse>();
-        
-        result.Should().NotBeNull();
-        result!.Results.Single().Success.Should().BeTrue();
+        result.Content.Should().NotBeNull();
+        result.Content!.Results.Single().Success.Should().BeTrue();
 
         // Verify deletion in database
         // We have to reload the item so EF doesn't give us the version in its cache

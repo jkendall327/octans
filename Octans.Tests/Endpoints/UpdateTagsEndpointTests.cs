@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +14,6 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()
     {
-        var client = _factory.CreateClient();
-        
         var hash = await SetupInitialData();
 
         var request = new UpdateTagsRequest
@@ -26,7 +23,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = new[] { new TagModel { Namespace = "weapon", Subtag = "laser" } }
         };
 
-        var response = await client.PostAsJsonAsync("/tags", request);
+        var response = await _api.UpdateTags(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -46,8 +43,6 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     [Fact]
     public async Task UpdateTags_InvalidHashId_ReturnsNotFound()
     {
-        var client = _factory.CreateClient();
-
         var tag = new TagModel { Namespace = "new", Subtag = "tag" };
         
         var request = new UpdateTagsRequest
@@ -61,7 +56,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = Array.Empty<TagModel>()
         };
 
-        var response = await client.PostAsJsonAsync("/tags", request);
+        var response = await _api.UpdateTags(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

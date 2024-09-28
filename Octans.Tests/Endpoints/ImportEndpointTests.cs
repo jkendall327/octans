@@ -2,7 +2,6 @@ using System.IO.Abstractions.TestingHelpers;
 using Octans.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Http.Json;
 using FluentAssertions;
 using Octans.Core;
 using Xunit.Abstractions;
@@ -14,12 +13,10 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
-        (var request, var response) = await SendSimpleValidRequest();
+        (var request, var result) = await SendSimpleValidRequest();
         
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
-
         result.Should().NotBeNull();
-        result!.ImportId.Should().Be(request.ImportId);
+        result.ImportId.Should().Be(request.ImportId);
         result.Results.Single().Ok.Should().BeTrue();
     }
     
@@ -72,10 +69,8 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
             .BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
     }
     
-    private async Task<(ImportRequest request, HttpResponseMessage response)> SendSimpleValidRequest()
+    private async Task<(ImportRequest request, ImportResult Content)> SendSimpleValidRequest()
     {
-        var client = _factory.CreateClient();
-        
         var mockFile = new MockFileData(TestingConstants.MinimalJpeg);
 
         var filepath = "C:/image.jpg";
@@ -84,11 +79,9 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var request = BuildRequest(filepath, "category", "example");
 
-        var response = await client.PostAsJsonAsync("/files", request);
+        var response = await _api.ProcessImport(request);
 
-        response.EnsureSuccessStatusCode();
-
-        return (request, response);
+        return (request, response.Content!);
     }
 
     private ImportRequest BuildRequest(string source, string? @namespace, string subtag)

@@ -28,7 +28,7 @@ public interface IOctansApi
     Task<IApiResponse<IEnumerable<FileRecord>>> SearchByQuery([Body] IEnumerable<string> queries);
 
     [Post("/files")]
-    Task<IApiResponse> ProcessImport([Body] ImportRequest request);
+    Task<IApiResponse<ImportResult>> ProcessImport([Body] ImportRequest request);
 
     [Post("/files/deletion")]
     Task<IApiResponse<DeleteResponse>> DeleteFiles(DeleteRequest request);
