@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Octans.Core;
@@ -54,7 +56,10 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var request = new List<int>([imageId]);
 
-        var response = await client.PostAsJsonAsync("/delete", request);
+        var message = new HttpRequestMessage(HttpMethod.Delete, client.BaseAddress + "files");
+        message.Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+        
+        var response = await client.SendAsync(message);
 
         response.EnsureSuccessStatusCode();
 

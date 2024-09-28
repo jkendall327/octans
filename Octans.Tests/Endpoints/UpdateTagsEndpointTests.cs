@@ -26,7 +26,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = new[] { new TagModel { Namespace = "weapon", Subtag = "laser" } }
         };
 
-        var response = await client.PutAsJsonAsync("/updateTags", request);
+        var response = await client.PostAsJsonAsync("/tags", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -61,9 +61,9 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = Array.Empty<TagModel>()
         };
 
-        var response = await client.PutAsJsonAsync("/updateTags", request);
+        var response = await client.PostAsJsonAsync("/tags", request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private async Task<HashItem> SetupInitialData()

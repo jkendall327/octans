@@ -95,7 +95,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
     
     private async Task<ImportResult?> SendRequest(ImportRequest request)
     {
-        var response = await _factory.CreateClient().PostAsJsonAsync("/import", request);
+        var response = await _factory.CreateClient().PostAsJsonAsync("/files", request);
 
         response.EnsureSuccessStatusCode();
         

@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -49,7 +51,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             DeleteAfterImport = false
         };
 
-        var response = await client.PostAsJsonAsync("/import", request);
+        var response = await client.PostAsJsonAsync("/files", request);
         
         response.EnsureSuccessStatusCode();
         
@@ -72,7 +74,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             TagsToRemove = [new() { Namespace = "category", Subtag = "test" }]
         };
 
-        var updateResponse = await client.PutAsJsonAsync("/updateTags", updateTagsRequest);
+        var updateResponse = await client.PostAsJsonAsync("/tags", updateTagsRequest);
         
         updateResponse.EnsureSuccessStatusCode();
 
@@ -100,7 +102,10 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
         var mappings = await _context.Mappings.Where(m => m.Hash.Id == hashId).ToListAsync();
         
-        var response = await client.PostAsJsonAsync("/delete", request);
+        var message = new HttpRequestMessage(HttpMethod.Delete, client.BaseAddress + "files");
+        message.Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+
+        var response = await client.SendAsync(message);
         
         response.EnsureSuccessStatusCode();
         

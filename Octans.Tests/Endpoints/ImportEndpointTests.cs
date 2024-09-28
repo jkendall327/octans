@@ -84,7 +84,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var request = BuildRequest(filepath, "category", "example");
 
-        var response = await client.PostAsJsonAsync("/import", request);
+        var response = await client.PostAsJsonAsync("/files", request);
 
         response.EnsureSuccessStatusCode();
 
