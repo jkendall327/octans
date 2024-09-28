@@ -12,7 +12,7 @@ public class DownloaderMetadata
 
 public sealed class Downloader : IDisposable
 {
-    private readonly DownloaderMetadata _metadata;
+    public DownloaderMetadata Metadata { get; }
     
     private readonly LuaFunction _matchUrl;
     private readonly LuaFunction _classifyUrl;
@@ -22,7 +22,7 @@ public sealed class Downloader : IDisposable
 
     public Downloader(Dictionary<string, Lua> functions, DownloaderMetadata metadata)
     {
-        _metadata = metadata;
+        Metadata = metadata;
         
         var classifier = functions["classifier"];
         

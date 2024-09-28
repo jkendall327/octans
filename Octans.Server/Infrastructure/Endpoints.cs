@@ -65,7 +65,11 @@ public static class Endpoints
             .WithDescription("Delete one or more files and their associated data")
             .WithOpenApi();
 
-        app.MapGet("/downloaders", async (DownloaderFactory ds) => await ds.GetDownloaders());
+        app.MapGet("/downloaders", async (DownloaderFactory ds) =>
+        {
+            var downloaders = await ds.GetDownloaders();
+            return Results.Ok(downloaders.Select(d => d.Metadata));
+        });
         
         app.MapPost("/clearAllData",
             async (ServerDbContext db) =>
