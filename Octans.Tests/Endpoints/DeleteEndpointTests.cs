@@ -26,9 +26,9 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         _context.Hashes.Add(hashItem);
         await _context.SaveChangesAsync();
 
-        var result = await SendDeletionRequest(hashItem.Id);
+        var result = await _api.DeleteFiles([hashItem.Id]);
 
-        result.Results.Single().Success.Should().BeTrue();
+        result.Content!.Results.Single().Success.Should().BeTrue();
 
         // Ensure it's gone from the filesystem
         _fileSystem.FileExists(filePath).Should().BeFalse();
@@ -43,34 +43,15 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     [Fact]
     public async Task Delete_NonExistingFile_ReturnsNotFoundResult()
     {
-        var result = await SendDeletionRequest(888);
+        var ids = new List<int>()
+        {
+            999, 345, 3
+        };
+        var response = await _api.DeleteFiles(null);
 
-        var itemResult = result.Results.Single();
+        var itemResult = response.Content!.Results.Single();
         
         itemResult.Success.Should().BeFalse();
         itemResult.Error.Should().NotBeNullOrEmpty();
-    }
-
-    private async Task<DeleteResponse> SendDeletionRequest(int imageId)
-    {
-        var client = _factory.CreateClient();
-
-        var request = new List<int>([imageId]);
-
-        var message = new HttpRequestMessage(HttpMethod.Delete, client.BaseAddress + "files");
-        message.Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
-        
-        var response = await client.SendAsync(message);
-
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<DeleteResponse>();
-
-        if (result is null)
-        {
-            throw new InvalidOperationException("Deserializing the API response failed");
-        }
-        
-        return result;
     }
 }

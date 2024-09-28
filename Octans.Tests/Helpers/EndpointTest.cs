@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octans.Core;
+using Refit;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -32,6 +33,8 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     // Channels
     protected readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
 
+    protected readonly IOctansApi _api;
+    
     protected EndpointTest(WebApplicationFactory<Program> factory, ITestOutputHelper testOutputHelper)
     {
         _factory = factory.WithWebHostBuilder(builder =>
@@ -55,6 +58,8 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 });
             });
         });
+        
+        _api = RestService.For<IOctansApi>(_factory.CreateClient());
     }
     
     /// <summary>
