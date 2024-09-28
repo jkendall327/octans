@@ -41,9 +41,21 @@ public class DownloaderService
 
         var raw = await client.GetStringAsync(uri.AbsoluteUri);
 
-        var urls = matching.ParseHtml(raw);
+        var classification = matching.ClassifyUrl(uri.AbsoluteUri);
+
+        if (classification is DownloaderUrlClassification.Unknown)
+        {
+            return [];
+        }
+
+        if (classification is DownloaderUrlClassification.Gallery)
+        {
+            raw = matching.GenerateGalleryUrl(uri.AbsoluteUri, 0);
+        }
         
-        return [];
+        var urls = matching.ParseHtml(raw).First();
+
+        return await client.GetByteArrayAsync(urls);
     }
 
     private async Task<byte[]> DownloadRawFile(Uri uri)
@@ -61,19 +73,14 @@ public class DownloaderService
 
     private bool IsRawFile(Uri uri)
     {
-        // Get the last segment of the URI path
         var lastSegment = uri.Segments.Last();
 
-        // Check if the last segment has a file extension
         if (!_fileSystem.Path.HasExtension(lastSegment)) return false;
         
-        // List of common raw file extensions
         string[] rawExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".txt", ".pdf", ".mp3", ".mp4", ".wav"];
 
-        // Get the extension and convert to lowercase for case-insensitive comparison
         var extension = _fileSystem.Path.GetExtension(lastSegment).ToLowerInvariant();
 
-        // Check if the extension is in the list of raw file extensions
         return rawExtensions.Contains(extension);
     }
 }

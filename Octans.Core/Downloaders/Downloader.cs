@@ -12,6 +12,13 @@ public class DownloaderMetadata
     public List<string> SupportedOperations { get; set; } = new();
 }
 
+public enum DownloaderUrlClassification
+{
+    Post,
+    Gallery,
+    Unknown
+}
+
 public sealed class Downloader : IDisposable
 {
     public DownloaderMetadata Metadata { get; }
@@ -59,11 +66,22 @@ public sealed class Downloader : IDisposable
         return res is true;
     }
 
-    public object? ClassifyUrl(string url)
+    // function classify_url(url) -> "Post" || "Gallery"
+    public DownloaderUrlClassification ClassifyUrl(string url)
     {
-        return _classifyUrl.Call(url)?.FirstOrDefault();
+        var raw = _classifyUrl.Call(url)?.FirstOrDefault();
+
+        if (raw is not string s) return DownloaderUrlClassification.Unknown;
+
+        return s.ToLower() switch
+        {
+            "post" => DownloaderUrlClassification.Post,
+            "gallery" => DownloaderUrlClassification.Gallery,
+            var _ => DownloaderUrlClassification.Unknown
+        };
     }
 
+    // function parse_html(html_content) -> string[]
     public List<string> ParseHtml(string htmlContent)
     {
         var result = _parseHtml.Call(htmlContent)?.FirstOrDefault() as LuaTable;
