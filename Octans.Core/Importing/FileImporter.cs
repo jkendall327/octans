@@ -95,9 +95,12 @@ public class FileImporter
             return existing;
         }
 
-        var destination = GetDestination(hashed, bytes);
+        var destination = _subfolderManager.GetDestination(hashed, bytes);
+
+        _logger.LogDebug("File will be persisted to {Destination}", destination);
 
         _logger.LogInformation("Writing bytes to disk");
+        
         await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
 
         await AddItemToDatabase(item, hashed);
@@ -224,21 +227,6 @@ public class FileImporter
         }
 
         return null;
-    }
-    
-    private string GetDestination(HashedBytes hashed, byte[] originalBytes)
-    {
-        var fileType = originalBytes.DetectMimeType();
-        
-        var fileName = string.Concat(hashed.Hexadecimal, '.', fileType.Extension);
-
-        var subfolder = _subfolderManager.GetSubfolder(hashed);
-
-        var destination = _fileSystem.Path.Join(subfolder.AbsolutePath, fileName);
-        
-        _logger.LogDebug("File will be persisted to {Destination}", destination);
-        
-        return destination;
     }
 
     private async Task<byte[]> GetRawBytes(ImportItem item)

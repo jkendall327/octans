@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using MimeDetective.InMemory;
 
 namespace Octans.Core;
 
@@ -44,6 +45,19 @@ public class SubfolderManager
         
         var path = _fileSystem.Path.Join(_settings.Value.AppRoot, "downloaders");
         _fileSystem.Directory.CreateDirectory(path);
+    }
+    
+    public string GetDestination(HashedBytes hashed, byte[] originalBytes)
+    {
+        var fileType = originalBytes.DetectMimeType();
+
+        var fileName = string.Concat(hashed.Hexadecimal, '.', fileType.Extension);
+
+        var subfolder = GetSubfolder(hashed);
+
+        var destination = _fileSystem.Path.Join(subfolder.AbsolutePath, fileName);
+        
+        return destination;
     }
     
     public Uri GetSubfolder(HashedBytes hashed)
