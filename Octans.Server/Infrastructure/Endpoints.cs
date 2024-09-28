@@ -68,7 +68,16 @@ public static class Endpoints
         app.MapGet("/downloaders", async (DownloaderFactory ds) =>
         {
             var downloaders = await ds.GetDownloaders();
-            return Results.Ok(downloaders.Select(d => d.Metadata));
+            return downloaders.Select(d => d.Metadata);
+        });
+        
+        app.MapGet("/downloaders/{name}", async (string name, DownloaderFactory ds) =>
+        {
+            var downloaders = await ds.GetDownloaders();
+
+            var downloader = downloaders.SingleOrDefault(s => s.Metadata.Name == name);
+            
+            return downloader;
         });
         
         app.MapPost("/clearAllData",
