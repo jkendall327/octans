@@ -29,17 +29,8 @@ public static class Endpoints
             .WithDescription("Get a single file by its ID")
             .WithOpenApi();
 
-        app.MapGet("/query", async (IEnumerable<string> queries, QueryService service) =>
-            {
-                var files = await service.Query(queries);
-
-                if (!files.Any())
-                {
-                    return Results.NotFound();
-                }
-
-                return Results.Ok(files);
-            })
+        app.MapGet("/query", 
+                async (IEnumerable<string> queries, QueryService service) => await service.Query(queries))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();

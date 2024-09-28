@@ -8,6 +8,8 @@ public class DownloaderMetadata
     public string Creator { get; set; } = string.Empty;
     public Version Version { get; set; } = new(0, 0);
     public string Homepage { get; set; } = string.Empty;
+
+    public List<string> SupportedOperations { get; set; } = new();
 }
 
 public sealed class Downloader : IDisposable
@@ -28,17 +30,20 @@ public sealed class Downloader : IDisposable
         
         _matchUrl = GetLuaFunction(classifier, "match_url");
         _classifyUrl = GetLuaFunction(classifier, "classify_url");
-
         _parseHtml = GetLuaFunction(functions["parser"], "parse_html");
 
+        Metadata.SupportedOperations.AddRange(["match_url", "classify_url", "parse_html"]);
+        
         if (functions.TryGetValue("gug", out var gug))
         {
             _generateGalleryUrl = GetLuaFunction(gug, "generate_url");
+            Metadata.SupportedOperations.Add("generate_url");
         }
 
         if (functions.TryGetValue("api", out var api))
         {
             _processApiQuery = GetLuaFunction(api, "process_query");
+            Metadata.SupportedOperations.Add("process_query");
         }
     }
     
