@@ -7,7 +7,6 @@ using Octans.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MimeDetective.InMemory;
-using Octans.Core.Downloaders;
 
 namespace Octans.Server;
 
@@ -24,22 +23,22 @@ public sealed class Importer
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
-    private readonly DownloaderService _downloader;
+    private readonly IHttpClientFactory _clientFactory;
     private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
     private readonly IFileSystem _fileSystem;
     private readonly ILogger<Importer> _logger;
 
     public Importer(SubfolderManager subfolderManager,
         ServerDbContext context,
-        DownloaderService downloader,
+        IHttpClientFactory clientFactory,
         ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
         IFileSystem fileSystem,
         ILogger<Importer> logger)
     {
         _subfolderManager = subfolderManager;
         _context = context;
+        _clientFactory = clientFactory;
         _logger = logger;
-        _downloader = downloader;
         _thumbnailChannel = thumbnailChannel;
         _fileSystem = fileSystem;
     }
@@ -175,7 +174,15 @@ public sealed class Importer
 
         if (sourceType is SourceType.WebUrl)
         {
-            return await _downloader.Download(item.Source);
+            var url = item.Source.AbsoluteUri;
+        
+            _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
+        
+            var client = _clientFactory.CreateClient();
+
+            var bytes = await client.GetByteArrayAsync(url);
+
+            return bytes;
         }
 
         throw new InvalidOperationException("File source not recognised");
