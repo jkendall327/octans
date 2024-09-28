@@ -23,11 +23,6 @@ public class DownloaderService
 
     public async Task<byte[]> Download(Uri uri)
     {
-        if (IsRawFile(uri))
-        {
-            return await DownloadRawFile(uri);
-        }
-
         var downloaders = await _downloaderFactory.GetDownloaders();
 
         var matching = downloaders.FirstOrDefault(d => d.MatchesUrl(uri.AbsoluteUri));
@@ -56,31 +51,5 @@ public class DownloaderService
         var urls = matching.ParseHtml(raw).First();
 
         return await client.GetByteArrayAsync(urls);
-    }
-
-    private async Task<byte[]> DownloadRawFile(Uri uri)
-    {
-        var url = uri.AbsoluteUri;
-        
-        _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
-        
-        var client = _clientFactory.CreateClient();
-
-        var bytes = await client.GetByteArrayAsync(url);
-
-        return bytes;
-    }
-
-    private bool IsRawFile(Uri uri)
-    {
-        var lastSegment = uri.Segments.Last();
-
-        if (!_fileSystem.Path.HasExtension(lastSegment)) return false;
-        
-        string[] rawExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".txt", ".pdf", ".mp3", ".mp4", ".wav"];
-
-        var extension = _fileSystem.Path.GetExtension(lastSegment).ToLowerInvariant();
-
-        return rawExtensions.Contains(extension);
     }
 }

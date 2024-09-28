@@ -64,6 +64,9 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<ImportRouter>();
         builder.Services.AddScoped<SimpleImporter>();
         builder.Services.AddScoped<FileImporter>();
+        builder.Services.AddScoped<PostImporter>();
+        
+        // Import services
         builder.Services.AddScoped<ReimportChecker>();
         builder.Services.AddScoped<DatabaseWriter>();
         builder.Services.AddScoped<FilesystemWriter>();
@@ -71,6 +74,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<ThumbnailCreator>();
         builder.Services.AddScoped<DownloaderFactory>();
         
+        // Files
         builder.Services.AddSingleton<SubfolderManager>();
         builder.Services.AddScoped<FileFinder>();
         builder.Services.AddScoped<FileDeleter>();
