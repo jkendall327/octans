@@ -15,19 +15,28 @@ public class FileImporter
     private readonly IFileSystem _fileSystem;
     private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
     private readonly SubfolderManager _subfolderManager;
+    private readonly DatabaseImporter _databaseImporter;
     private readonly ServerDbContext _context;
+    private readonly ImportFilterService _filterService;
+    private readonly ReimportChecker _reimportChecker;
 
     public FileImporter(ILogger<FileImporter> logger,
         IFileSystem fileSystem,
         ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
         SubfolderManager subfolderManager,
-        ServerDbContext context)
+        ServerDbContext context,
+        ReimportChecker reimportChecker,
+        DatabaseImporter databaseImporter,
+        ImportFilterService filterService)
     {
         _logger = logger;
         _fileSystem = fileSystem;
         _thumbnailChannel = thumbnailChannel;
         _subfolderManager = subfolderManager;
         _context = context;
+        _reimportChecker = reimportChecker;
+        _databaseImporter = databaseImporter;
+        _filterService = filterService;
     }
 
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
@@ -69,7 +78,7 @@ public class FileImporter
 
         _logger.LogDebug("Total size: {SizeInBytes}", bytes.Length);
 
-        var filterResult = await ApplyFilters(request, bytes);
+        var filterResult = await _filterService.ApplyFilters(request, bytes);
 
         if (filterResult is not null)
         {
@@ -87,7 +96,7 @@ public class FileImporter
                 hashed.MimeType
             });
 
-        var existing = await CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
+        var existing = await _reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
 
         if (existing is not null)
         {
@@ -103,7 +112,7 @@ public class FileImporter
         
         await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
 
-        await AddItemToDatabase(item, hashed);
+        await _databaseImporter.AddItemToDatabase(item, hashed);
 
         if (request.DeleteAfterImport)
         {
@@ -127,106 +136,6 @@ public class FileImporter
         };
 
         return result;
-    }
-    
-    private async Task AddItemToDatabase(ImportItem item, HashedBytes hashed)
-    {
-        var hashItem = new HashItem { Hash = hashed.Bytes };
-        
-        _context.Hashes.Add(hashItem);
-
-        AddTags(item, hashItem);
-
-        _logger.LogInformation("Persisting item to database");
-        
-        await _context.SaveChangesAsync();
-    }
-    
-    private void AddTags(ImportItem request, HashItem hashItem)
-    {
-        var tags = request.Tags;
-
-        if (tags is null)
-        {
-            return;
-        }
-        
-        // TODO: does this work when a namespace/subtag already exists?
-        // Upserts in EF Core?
-        
-        foreach (var tag in tags)
-        {
-            var tagDto = new Tag
-            {
-                Namespace = new() { Value = tag.Namespace ?? string.Empty },
-                Subtag = new() { Value = tag.Subtag }
-            };
-
-            _context.Tags.Add(tagDto);
-            _context.Mappings.Add(new() { Tag = tagDto, Hash = hashItem });
-        }
-    }
-    
-    private async Task<ImportItemResult?> CheckIfPreviouslyDeleted(HashedBytes hashed, bool allowReimportDeleted)
-    {
-        var existingHash = await _context.Hashes
-            .FirstOrDefaultAsync(h => h.Hash == hashed.Bytes);
-
-        if (existingHash == null) return null;
-        
-        if (existingHash.IsDeleted() && !allowReimportDeleted)
-        {
-            return new()
-            {
-                Ok = false,
-                Message = "Image was previously deleted and reimport is not allowed"
-            };
-        }
-
-        existingHash.DeletedAt = null;
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
-
-        // TODO: still need to copy the actual content back in if it's not there.
-        return new()
-        {
-            Ok = true,
-            Message = "Previously deleted image has been reimported"
-        };
-    }
-    
-    private async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
-    {
-        if (request.FilterData is null)
-        {
-            return null;
-        }
-        
-        var filters = new List<IImportFilter>
-        {
-            new FilesizeFilter(),
-            new FiletypeFilter(),
-            new ResolutionFilter()
-        };
-
-        foreach (var filter in filters)
-        {
-            var result = await filter.PassesFilter(request.FilterData, bytes);
-
-            _logger.LogDebug("{FilterName} result: {FilterResult}", filter.GetType().Name, result);
-            
-            if (!result)
-            {
-                return new()
-                {
-                    Ok = false,
-                    Message = $"Failed {filter.GetType().Name} filter"
-                };
-            }
-        }
-
-        return null;
     }
 
     private async Task<byte[]> GetRawBytes(ImportItem item)
