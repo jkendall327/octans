@@ -1,4 +1,5 @@
 using Octans.Core;
+using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
@@ -64,6 +65,8 @@ public static class Endpoints
             .WithDescription("Delete one or more files and their associated data")
             .WithOpenApi();
 
+        app.MapGet("/downloaders", async (DownloaderFactory ds) => await ds.GetDownloaders());
+        
         app.MapPost("/clearAllData",
             async (ServerDbContext db) =>
             {

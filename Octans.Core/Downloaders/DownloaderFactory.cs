@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NLua;
 
 namespace Octans.Core.Downloaders;
@@ -10,15 +11,22 @@ public class DownloaderFactory
     private readonly GlobalSettings _globalSettings;
     private readonly ILogger<DownloaderFactory> _logger;
 
-    public DownloaderFactory(IFileSystem fileSystem, GlobalSettings globalSettings, ILogger<DownloaderFactory> logger)
+    public DownloaderFactory(IFileSystem fileSystem, IOptions<GlobalSettings> globalSettings, ILogger<DownloaderFactory> logger)
     {
         _fileSystem = fileSystem;
-        _globalSettings = globalSettings;
+        _globalSettings = globalSettings.Value;
         _logger = logger;
     }
 
+    private readonly List<Downloader> _downloaders = new();
+
     public async Task<List<Downloader>> GetDownloaders()
     {
+        if (_downloaders.Any())
+        {
+            return _downloaders;
+        }
+        
         var path = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
         var downloaders = _fileSystem.DirectoryInfo.New(path);
 
@@ -27,8 +35,6 @@ public class DownloaderFactory
             _logger.LogError("Downloader folder doesn't exist");
             throw new InvalidOperationException();
         }
-        
-        var d = new List<Downloader>();
         
         foreach (var subdir in downloaders.EnumerateDirectories())
         {
@@ -44,12 +50,12 @@ public class DownloaderFactory
                 continue;
             }
             
-            d.Add(downloader);
+            _downloaders.Add(downloader);
         }
 
-        _logger.LogInformation("Created {DownloaderCount} downloaders", d.Count);
+        _logger.LogInformation("Created {DownloaderCount} downloaders", _downloaders.Count);
         
-        return d;
+        return _downloaders;
     }
 
     private async Task<Downloader?> Create(List<IFileInfo> sources)

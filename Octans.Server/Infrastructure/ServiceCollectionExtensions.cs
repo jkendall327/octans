@@ -5,6 +5,7 @@ using Octans.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Octans.Core.Downloaders;
 using Octans.Core.Querying;
 using Octans.Server.Services;
 
@@ -38,8 +39,6 @@ public static class ServiceCollectionExtensions
         builder.Services
             .AddHealthChecks()
             .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
-        
-        builder.Services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
     }
 
     public static void AddFilesystem(this WebApplicationBuilder builder)
@@ -65,7 +64,8 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<Importer>();
         builder.Services.AddScoped<ItemDeleter>();
         builder.Services.AddScoped<TagUpdater>();
-        builder.Services.AddScoped<ThumbnailCreator>();
+        builder.Services.AddSingleton<ThumbnailCreator>();
+        builder.Services.AddScoped<DownloaderFactory>();
         
         // Queries
         builder.Services.AddScoped<QueryService>();
