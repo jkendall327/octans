@@ -51,7 +51,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     private async Task<DeleteResponse> SendDeletionRequest(int imageId)
     {
         var client = _factory.CreateClient();
-        var request = new DeleteRequest(new List<DeleteItem> { new(imageId) });
+        var request = new DeleteRequest([imageId]);
 
         var response = await client.PostAsJsonAsync("/delete", request);
 

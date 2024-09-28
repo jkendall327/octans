@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
@@ -76,7 +77,7 @@ public static class Endpoints
             .WithDescription("Processes an import request")
             .WithOpenApi();
         
-        app.MapDelete("/files", async (DeleteRequest request, ItemDeleter deleter) =>
+        app.MapDelete("/files", async ([FromBody] DeleteRequest request, [FromServices] ItemDeleter deleter) =>
             {
                 var results = await deleter.ProcessDeletion(request);
 

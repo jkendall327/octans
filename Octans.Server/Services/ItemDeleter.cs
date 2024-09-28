@@ -29,13 +29,13 @@ public class ItemDeleter
         return results;
     }
     
-    private async Task<DeleteResult> DeleteFile(DeleteItem item)
+    private async Task<DeleteResult> DeleteFile(int id)
     {
-        var entry = await _context.Hashes.FindAsync(item.Id);
+        var entry = await _context.Hashes.FindAsync(id);
         
         if (entry is null)
         {
-            return new(item.Id, false, "Hash not found");
+            return new(id, false, "Hash not found");
         }
 
         var hashed = HashedBytes.FromHashed(entry.Hash);
@@ -56,6 +56,6 @@ public class ItemDeleter
 
         entry.DeletedAt = DateTime.Now;
 
-        return new(item.Id, true, null);
+        return new(id, true, null);
     }
 }
