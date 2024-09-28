@@ -12,17 +12,7 @@ public class UrlClassifier
     public async Task<Downloader?> Matches(string url)
     {
         var downloaders = await _factory.GetDownloaders();
-        
-        foreach (var downloader in downloaders)
-        {
-            var matches = downloader.MatchesUrl(url);
 
-            if (matches)
-            {
-                return downloader;
-            }
-        }
-
-        return null;
+        return downloaders.FirstOrDefault(d => d.MatchesUrl(url));
     }
 }
