@@ -62,7 +62,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<SubfolderManager>();
         builder.Services.AddScoped<FileFinder>();
         builder.Services.AddScoped<Importer>();
-        builder.Services.AddScoped<ItemDeleter>();
+        builder.Services.AddScoped<FileDeleter>();
         builder.Services.AddScoped<TagUpdater>();
         builder.Services.AddSingleton<ThumbnailCreator>();
         builder.Services.AddScoped<DownloaderFactory>();

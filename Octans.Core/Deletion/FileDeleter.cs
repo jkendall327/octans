@@ -3,12 +3,15 @@ using Octans.Core.Models;
 
 namespace Octans.Server.Services;
 
-public class ItemDeleter
+public record DeleteResult(int Id, bool Success, string? Error);
+public record DeleteResponse(List<DeleteResult> Results);
+
+public class FileDeleter
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
 
-    public ItemDeleter(SubfolderManager subfolderManager, ServerDbContext context)
+    public FileDeleter(SubfolderManager subfolderManager, ServerDbContext context)
     {
         _subfolderManager = subfolderManager;
         _context = context;

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core;
 using Octans.Core.Importing;
+using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;

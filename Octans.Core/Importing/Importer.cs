@@ -5,6 +5,7 @@ using Octans.Core.Importing;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MimeDetective.InMemory;
 
 namespace Octans.Server;

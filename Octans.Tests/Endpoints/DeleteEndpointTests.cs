@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Octans.Core;
 using Octans.Core.Models;
+using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
