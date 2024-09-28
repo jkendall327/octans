@@ -14,10 +14,18 @@ public class DomainBandwidthUsage
         _lastResetTime = _timeProvider.GetUtcNow();
     }
 
-    public bool CanMakeRequest(long requestSize)
+    public (bool CanMakeRequest, TimeSpan RetryAfter) CanMakeRequest(long requestSize)
     {
         ResetIfNecessary();
-        return _bytesUsed + requestSize <= BytesPerHour;
+
+        if (_bytesUsed + requestSize <= BytesPerHour)
+        {
+            return (true, TimeSpan.Zero);
+        }
+
+        var nextResetTime = _lastResetTime.AddHours(1);
+        var retryAfter = nextResetTime - _timeProvider.GetUtcNow();
+        return (false, retryAfter);
     }
 
     public void AddUsage(long bytes)
@@ -29,10 +37,10 @@ public class DomainBandwidthUsage
     private void ResetIfNecessary()
     {
         var now = _timeProvider.GetUtcNow();
-        if ((now - _lastResetTime).TotalHours >= 1)
-        {
-            _bytesUsed = 0;
-            _lastResetTime = now;
-        }
+        
+        if (!((now - _lastResetTime).TotalHours >= 1)) return;
+        
+        _bytesUsed = 0;
+        _lastResetTime = now;
     }
 }

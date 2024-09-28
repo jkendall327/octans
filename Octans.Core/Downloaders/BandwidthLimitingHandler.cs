@@ -1,47 +1,27 @@
-namespace Octans.Core.Downloaders;
-
-using System.Collections.Concurrent;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using Octans.Core.Downloaders;
 
 public class BandwidthLimitingHandler : DelegatingHandler
 {
-    private readonly ConcurrentDictionary<string, DomainBandwidthUsage> _domainUsage = new();
+    private readonly BandwidthLimiter _limiter;
 
-    public BandwidthLimitingHandler(HttpMessageHandler? innerHandler = null) : base(innerHandler ?? new HttpClientHandler())
+    public BandwidthLimitingHandler(BandwidthLimiter limiter, HttpMessageHandler? innerHandler = null)
+        : base(innerHandler ?? new HttpClientHandler())
     {
-    }
-
-    public void SetBandwidthLimit(string domain, long bytesPerHour)
-    {
-        _domainUsage.AddOrUpdate(domain,
-            _ => new(bytesPerHour),
-            (_, existing) =>
-            {
-                existing.BytesPerHour = bytesPerHour;
-                return existing;
-            });
+        _limiter = limiter;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var domain = request.RequestUri.Host;
+        ArgumentNullException.ThrowIfNull(request.RequestUri, nameof(request));
         
-        if (!_domainUsage.TryGetValue(domain, out var usage))
-        {
-            return await base.SendAsync(request, cancellationToken);
-        }
+        var domain = request.RequestUri.Host;
+        var requestSize = request.Content?.Headers.ContentLength ?? 0;
 
-        if (!usage.CanMakeRequest(request.Content?.Headers.ContentLength ?? 0))
-        {
-            throw new HttpRequestException($"Bandwidth limit exceeded for domain: {domain}");
-        }
+        _limiter.EnsureCanMakeRequest(domain, requestSize);
 
         var response = await base.SendAsync(request, cancellationToken);
 
-        // Update bandwidth usage after successful request
-        usage.AddUsage(response.Content.Headers.ContentLength ?? 0);
+        _limiter.TrackUsage(domain, response.Content.Headers.ContentLength ?? 0);
 
         return response;
     }
