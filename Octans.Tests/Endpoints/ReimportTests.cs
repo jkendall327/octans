@@ -83,6 +83,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
         var request = new ImportRequest
         {
             Items = [item],
+            ImportType = ImportType.File,
             DeleteAfterImport = false,
             AllowReimportDeleted = false 
         };

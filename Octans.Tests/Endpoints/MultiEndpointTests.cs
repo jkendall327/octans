@@ -42,6 +42,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
         var request = new ImportRequest
         {
             Items = [item],
+            ImportType = ImportType.File,
             DeleteAfterImport = false
         };
 

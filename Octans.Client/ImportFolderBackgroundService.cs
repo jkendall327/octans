@@ -40,6 +40,7 @@ public class ImportFolderBackgroundService : BackgroundService
         var request = new ImportRequest
         {
             Items = new(),
+            ImportType = ImportType.File,
             DeleteAfterImport = true,
             FilterData = new()
             {

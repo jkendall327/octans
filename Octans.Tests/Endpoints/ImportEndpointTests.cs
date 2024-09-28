@@ -3,6 +3,7 @@ using Octans.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Octans.Core;
 using Xunit.Abstractions;
 
@@ -80,7 +81,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         var request = BuildRequest(filepath, "category", "example");
 
         var response = await _api.ProcessImport(request);
-
+        
         return (request, response.Content!);
     }
 
@@ -101,6 +102,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         var request = new ImportRequest
         {
             Items = [item],
+            ImportType = ImportType.File,
             DeleteAfterImport = false
         };
 

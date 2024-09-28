@@ -1,15 +1,22 @@
+using System.Text.Json.Serialization;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOptions<ServiceProviderOptions>()
+builder.Services
+    .AddOptions<ServiceProviderOptions>()
     .Configure(options =>
     {
         options.ValidateScopes = true;
         options.ValidateOnBuild = true;
     });
+
+builder.Services.ConfigureHttpJsonOptions(j =>
+{
+    j.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

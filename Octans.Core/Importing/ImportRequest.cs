@@ -1,11 +1,20 @@
 namespace Octans.Core.Importing;
 
+public enum ImportType
+{
+    File,
+    RawUrl,
+    Post,
+    Gallery,
+    Watchable
+}
+
 public class ImportRequest
 {
     public Guid ImportId { get; set; } = Guid.NewGuid();
+    public required ImportType ImportType { get; set; }
     public required List<ImportItem> Items { get; set; }
     public required bool DeleteAfterImport { get; init; }
-
     public ImportFilterData? FilterData { get; set; }
     public bool AllowReimportDeleted { get; set; }
 }

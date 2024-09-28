@@ -49,8 +49,10 @@ public class ImportRequestSender
         {
             return ["Nothing to import."];
         }
+
+        throw new NotImplementedException("This needs to differentiate between different import types now");
         
-        var request = new ImportRequest
+        /*var request = new ImportRequest
         {
             Items = importItems,
             DeleteAfterImport = false
@@ -70,6 +72,6 @@ public class ImportRequestSender
             
         var results = result.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
             
-        return results;
+        return results;*/
     }
 }
