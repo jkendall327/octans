@@ -33,7 +33,7 @@ public class DownloaderFactory
         if (!downloaders.Exists)
         {
             _logger.LogError("Downloader folder doesn't exist");
-            throw new InvalidOperationException();
+            throw new InvalidOperationException("Downloader folder doesn't exist");
         }
         
         foreach (var subdir in downloaders.EnumerateDirectories())

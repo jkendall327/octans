@@ -9,11 +9,13 @@ public class SubfolderManager
     private const string Hexadecimal = "0123456789abcdef";
 
     private readonly string _hashFolderPath;
-    
+
+    private readonly IOptions<GlobalSettings> _settings;
     private readonly IFileSystem _fileSystem;
 
     public SubfolderManager(IOptions<GlobalSettings> settings, IFileSystem fileSystem)
     {
+        _settings = settings;
         _fileSystem = fileSystem;
 
         _hashFolderPath = _fileSystem.Path.Join(settings.Value.AppRoot, "db", "files");
@@ -39,6 +41,9 @@ public class SubfolderManager
             root.CreateSubdirectory(fileDirectory);
             root.CreateSubdirectory(thumbnailDirectory);
         }
+        
+        var path = _fileSystem.Path.Join(_settings.Value.AppRoot, "downloaders");
+        _fileSystem.Directory.CreateDirectory(path);
     }
     
     public Uri GetSubfolder(HashedBytes hashed)

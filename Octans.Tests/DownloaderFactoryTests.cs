@@ -2,6 +2,8 @@ using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
 using Octans.Core;
 using Octans.Core.Downloaders;
 
@@ -18,8 +20,11 @@ public class DownloaderFactoryTests
         var globalSettings = new GlobalSettings { AppRoot = "C:/App" };
         
         _downloaders = _fileSystem.Directory.CreateDirectory("C:/App/downloaders");
+
+        var opts = Substitute.For<IOptions<GlobalSettings>>();
+        opts.Value.Returns(globalSettings);
         
-        _sut = new(_fileSystem, globalSettings, NullLogger<DownloaderFactory>.Instance);
+        _sut = new(_fileSystem, opts, NullLogger<DownloaderFactory>.Instance);
     }
 
     private readonly MockFileData _classifier = new("""
