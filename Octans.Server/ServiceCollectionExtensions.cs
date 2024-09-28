@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Octans.Core.Downloaders;
+using Octans.Core.Importing;
 using Octans.Core.Querying;
 using Octans.Server.Services;
 
@@ -59,13 +60,16 @@ public static class ServiceCollectionExtensions
     
     public static void AddBusinessServices(this WebApplicationBuilder builder)
     {
-        builder.Services.AddSingleton<SubfolderManager>();
-        builder.Services.AddScoped<FileFinder>();
-        builder.Services.AddScoped<Importer>();
-        builder.Services.AddScoped<FileDeleter>();
-        builder.Services.AddScoped<TagUpdater>();
+        // Imports
+        builder.Services.AddScoped<ImportRouter>();
+        builder.Services.AddScoped<SimpleImporter>();
         builder.Services.AddSingleton<ThumbnailCreator>();
         builder.Services.AddScoped<DownloaderFactory>();
+        
+        builder.Services.AddSingleton<SubfolderManager>();
+        builder.Services.AddScoped<FileFinder>();
+        builder.Services.AddScoped<FileDeleter>();
+        builder.Services.AddScoped<TagUpdater>();
         
         // Queries
         builder.Services.AddScoped<QueryService>();

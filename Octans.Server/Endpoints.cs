@@ -72,7 +72,7 @@ public static class Endpoints
             .WithOpenApi();
         
         app.MapPost("/files", 
-                async (ImportRequest request, Importer service, CancellationToken token) => await service.ProcessImport(request, token))
+                async (ImportRequest request, ImportRouter service, CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
             .WithDescription("Processes an import request")
             .WithOpenApi();

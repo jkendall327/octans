@@ -19,21 +19,21 @@ public enum SourceType
 /// <summary>
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
-public sealed class Importer
+public sealed class SimpleImporter
 {
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerDbContext _context;
     private readonly IHttpClientFactory _clientFactory;
     private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
     private readonly IFileSystem _fileSystem;
-    private readonly ILogger<Importer> _logger;
+    private readonly ILogger<SimpleImporter> _logger;
 
-    public Importer(SubfolderManager subfolderManager,
+    public SimpleImporter(SubfolderManager subfolderManager,
         ServerDbContext context,
         IHttpClientFactory clientFactory,
         ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
         IFileSystem fileSystem,
-        ILogger<Importer> logger)
+        ILogger<SimpleImporter> logger)
     {
         _subfolderManager = subfolderManager;
         _context = context;
