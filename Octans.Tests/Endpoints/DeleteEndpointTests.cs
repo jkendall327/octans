@@ -1,11 +1,7 @@
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Octans.Core;
 using Octans.Core.Models;
-using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -15,18 +11,11 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     [Fact]
     public async Task Delete_ExistingFile_ReturnsSuccessAndRemovesFile()
     {
-        // Add file to filesystem
-        var fileBytes = TestingConstants.MinimalJpeg;
-        var hashed = HashedBytes.FromUnhashed(fileBytes);
-        var filePath = _fileSystem.Path.Combine(_appRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
-        _fileSystem.AddFile(filePath, new(fileBytes));
+        var hashed = AddFileToFilesystem(out var filePath);
 
-        // Add file to database
-        var hashItem = new HashItem { Hash = hashed.Bytes };
-        _context.Hashes.Add(hashItem);
-        await _context.SaveChangesAsync();
+        var id = await AddFileToDatabase(hashed);
 
-        var result = await _api.DeleteFiles([hashItem.Id]);
+        var result = await _api.DeleteFiles(new([id]));
 
         result.Content!.Results.Single().Success.Should().BeTrue();
 
@@ -34,20 +23,41 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         _fileSystem.FileExists(filePath).Should().BeFalse();
 
         // Ensure it's marked as deleted in the database
-        var deletedHash = await _context.Hashes.FindAsync(hashItem.Id);
-        deletedHash.Should().NotBeNull();
+        var deletedHash = await _context.Hashes.FindAsync(id);
         await _context.Entry(deletedHash!).ReloadAsync();
+        
+        deletedHash.Should().NotBeNull();
         deletedHash!.DeletedAt.Should().NotBeNull();
+    }
+
+    private async Task<int> AddFileToDatabase(HashedBytes hashed)
+    {
+        var hashItem = new HashItem { Hash = hashed.Bytes };
+        
+        _context.Hashes.Add(hashItem);
+        
+        await _context.SaveChangesAsync();
+        
+        return hashItem.Id;
+    }
+
+    private HashedBytes AddFileToFilesystem(out string filePath)
+    {
+        var fileBytes = TestingConstants.MinimalJpeg;
+        
+        var hashed = HashedBytes.FromUnhashed(fileBytes);
+        
+        filePath = _fileSystem.Path.Combine(_appRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
+        
+        _fileSystem.AddFile(filePath, new(fileBytes));
+        
+        return hashed;
     }
 
     [Fact]
     public async Task Delete_NonExistingFile_ReturnsNotFoundResult()
     {
-        var ids = new List<int>()
-        {
-            999, 345, 3
-        };
-        var response = await _api.DeleteFiles(null);
+        var response = await _api.DeleteFiles(new([888]));
 
         var itemResult = response.Content!.Results.Single();
         

@@ -31,5 +31,5 @@ public interface IOctansApi
     Task<IApiResponse> ProcessImport([Body] ImportRequest request);
 
     [Post("/files/deletion")]
-    Task<IApiResponse<DeleteResponse>> DeleteFiles(IEnumerable<int> ids);
+    Task<IApiResponse<DeleteResponse>> DeleteFiles(DeleteRequest request);
 }

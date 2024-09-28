@@ -4,6 +4,7 @@ using Octans.Core.Models;
 namespace Octans.Server.Services;
 
 public record DeleteResult(int Id, bool Success, string? Error);
+public record DeleteRequest(IEnumerable<int> Ids);
 public record DeleteResponse(List<DeleteResult> Results);
 
 public class FileDeleter
