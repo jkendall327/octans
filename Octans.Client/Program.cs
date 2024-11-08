@@ -15,7 +15,8 @@ builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection("Glo
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {
-    client.BaseAddress = new("http://localhost:5185");
+    var port = CommunicationConstants.OCTANS_SERVER_PORT;
+    client.BaseAddress = new($"http://localhost:{port}/");
 });
 
 builder.Services.AddHostedService<ImportFolderBackgroundService>();
