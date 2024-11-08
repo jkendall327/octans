@@ -5,6 +5,7 @@ using Octans.Core;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
+builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<SubfolderManager>();
@@ -34,6 +35,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapRazorPages();
 
 app.Run();

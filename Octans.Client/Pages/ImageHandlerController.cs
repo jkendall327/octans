@@ -13,12 +13,15 @@ public class ImageHandlerController : Controller
         _logger = logger;
     }
 
-    [HttpGet]
+    [HttpGet("GetImage")]
+    [Route("[controller]/GetImage")]
     public IActionResult GetImage(string path)
     {
         try
         {
-            using var image = Image.Load(path);
+            var decodedPath = Uri.UnescapeDataString(path);
+            
+            using var image = Image.Load(decodedPath);
             
             // Resize the image while maintaining aspect ratio
             image.Mutate(x => x.Resize(new ResizeOptions

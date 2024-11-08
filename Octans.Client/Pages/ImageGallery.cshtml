@@ -11,7 +11,7 @@ ViewData["Title"] = "Image Gallery";
         @foreach (var imagePath in Model.ImagePaths)
         {
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <img src="@Url.Action("GetImage", "ImageHandler", new { path = imagePath })"
+            <img src="@Url.Action("GetImage", "ImageHandler", new { path = Uri.EscapeDataString(imagePath) })"
                  alt="Gallery Image"
                  class="w-full h-48 object-cover"
                  loading="lazy" />
