@@ -1,7 +1,7 @@
 @page
 @model Octans.Client.Pages.ImageGalleryModel
 @{
-ViewData["Title"] = "Image Gallery";
+    ViewData["Title"] = "Image Gallery";
 }
 
 <style>
@@ -41,12 +41,16 @@ ViewData["Title"] = "Image Gallery";
     <div class="image-grid">
         @foreach (var imagePath in Model.ImagePaths)
         {
-        <div class="image-container">
-            <img src="@Url.Action("GetImage", "ImageHandler", new { path = Uri.EscapeDataString(imagePath) })"
-                 alt="Gallery Image"
-                 class="gallery-image"
-                 loading="lazy" />
-        </div>
+            var escaped = Uri.EscapeDataString(imagePath);
+
+            <a href="@Url.Page("ImageDetail", new { path = escaped })" class="image-container">
+                <div class="image-container">
+                    <img src="@Url.Action("GetImage", "ImageHandler", new { path = escaped })"
+                         alt="Gallery Image"
+                         class="gallery-image"
+                         loading="lazy"/>
+                </div>
+            </a>
         }
     </div>
 </div>

@@ -19,6 +19,8 @@ public class ImageHandlerController : Controller
     {
         try
         {
+            // TODO: this should just be pulling the already-created thumbnail from the filesystem.
+            
             var decodedPath = Uri.UnescapeDataString(path);
             
             using var image = Image.Load(decodedPath);
@@ -38,6 +40,35 @@ public class ImageHandlerController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing image at path: {Path}", path);
+            return NotFound();
+        }
+    }
+    
+    [HttpGet("GetFullImage")]
+    [Route("[controller]/GetFullImage")]
+    public IActionResult GetFullImage(string path)
+    {
+        try
+        {
+            var decodedPath = Uri.UnescapeDataString(path);
+
+            using var image = Image.Load(decodedPath);
+            
+            // For full-size images, limit max dimensions while maintaining aspect ratio
+            image.Mutate(x => x
+                .Resize(new ResizeOptions
+                {
+                    Size = new Size(1920, 1080), // Max dimensions
+                    Mode = ResizeMode.Max
+                }));
+
+            using var ms = new MemoryStream();
+            image.SaveAsJpeg(ms);
+            return File(ms.ToArray(), "image/jpeg");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing full image at path: {Path}", path);
             return NotFound();
         }
     }
