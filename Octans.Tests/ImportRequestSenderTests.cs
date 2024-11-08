@@ -21,7 +21,7 @@ public class ImportRequestSenderTests
         var path = _mockFileSystem.Path.Join("C:", "fakepath");
         environment.WebRootPath.Returns(path);
         
-        _sut = new(environment, _factory, _mockFileSystem);
+        //_sut = new(_mockFileSystem, environment, new ServerClient());
     }
 
     [Fact (Skip = "Work in progress")]
