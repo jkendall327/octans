@@ -7,13 +7,13 @@ public class ImportRequestSender
 {
     private readonly IFileSystem _fileSystem;
     private readonly IWebHostEnvironment _environment;
-    private readonly IHttpClientFactory _clientFactory;
+    private readonly ServerClient _client;
 
-    public ImportRequestSender(IWebHostEnvironment environment, IHttpClientFactory clientFactory, IFileSystem fileSystem)
+    public ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment environment, ServerClient client)
     {
-        _environment = environment;
-        _clientFactory = clientFactory;
         _fileSystem = fileSystem;
+        _environment = environment;
+        _client = client;
     }
 
     public async Task<List<string>> SendImportRequest(string importUrls, List<IFormFile> files)
@@ -28,8 +28,9 @@ public class ImportRequestSender
             importItems.AddRange(urls.Select(url => new ImportItem { Source = new(url) }));
         }
 
+        // TODO: re-enable file imports.
         // ASP.NET Core doesn't let us get the filepaths natively, so copy them over...
-        if (files.Count > 0)
+        if (files.Count > 0 && false)
         {
             var uploadPath = _fileSystem.Path.Combine(_environment.WebRootPath, "uploads");
             _fileSystem.Directory.CreateDirectory(uploadPath);
@@ -50,28 +51,17 @@ public class ImportRequestSender
             return ["Nothing to import."];
         }
 
-        throw new NotImplementedException("This needs to differentiate between different import types now");
-        
-        /*var request = new ImportRequest
+        var request = new ImportRequest
         {
+            ImportType = ImportType.RawUrl,
             Items = importItems,
             DeleteAfterImport = false
         };
 
-        var client = _clientFactory.CreateClient("ServerApi");
-        var response = await client.PostAsJsonAsync("import", request);
+        var response = await _client.Import(request);
 
-        if (!response.IsSuccessStatusCode) return ["Failed to process import request."];
-        
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
-
-        if (result is null)
-        {
-            throw new InvalidOperationException("Deserializing import result failed");
-        }
+        var results = response.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
             
-        var results = result.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
-            
-        return results;*/
+        return results;
     }
 }
