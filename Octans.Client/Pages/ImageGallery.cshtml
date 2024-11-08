@@ -4,16 +4,47 @@
 ViewData["Title"] = "Image Gallery";
 }
 
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6">Image Gallery</h1>
+<style>
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    .image-container {
+        aspect-ratio: 1;
+        position: relative;
+        overflow: hidden;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .image-container:hover {
+        transform: scale(1.05);
+    }
+
+    .gallery-image {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+</style>
+
+<div class="container mx-auto">
+    <h1 class="text-3xl font-bold mb-6 px-4">Image Gallery</h1>
+
+    <div class="image-grid">
         @foreach (var imagePath in Model.ImagePaths)
         {
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="image-container">
             <img src="@Url.Action("GetImage", "ImageHandler", new { path = Uri.EscapeDataString(imagePath) })"
                  alt="Gallery Image"
-                 class="w-full h-48 object-cover"
+                 class="gallery-image"
                  loading="lazy" />
         </div>
         }
