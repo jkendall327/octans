@@ -89,7 +89,7 @@ public class DownloaderFactory
                 continue;
             }
             
-            var lua = new Lua();
+            using var lua = new Lua();
             
             try
             {
@@ -110,7 +110,7 @@ public class DownloaderFactory
     
     private DownloaderMetadata? ExtractMetadata(string raw)
     {
-        Lua lua = new();
+        using Lua lua = new();
 
         try
         {

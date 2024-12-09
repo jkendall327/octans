@@ -3,7 +3,7 @@ using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-public class ImportFolderBackgroundService : BackgroundService
+internal class ImportFolderBackgroundService : BackgroundService
 {
     private readonly IHttpClientFactory _clientFactory;
     private readonly IFileSystem _fileSystem;
@@ -20,7 +20,7 @@ public class ImportFolderBackgroundService : BackgroundService
         _clientFactory = clientFactory;
         _fileSystem = fileSystem;
 
-        _importFolders = configuration.GetValue<string[]>("importFolders") ?? Array.Empty<string>();
+        _importFolders = configuration.GetValue<string[]>("importFolders") ?? [];
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

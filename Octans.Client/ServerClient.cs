@@ -7,7 +7,7 @@ public class ServerClient(HttpClient client)
 {
     public async Task<bool> IsHealthy()
     {
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync(new Uri("/health"));
         
         var result = await response.Content.ReadAsStringAsync();
         

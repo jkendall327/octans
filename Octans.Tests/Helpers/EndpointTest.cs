@@ -107,7 +107,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
 
     private void AddFakeDatabase(IServiceCollection services)
     {
-        services.RemoveAll(typeof(DbContextOptions<ServerDbContext>));
+        services.RemoveAll<DbContextOptions<ServerDbContext>>();
 
         services.AddDbContext<ServerDbContext>(options =>
         {

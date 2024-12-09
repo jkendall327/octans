@@ -46,7 +46,7 @@ public class TagUpdater
             return tagsToRemove.Any(t =>
             {
                 var namespacesMatch = 
-                    (t.Namespace == null && m.Tag.Namespace.Value == "") ||
+                    (t.Namespace == null && string.IsNullOrEmpty(m.Tag.Namespace.Value)) ||
                     (t.Namespace != null && m.Tag.Namespace.Value == t.Namespace);
                 
                 return namespacesMatch && m.Tag.Subtag.Value == t.Subtag;

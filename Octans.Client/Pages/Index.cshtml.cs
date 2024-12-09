@@ -8,7 +8,7 @@ namespace Octans.Client.Pages;
 
 public class IndexModel : PageModel
 {
-    public List<IFileInfo> Filepaths { get; set; } = new();
+    public List<IFileInfo> Filepaths { get; private set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerClient _client;
