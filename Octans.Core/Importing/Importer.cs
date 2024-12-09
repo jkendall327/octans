@@ -98,11 +98,7 @@ public abstract class Importer
 
         _logger.LogInformation("Sending thumbnail creation request");
 
-        await _thumbnailChannel.WriteAsync(new()
-        {
-            Bytes = bytes,
-            Hashed = hashed
-        });
+        await _thumbnailChannel.WriteAsync(new(bytes, hashed));
 
         _logger.LogInformation("Import successful");
 

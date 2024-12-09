@@ -58,11 +58,7 @@ public class ThumbnailCreationTests
     {
         var bytes = TestingConstants.MinimalJpeg;
 
-        var request = new ThumbnailCreationRequest
-        {
-            Bytes = bytes,
-            Hashed = HashedBytes.FromUnhashed(bytes)
-        };
+        var request = new ThumbnailCreationRequest(bytes, HashedBytes.FromUnhashed(bytes));
 
         return request;
     }
