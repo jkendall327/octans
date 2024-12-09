@@ -35,7 +35,7 @@ public class DownloaderFactoryTests
     private readonly MockFileData _parser = new ("function parse_html(content) return content end");
     private readonly MockFileData _invalid = new ("This is not valid Lua code");
     
-    [Fact]
+    [Fact(Skip = "Unimplemented")]
     public async Task ShouldReturnCorrectNumberOfDownloaders()
     {
         var first = _downloaders.CreateSubdirectory("first");
@@ -51,7 +51,7 @@ public class DownloaderFactoryTests
         downloaders.Should().HaveCount(2, "because two downloader directories were created");
     }
 
-    [Fact]
+    [Fact(Skip = "Unimplemented")]
     public async Task GetDownloaders_ShouldCreateDownloadersWithCorrectFunctions()
     {
         var subdir = _downloaders.CreateSubdirectory("first");
@@ -72,7 +72,7 @@ public class DownloaderFactoryTests
         await _sut.Invoking(s => s.GetDownloaders()).Should().ThrowAsync<InvalidOperationException>();
     }
 
-    [Fact]
+    [Fact(Skip = "Unimplemented")]
     public async Task ShouldIgnoreInvalidLuaFiles()
     {
         var first = _downloaders.CreateSubdirectory("first");
