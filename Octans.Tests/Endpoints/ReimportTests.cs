@@ -72,7 +72,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
 
     private ImportRequest BuildRequest()
     {
-        FileSystem1.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
+        FileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
 
         var item = new ImportItem
         {

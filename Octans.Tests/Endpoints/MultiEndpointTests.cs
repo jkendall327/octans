@@ -13,9 +13,9 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {
         var imagePath = "C:/test_image.jpg";
-        FileSystem1.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
+        FileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
-        var expectedFilePath = FileSystem1.Path.Join(AppRoot,
+        var expectedFilePath = FileSystem.Path.Join(AppRoot,
             "db",
             "files",
             "f61",
@@ -51,7 +51,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
         result.Content.Should().NotBeNull();
         result.Content!.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
 
-        FileSystem1.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
+        FileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
     }
 
     private async Task UpdateTags(int hashId)
@@ -102,7 +102,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
         hash!.DeletedAt.Should().NotBeNull("we soft-delete items by setting this value to something non-null");
 
         // Verify removal from filesystem
-        FileSystem1.FileExists(expectedFilepath)
+        FileSystem.FileExists(expectedFilepath)
             .Should()
             .BeFalse("we remove the physical file even for soft-deletes");
 

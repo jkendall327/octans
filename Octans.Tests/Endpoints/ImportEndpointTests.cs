@@ -25,13 +25,13 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         _ = await SendSimpleValidRequest();
 
-        var expectedPath = FileSystem1.Path.Join(AppRoot,
+        var expectedPath = FileSystem.Path.Join(AppRoot,
             "db",
             "files",
             "f61",
             "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
 
-        var file = FileSystem1.GetFile(expectedPath);
+        var file = FileSystem.GetFile(expectedPath);
 
         file.Should().NotBeNull();
     }
@@ -75,7 +75,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var filepath = "C:/image.jpg";
 
-        FileSystem1.AddFile(filepath, mockFile);
+        FileSystem.AddFile(filepath, mockFile);
 
         var request = BuildRequest(filepath, "category", "example");
 

@@ -20,7 +20,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         result.Content!.Results.Single().Success.Should().BeTrue();
 
         // Ensure it's gone from the filesystem
-        FileSystem1.FileExists(filePath).Should().BeFalse();
+        FileSystem.FileExists(filePath).Should().BeFalse();
 
         // Ensure it's marked as deleted in the database
         var deletedHash = await Context.Hashes.FindAsync(id);
@@ -47,9 +47,9 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var hashed = HashedBytes.FromUnhashed(fileBytes);
 
-        filePath = FileSystem1.Path.Combine(AppRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
+        filePath = FileSystem.Path.Combine(AppRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
 
-        FileSystem1.AddFile(filePath, new(fileBytes));
+        FileSystem.AddFile(filePath, new(fileBytes));
 
         return hashed;
     }

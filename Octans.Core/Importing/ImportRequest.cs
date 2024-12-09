@@ -11,6 +11,10 @@ public enum ImportType
 
 public class ImportRequest
 {
+    // TODO: make this and other DTO types into records.
+    // Removing the setter on this broke a test,
+    // presumably because it relied on the ImportId being set
+    // when deserialized across a HTTP boundary.
     public Guid ImportId { get; set; } = Guid.NewGuid();
     public required ImportType ImportType { get; init; }
     public required List<ImportItem> Items { get; init; }

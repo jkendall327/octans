@@ -27,7 +27,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
 
     // Filesystem
     protected const string AppRoot = "C:/app";
-    protected MockFileSystem FileSystem1 { get; } = new();
+    protected MockFileSystem FileSystem { get; } = new();
 
     // Other
     protected SpyChannelWriter<ThumbnailCreationRequest> SpyChannel { get; } = new();
@@ -95,10 +95,10 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
 
     private void ReplaceNormalServices(IServiceCollection services)
     {
-        services.ReplaceExistingRegistrationsWith(FileSystem1.Path);
-        services.ReplaceExistingRegistrationsWith(FileSystem1.DirectoryInfo);
-        services.ReplaceExistingRegistrationsWith(FileSystem1.File);
-        services.ReplaceExistingRegistrationsWith<IFileSystem>(FileSystem1);
+        services.ReplaceExistingRegistrationsWith(FileSystem.Path);
+        services.ReplaceExistingRegistrationsWith(FileSystem.DirectoryInfo);
+        services.ReplaceExistingRegistrationsWith(FileSystem.File);
+        services.ReplaceExistingRegistrationsWith<IFileSystem>(FileSystem);
 
         services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(SpyChannel);
     }
