@@ -2,8 +2,8 @@ namespace Octans.Core;
 
 public static class PredicateConstants
 {
-    public const char NAMESPACE_DELIMITER = ':';
-    public const char WILDCARD = '*';
-    public const char QUERY_NEGATION = '-';
-    public const string OR_SEPARATOR = "OR";
+    public const char NamespaceDelimiter = ':';
+    public const char Wildcard = '*';
+    public const char Negation = '-';
+    public const string OrSeparator = "OR";
 }

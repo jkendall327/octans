@@ -13,7 +13,7 @@ public class TagPredicate : IPredicate
 
     public bool IsWildcard()
     {
-        return NamespacePattern.Contains(PredicateConstants.WILDCARD) || SubtagPattern.Contains(PredicateConstants.WILDCARD);
+        return NamespacePattern.Contains(PredicateConstants.Wildcard) || SubtagPattern.Contains(PredicateConstants.Wildcard);
     }
 
     public bool IsSpecificTag() => !IsWildcard();
