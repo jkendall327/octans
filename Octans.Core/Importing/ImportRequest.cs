@@ -11,7 +11,7 @@ public enum ImportType
 
 public class ImportRequest
 {
-    public Guid ImportId { get; } = Guid.NewGuid();
+    public Guid ImportId { get; set; } = Guid.NewGuid();
     public required ImportType ImportType { get; init; }
     public required List<ImportItem> Items { get; init; }
     public required bool DeleteAfterImport { get; init; }
