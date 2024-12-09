@@ -3,7 +3,7 @@ using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-internal class ImportFolderBackgroundService : BackgroundService
+internal sealed class ImportFolderBackgroundService : BackgroundService
 {
     private readonly IHttpClientFactory _clientFactory;
     private readonly IFileSystem _fileSystem;

@@ -30,14 +30,14 @@ public class QuerySuggestionFinder
             return [];
         }
 
-        if (exact && (space.Contains(Constants.WILDCARD) || subtag.Contains(Constants.WILDCARD)))
+        if (exact && (space.Contains(PredicateConstants.WILDCARD) || subtag.Contains(PredicateConstants.WILDCARD)))
         {
             return [];
         }
 
         List<Namespace> namespaces;
 
-        if (space.Contains(Constants.WILDCARD))
+        if (space.Contains(PredicateConstants.WILDCARD))
         {
             namespaces = await GetNamespacesFromQueryPortion(space, token);
         }
@@ -60,7 +60,7 @@ public class QuerySuggestionFinder
 
         List<Tag> tags = [];
 
-        if (subtag == Constants.WILDCARD.ToString())
+        if (subtag == PredicateConstants.WILDCARD.ToString())
         {
             // Just get every tag, since the user explicitly searched for '*'.
             if (!namespaces.Any())
@@ -83,7 +83,7 @@ public class QuerySuggestionFinder
         // Otherwise, search everything.
         var source = namespaces.Any() ? tagsForFoundNamespaces : _context.Tags;
 
-        var clean = subtag.Replace(Constants.WILDCARD.ToString(), string.Empty);
+        var clean = subtag.Replace(PredicateConstants.WILDCARD.ToString(), string.Empty);
 
         tags = await source
             .Where(t => t.Subtag.Value.Contains(clean))
@@ -94,19 +94,19 @@ public class QuerySuggestionFinder
 
     private async Task<List<Namespace>> GetNamespacesFromQueryPortion(string wildcard, CancellationToken token = default)
     {
-        if (wildcard == Constants.WILDCARD.ToString())
+        if (wildcard == PredicateConstants.WILDCARD.ToString())
         {
             return await _context.Namespaces.ToListAsync(token);
         }
 
-        var clean = wildcard.Replace(Constants.WILDCARD.ToString(), string.Empty);
+        var clean = wildcard.Replace(PredicateConstants.WILDCARD.ToString(), string.Empty);
 
         return await _context.Namespaces.Where(n => n.Value.Contains(clean)).ToListAsync(token);
     }
 
     private (string space, string subtag) SplitTag(string tag)
     {
-        var split = tag.Split(Constants.NAMESPACE_DELIMITER);
+        var split = tag.Split(PredicateConstants.NAMESPACE_DELIMITER);
 
         return split.Length switch
         {

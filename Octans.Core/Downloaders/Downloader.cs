@@ -89,7 +89,7 @@ public sealed class Downloader : IDisposable
         return result?.Values.Cast<string>().ToList() ?? new List<string>();
     }
 
-    public string GenerateGalleryUrl(string input, int page)
+    public string GenerateGalleryHtml(string input, int page)
     {
         if (_generateGalleryUrl is null)
         {

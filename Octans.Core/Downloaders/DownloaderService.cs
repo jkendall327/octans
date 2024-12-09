@@ -45,7 +45,7 @@ public class DownloaderService
 
         if (classification is DownloaderUrlClassification.Gallery)
         {
-            raw = matching.GenerateGalleryUrl(uri.AbsoluteUri, 0);
+            raw = matching.GenerateGalleryHtml(uri.AbsoluteUri, 0);
         }
 
         var urls = matching.ParseHtml(raw).First();

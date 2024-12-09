@@ -1,6 +1,6 @@
 namespace Octans.Core;
 
-public static class Constants
+public static class PredicateConstants
 {
     public const char NAMESPACE_DELIMITER = ':';
     public const char WILDCARD = '*';

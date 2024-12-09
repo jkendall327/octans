@@ -4,15 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-internal sealed class ImageHandlerController : Controller
+internal sealed class ImageHandlerController(ILogger<ImageHandlerController> logger) : Controller
 {
-    private readonly ILogger<ImageHandlerController> _logger;
-
-    public ImageHandlerController(ILogger<ImageHandlerController> logger)
-    {
-        _logger = logger;
-    }
-
     [HttpGet("GetImage")]
     [Route("[controller]/GetImage")]
     public IActionResult GetImage(string path)
@@ -39,7 +32,7 @@ internal sealed class ImageHandlerController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing image at path: {Path}", path);
+            logger.LogError(ex, "Error processing image at path: {Path}", path);
             return NotFound();
         }
     }
@@ -68,7 +61,7 @@ internal sealed class ImageHandlerController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing full image at path: {Path}", path);
+            logger.LogError(ex, "Error processing full image at path: {Path}", path);
             return NotFound();
         }
     }

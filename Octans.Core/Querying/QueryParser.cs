@@ -47,7 +47,7 @@ public class QueryParser
 
     private OrPredicate ParseOrPredicate(RawQuery query)
     {
-        var components = query.Query.Split(Constants.OR_SEPARATOR);
+        var components = query.Query.Split(PredicateConstants.OR_SEPARATOR);
 
         var head = components.First();
         var tail = string.Join("OR", components.Skip(1));
@@ -84,9 +84,9 @@ public class QueryParser
 
         // TODO: this should also replace multiple consecutive wildcards with just one.
 
-        var exclusive = cleaned.StartsWith(Constants.QUERY_NEGATION);
+        var exclusive = cleaned.StartsWith(PredicateConstants.QUERY_NEGATION);
 
-        var split = cleaned.Split(Constants.NAMESPACE_DELIMITER);
+        var split = cleaned.Split(PredicateConstants.NAMESPACE_DELIMITER);
 
         (var prefix, var query) = split.Length switch
         {

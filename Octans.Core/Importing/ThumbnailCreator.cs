@@ -14,27 +14,19 @@ public class ThumbnailCreationRequest
     public required HashedBytes Hashed { get; init; }
 }
 
-public class ThumbnailCreator
+public class ThumbnailCreator(
+    IFileSystem fileSystem,
+    IOptions<GlobalSettings> globalSettings,
+    ILogger<ThumbnailCreator> logger)
 {
-    private readonly IFileSystem _fileSystem;
-    private readonly IOptions<GlobalSettings> _globalSettings;
-    private readonly ILogger<ThumbnailCreator> _logger;
-
-    public ThumbnailCreator(IFileSystem fileSystem, IOptions<GlobalSettings> globalSettings, ILogger<ThumbnailCreator> logger)
-    {
-        _fileSystem = fileSystem;
-        _globalSettings = globalSettings;
-        _logger = logger;
-    }
-
     public async Task ProcessThumbnailRequestAsync(ThumbnailCreationRequest request, CancellationToken stoppingToken = default)
     {
-        using var _ = _logger.BeginScope(new Dictionary<string, object>
+        using var _ = logger.BeginScope(new Dictionary<string, object>
         {
             ["RequestId"] = request.Id
         });
 
-        _logger.LogInformation("Starting thumbnail creation");
+        logger.LogInformation("Starting thumbnail creation");
 
         using var image = Image.Load(request.Bytes);
 
@@ -46,17 +38,17 @@ public class ThumbnailCreator
 
         var thumbnailBytes = await SaveThumbnailAsync(image, stoppingToken);
 
-        _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
+        logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
 
-        var destination = _fileSystem.Path.Join(_globalSettings.Value.AppRoot,
+        var destination = fileSystem.Path.Join(globalSettings.Value.AppRoot,
             "db",
             "files",
             request.Hashed.ThumbnailBucket,
             request.Hashed.Hexadecimal + ".jpeg");
 
-        _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
+        logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
 
-        await _fileSystem.File.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
+        await fileSystem.File.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
     }
 
     private async Task<byte[]> SaveThumbnailAsync(Image image, CancellationToken stoppingToken)
