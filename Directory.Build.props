@@ -1,0 +1,9 @@
+<Project>
+   <PropertyGroup>
+        <ProjectTargetFramework>net9.0</ProjectTargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <WarningsAsErrors>CS4014</WarningsAsErrors>
+   </PropertyGroup>
+</Project>
