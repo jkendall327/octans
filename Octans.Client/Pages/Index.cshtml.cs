@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Octans.Client.Pages;
 
-internal class IndexModel : PageModel
+internal sealed class IndexModel : PageModel
 {
     public List<IFileInfo> Filepaths { get; private set; } = new();
 

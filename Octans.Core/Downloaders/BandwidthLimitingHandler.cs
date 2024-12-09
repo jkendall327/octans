@@ -1,4 +1,4 @@
-using Octans.Core.Downloaders;
+namespace Octans.Core.Downloaders;
 
 public class BandwidthLimitingHandler : DelegatingHandler
 {

@@ -5,7 +5,7 @@ namespace Octans.Client.Pages;
 
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-internal class ImageGalleryModel : PageModel
+internal sealed class ImageGalleryModel : PageModel
 {
     private readonly ServerClient _client;
     private readonly SubfolderManager _subfolderManager;

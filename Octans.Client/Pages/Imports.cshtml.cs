@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Octans.Client.Pages;
 
-internal class Imports : PageModel
+internal sealed class Imports : PageModel
 {
     private readonly ImportRequestSender _sender;
 

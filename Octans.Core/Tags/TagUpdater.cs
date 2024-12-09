@@ -1,20 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 
-public class TagUpdater
+namespace Octans.Core.Tags;
+
+public class TagUpdater(ServerDbContext context)
 {
-    private readonly ServerDbContext _context;
-
-    public TagUpdater(ServerDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<bool> UpdateTags(UpdateTagsRequest request)
     {
-        var hash = await _context.Hashes.FindAsync(request.HashId);
+        var hash = await context.Hashes.FindAsync(request.HashId);
 
         if (hash == null)
         {
@@ -24,14 +18,14 @@ public class TagUpdater
         await RemoveTags(request.TagsToRemove, hash);
         await AddTags(request.TagsToAdd, hash);
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return true;
     }
 
     private async Task RemoveTags(IEnumerable<TagModel> tagsToRemove, HashItem hash)
     {
-        var all = _context.Mappings
+        var all = context.Mappings
             .Include(m => m.Tag)
             .ThenInclude(t => t.Namespace)
             .Include(m => m.Tag)
@@ -53,22 +47,22 @@ public class TagUpdater
             });
         });
 
-        _context.Mappings.RemoveRange(mappingsToRemove);
+        context.Mappings.RemoveRange(mappingsToRemove);
     }
 
     private async Task AddTags(IEnumerable<TagModel> tagsToAdd, HashItem hash)
     {
         foreach (var tagModel in tagsToAdd)
         {
-            var @namespace = await _context.Namespaces
-                .FirstOrDefaultAsync(n => n.Value == (tagModel.Namespace ?? ""))
-                ?? new Namespace { Value = tagModel.Namespace ?? "" };
+            var @namespace = await context.Namespaces
+                                 .FirstOrDefaultAsync(n => n.Value == (tagModel.Namespace ?? ""))
+                             ?? new Namespace { Value = tagModel.Namespace ?? "" };
 
-            var subtag = await _context.Subtags
-                .FirstOrDefaultAsync(s => s.Value == tagModel.Subtag)
-                ?? new Subtag { Value = tagModel.Subtag };
+            var subtag = await context.Subtags
+                             .FirstOrDefaultAsync(s => s.Value == tagModel.Subtag)
+                         ?? new Subtag { Value = tagModel.Subtag };
 
-            var tag = await _context.Tags
+            var tag = await context.Tags
                 .FirstOrDefaultAsync(t => t.Namespace == @namespace && t.Subtag == subtag);
 
             if (tag == null)
@@ -79,14 +73,14 @@ public class TagUpdater
                     Subtag = subtag
                 };
 
-                _context.Tags.Add(tag);
+                context.Tags.Add(tag);
             }
 
-            var exists = await _context.Mappings.AnyAsync(m => m.Hash == hash && m.Tag == tag);
+            var exists = await context.Mappings.AnyAsync(m => m.Hash == hash && m.Tag == tag);
 
             if (!exists)
             {
-                _context.Mappings.Add(new()
+                context.Mappings.Add(new()
                 {
                     Hash = hash,
                     Tag = tag

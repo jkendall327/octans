@@ -2,9 +2,7 @@ using System.Threading.Channels;
 
 namespace Octans.Server;
 
-
-
-internal class ThumbnailCreationBackgroundService : BackgroundService
+internal sealed class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
     private readonly ILogger<ThumbnailCreationBackgroundService> _logger;

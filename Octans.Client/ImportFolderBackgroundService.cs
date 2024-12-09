@@ -10,6 +10,7 @@ internal class ImportFolderBackgroundService : BackgroundService
     private readonly ILogger<ImportFolderBackgroundService> _logger;
 
     private readonly string[] _importFolders;
+    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
 
     public ImportFolderBackgroundService(IConfiguration configuration,
         IHttpClientFactory clientFactory,
@@ -25,7 +26,7 @@ internal class ImportFolderBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
@@ -91,6 +92,6 @@ internal class ImportFolderBackgroundService : BackgroundService
     private bool IsImageFile(string filePath)
     {
         var extension = _fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
-        return new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(extension);
+        return ImageExtensions.Contains(extension);
     }
 }

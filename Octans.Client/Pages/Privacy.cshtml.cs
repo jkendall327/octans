@@ -2,7 +2,7 @@
 
 namespace Octans.Client.Pages;
 
-internal class PrivacyModel : PageModel
+internal sealed class PrivacyModel : PageModel
 {
     private readonly ILogger<PrivacyModel> _logger;
 

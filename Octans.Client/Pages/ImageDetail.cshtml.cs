@@ -3,7 +3,7 @@ namespace Octans.Client.Pages;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-internal class ImageDetailModel : PageModel
+internal sealed class ImageDetailModel : PageModel
 {
     public string? ImagePath { get; private set; }
     public string? FileName { get; private set; }

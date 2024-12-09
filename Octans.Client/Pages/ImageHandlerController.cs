@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-internal class ImageHandlerController : Controller
+internal sealed class ImageHandlerController : Controller
 {
     private readonly ILogger<ImageHandlerController> _logger;
 

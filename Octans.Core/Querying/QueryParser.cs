@@ -22,7 +22,7 @@ public class QueryParser
 
         foreach (var query in cleaned)
         {
-            var result = query.Prefix switch
+            IPredicate result = query.Prefix switch
             {
                 "system" => ParseSystemPredicate(query),
                 "or" => ParseOrPredicate(query),
@@ -35,17 +35,17 @@ public class QueryParser
         return predicates;
     }
 
-    private IPredicate ParseSystemPredicate(RawQuery query)
+    private EverythingPredicate ParseSystemPredicate(RawQuery query)
     {
         if (query.Query is "everything")
         {
-            return new EverythingPredicate();
+            return new();
         }
 
         throw new NotImplementedException();
     }
 
-    private IPredicate ParseOrPredicate(RawQuery query)
+    private OrPredicate ParseOrPredicate(RawQuery query)
     {
         var components = query.Query.Split(Constants.OR_SEPARATOR);
 
@@ -59,13 +59,13 @@ public class QueryParser
 
         var parsedHead = ConvertRawQueriesToPredicates([rawHead, rawTail]);
 
-        return new OrPredicate
+        return new()
         {
             Predicates = parsedHead,
         };
     }
 
-    private IPredicate ParseTagPredicate(RawQuery query)
+    private TagPredicate ParseTagPredicate(RawQuery query)
     {
         var predicate = new TagPredicate
         {
@@ -116,7 +116,7 @@ public class QueryParser
 /// </summary>
 public class RawQuery
 {
-    public required string Prefix { get; set; }
-    public required string Query { get; set; }
-    public bool Exclusive { get; set; }
+    public required string Prefix { get; init; }
+    public required string Query { get; init; }
+    public bool Exclusive { get; init; }
 }
