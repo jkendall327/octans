@@ -12,7 +12,7 @@ namespace Octans.Tests;
 public class ImportRequestSenderTests
 {
     private readonly MockFileSystem _mockFileSystem = new();
-    private readonly ImportRequestSender _sut;
+    private readonly ImportRequestSender _sut = null!;
     private readonly IHttpClientFactory _factory = Substitute.For<IHttpClientFactory>();
 
     public ImportRequestSenderTests()
