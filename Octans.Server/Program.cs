@@ -57,5 +57,4 @@ scope.Dispose();
 
 await app.RunAsync();
 
-[SuppressMessage("Maintainability", "CA1515:Consider making public types internal")]
 public partial class Program { }
