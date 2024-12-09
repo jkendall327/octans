@@ -56,12 +56,21 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
     private async Task UpdateTags(int hashId)
     {
-        var updateTagsRequest = new UpdateTagsRequest
-        {
-            HashId = hashId,
-            TagsToAdd = [new() { Namespace = "character", Subtag = "mario" }],
-            TagsToRemove = [new() { Namespace = "category", Subtag = "test" }]
-        };
+        var updateTagsRequest = new UpdateTagsRequest(hashId,
+            [
+                new()
+                {
+                    Namespace = "character",
+                    Subtag = "mario"
+                }
+            ],
+            [
+                new()
+                {
+                    Namespace = "category",
+                    Subtag = "test"
+                }
+            ]);
 
         await Api.UpdateTags(updateTagsRequest);
 

@@ -16,12 +16,21 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     {
         var hash = await SetupInitialData();
 
-        var request = new UpdateTagsRequest
-        {
-            HashId = hash.Id,
-            TagsToAdd = [new TagModel { Namespace = "character", Subtag = "samus aran" }],
-            TagsToRemove = [new TagModel { Namespace = "weapon", Subtag = "laser" }]
-        };
+        var request = new UpdateTagsRequest(hash.Id,
+            [
+                new TagModel
+                {
+                    Namespace = "character",
+                    Subtag = "samus aran"
+                }
+            ],
+            [
+                new TagModel
+                {
+                    Namespace = "weapon",
+                    Subtag = "laser"
+                }
+            ]);
 
         var response = await Api.UpdateTags(request);
 
@@ -45,16 +54,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     {
         var tag = new TagModel { Namespace = "new", Subtag = "tag" };
 
-        var request = new UpdateTagsRequest
-        {
-            // Non-existent hash ID
-            HashId = 999,
-            TagsToAdd =
-            [
-                tag
-            ],
-            TagsToRemove = Array.Empty<TagModel>()
-        };
+        var request = new UpdateTagsRequest(999, [tag], []);
 
         var response = await Api.UpdateTags(request);
 
