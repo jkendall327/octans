@@ -34,5 +34,5 @@ public class EverythingPredicate : SystemPredicate
 
 public class OrPredicate : IPredicate
 {
-    public List<IPredicate> Predicates { get; set; } = [];
+    public List<IPredicate> Predicates { get; init; } = [];
 }

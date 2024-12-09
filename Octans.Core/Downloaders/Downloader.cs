@@ -9,7 +9,7 @@ public class DownloaderMetadata
     public Version Version { get; set; } = new(0, 0);
     public string Homepage { get; set; } = string.Empty;
 
-    public List<string> SupportedOperations { get; set; } = new();
+    public List<string> SupportedOperations { get; } = new();
 }
 
 public enum DownloaderUrlClassification
