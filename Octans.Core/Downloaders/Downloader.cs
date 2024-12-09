@@ -59,17 +59,17 @@ public sealed class Downloader : IDisposable
         return lua[functionName] as LuaFunction ?? throw new InvalidOperationException($"{functionName} not found in Lua blob");
     }
 
-    public bool MatchesUrl(string url)
+    public bool MatchesUrl(Uri url)
     {
-        var res = _matchUrl.Call(url)?.FirstOrDefault();
+        var res = _matchUrl.Call(url.AbsoluteUri)?.FirstOrDefault();
 
         return res is true;
     }
 
     // function classify_url(url) -> "Post" || "Gallery"
-    public DownloaderUrlClassification ClassifyUrl(string url)
+    public DownloaderUrlClassification ClassifyUrl(Uri url)
     {
-        var raw = _classifyUrl.Call(url)?.FirstOrDefault();
+        var raw = _classifyUrl.Call(url.AbsoluteUri)?.FirstOrDefault();
 
         if (raw is not string s) return DownloaderUrlClassification.Unknown;
 
@@ -120,15 +120,5 @@ public sealed class Downloader : IDisposable
         _parseHtml.Dispose();
         _generateGalleryUrl?.Dispose();
         _processApiQuery?.Dispose();
-    }
-
-    public bool MatchesUrl(Uri url)
-    {
-        throw new NotImplementedException();
-    }
-
-    public DownloaderUrlClassification ClassifyUrl(Uri url)
-    {
-        throw new NotImplementedException();
     }
 }

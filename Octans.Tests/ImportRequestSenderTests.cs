@@ -92,7 +92,7 @@ public class ImportRequestSenderTests
         return new(Guid.NewGuid(), results);
     }
 
-    private static IFormFile CreateMockFormFile(string fileName, string content)
+    private static FormFile CreateMockFormFile(string fileName, string content)
     {
         var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
         return new FormFile(stream, 0, stream.Length, "files", fileName);

@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using MimeDetective.InMemory;
 
 namespace Octans.Core;
 
+[SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "DTO")]
 public class HashedBytes
 {
     /// <summary>

@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Octans.Core.Querying;
 
-public interface IPredicate
-{
-}
+[SuppressMessage("Design", "CA1040:Avoid empty interfaces", Justification = "Required at compile-time")]
+public interface IPredicate;
 
 public class TagPredicate : IPredicate
 {

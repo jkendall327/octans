@@ -35,9 +35,11 @@ public sealed class SimpleImporter : Importer
 
         _logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
 
+#pragma warning disable CA2000
         var client = _clientFactory.CreateClient();
+#pragma warning restore CA2000
 
-        var bytes = await client.GetByteArrayAsync(url);
+        var bytes = await client.GetByteArrayAsync(item.Source);
 
         return bytes;
     }

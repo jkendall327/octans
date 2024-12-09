@@ -25,18 +25,20 @@ public class DownloaderService
     {
         var downloaders = await _downloaderFactory.GetDownloaders();
 
-        var matching = downloaders.FirstOrDefault(d => d.MatchesUrl(uri.AbsoluteUri));
+        var matching = downloaders.FirstOrDefault(d => d.MatchesUrl(uri));
 
         if (matching is null)
         {
             return [];
         }
 
+#pragma warning disable CA2000
         var client = _clientFactory.CreateClient();
+#pragma warning restore CA2000
 
-        var raw = await client.GetStringAsync(uri.AbsoluteUri);
+        var raw = await client.GetStringAsync(uri);
 
-        var classification = matching.ClassifyUrl(uri.AbsoluteUri);
+        var classification = matching.ClassifyUrl(uri);
 
         if (classification is DownloaderUrlClassification.Unknown)
         {
@@ -48,8 +50,8 @@ public class DownloaderService
             raw = matching.GenerateGalleryHtml(uri.AbsoluteUri, 0);
         }
 
-        var urls = matching.ParseHtml(raw).First();
+        var url = matching.ParseHtml(raw).First();
 
-        return await client.GetByteArrayAsync(urls);
+        return await client.GetByteArrayAsync(new Uri(url));
     }
 }

@@ -61,7 +61,7 @@ public class DownloaderFactoryTests
 
         var downloaders = await _sut.GetDownloaders();
 
-        downloaders.Single().Invoking(d => d.MatchesUrl("https://example.com")).Should().NotThrow();
+        downloaders.Single().Invoking(d => d.MatchesUrl(new("https://example.com"))).Should().NotThrow();
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class DownloaderFactoryTests
 
         var downloaders = await _sut.GetDownloaders();
 
-        downloaders.Single().Invoking(d => d.MatchesUrl("https://example.com")).Should().NotThrow();
+        downloaders.Single().Invoking(d => d.MatchesUrl(new("https://example.com"))).Should().NotThrow();
     }
 
     private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)
