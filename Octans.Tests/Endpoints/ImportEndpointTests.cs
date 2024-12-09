@@ -25,13 +25,13 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         _ = await SendSimpleValidRequest();
 
-        var expectedPath = _fileSystem.Path.Join(_appRoot,
+        var expectedPath = FileSystem1.Path.Join(AppRoot,
             "db",
             "files",
             "f61",
             "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
 
-        var file = _fileSystem.GetFile(expectedPath);
+        var file = FileSystem1.GetFile(expectedPath);
 
         file.Should().NotBeNull();
     }
@@ -41,7 +41,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         _ = await SendSimpleValidRequest();
 
-        var mapping = _context.Mappings
+        var mapping = Context.Mappings
             .Include(mapping => mapping.Hash)
             .Include(mapping => mapping.Tag)
             .ThenInclude(tag => tag.Namespace)
@@ -62,7 +62,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         _ = await SendSimpleValidRequest();
 
-        var thumbnailRequest = _spyChannel.WrittenItems.Single();
+        var thumbnailRequest = SpyChannel.WrittenItems.Single();
 
         thumbnailRequest.Bytes
             .Should()
@@ -75,11 +75,11 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var filepath = "C:/image.jpg";
 
-        _fileSystem.AddFile(filepath, mockFile);
+        FileSystem1.AddFile(filepath, mockFile);
 
         var request = BuildRequest(filepath, "category", "example");
 
-        var response = await _api.ProcessImport(request);
+        var response = await Api.ProcessImport(request);
 
         return (request, response.Content!);
     }

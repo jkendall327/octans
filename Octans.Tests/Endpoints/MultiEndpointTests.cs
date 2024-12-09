@@ -13,9 +13,9 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {
         var imagePath = "C:/test_image.jpg";
-        _fileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
+        FileSystem1.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
-        var expectedFilePath = _fileSystem.Path.Join(_appRoot,
+        var expectedFilePath = FileSystem1.Path.Join(AppRoot,
             "db",
             "files",
             "f61",
@@ -23,7 +23,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
         await ImportFile(imagePath, expectedFilePath);
 
-        var hashItem = await _context.Hashes.SingleAsync();
+        var hashItem = await Context.Hashes.SingleAsync();
         var hashId = hashItem.Id;
 
         await UpdateTags(hashId);
@@ -46,12 +46,12 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             DeleteAfterImport = false
         };
 
-        var result = await _api.ProcessImport(request);
+        var result = await Api.ProcessImport(request);
 
         result.Content.Should().NotBeNull();
         result.Content!.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
 
-        _fileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
+        FileSystem1.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
     }
 
     private async Task UpdateTags(int hashId)
@@ -63,9 +63,9 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             TagsToRemove = [new() { Namespace = "category", Subtag = "test" }]
         };
 
-        await _api.UpdateTags(updateTagsRequest);
+        await Api.UpdateTags(updateTagsRequest);
 
-        var tags = await _context.Mappings
+        var tags = await Context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
             .ToListAsync();
@@ -83,11 +83,11 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
     private async Task DeleteItem(int hashId, string expectedFilepath)
     {
-        var mappings = await _context.Mappings
+        var mappings = await Context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 
-        var result = await _api.DeleteFiles(new([hashId]));
+        var result = await Api.DeleteFiles(new([hashId]));
 
         result.Content.Should().NotBeNull();
         result.Content!.Results.Single().Success.Should().BeTrue();
@@ -95,18 +95,18 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
         // Verify deletion in database
         // We have to reload the item so EF doesn't give us the version in its cache
         // which doesn't reflect the SUT setting the DeletedAt flag.
-        var hash = await _context.Hashes.FindAsync(hashId);
-        await _context.Entry(hash!).ReloadAsync();
+        var hash = await Context.Hashes.FindAsync(hashId);
+        await Context.Entry(hash!).ReloadAsync();
 
         hash.Should().NotBeNull("we soft-delete hashes to prevent them being reimported later");
         hash!.DeletedAt.Should().NotBeNull("we soft-delete items by setting this value to something non-null");
 
         // Verify removal from filesystem
-        _fileSystem.FileExists(expectedFilepath)
+        FileSystem1.FileExists(expectedFilepath)
             .Should()
             .BeFalse("we remove the physical file even for soft-deletes");
 
-        var mappingsAfterDeletion = await _context.Mappings
+        var mappingsAfterDeletion = await Context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 

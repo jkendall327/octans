@@ -15,16 +15,16 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var id = await AddFileToDatabase(hashed);
 
-        var result = await _api.DeleteFiles(new([id]));
+        var result = await Api.DeleteFiles(new([id]));
 
         result.Content!.Results.Single().Success.Should().BeTrue();
 
         // Ensure it's gone from the filesystem
-        _fileSystem.FileExists(filePath).Should().BeFalse();
+        FileSystem1.FileExists(filePath).Should().BeFalse();
 
         // Ensure it's marked as deleted in the database
-        var deletedHash = await _context.Hashes.FindAsync(id);
-        await _context.Entry(deletedHash!).ReloadAsync();
+        var deletedHash = await Context.Hashes.FindAsync(id);
+        await Context.Entry(deletedHash!).ReloadAsync();
 
         deletedHash.Should().NotBeNull();
         deletedHash!.DeletedAt.Should().NotBeNull();
@@ -34,9 +34,9 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         var hashItem = new HashItem { Hash = hashed.Bytes };
 
-        _context.Hashes.Add(hashItem);
+        Context.Hashes.Add(hashItem);
 
-        await _context.SaveChangesAsync();
+        await Context.SaveChangesAsync();
 
         return hashItem.Id;
     }
@@ -47,9 +47,9 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
         var hashed = HashedBytes.FromUnhashed(fileBytes);
 
-        filePath = _fileSystem.Path.Combine(_appRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
+        filePath = FileSystem1.Path.Combine(AppRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
 
-        _fileSystem.AddFile(filePath, new(fileBytes));
+        FileSystem1.AddFile(filePath, new(fileBytes));
 
         return hashed;
     }
@@ -57,7 +57,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     [Fact]
     public async Task Delete_NonExistingFile_ReturnsNotFoundResult()
     {
-        var response = await _api.DeleteFiles(new([888]));
+        var response = await Api.DeleteFiles(new([888]));
 
         var itemResult = response.Content!.Results.Single();
 

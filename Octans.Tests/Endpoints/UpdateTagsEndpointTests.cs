@@ -23,11 +23,11 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = new[] { new TagModel { Namespace = "weapon", Subtag = "laser" } }
         };
 
-        var response = await _api.UpdateTags(request);
+        var response = await Api.UpdateTags(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var updatedTags = await _context.Mappings
+        var updatedTags = await Context.Mappings
             .Where(m => m.Hash.Id == hash.Id)
             .Select(m => new
             {
@@ -56,7 +56,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             TagsToRemove = Array.Empty<TagModel>()
         };
 
-        var response = await _api.UpdateTags(request);
+        var response = await Api.UpdateTags(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -65,7 +65,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     {
         var hash = new HashItem { Hash = [1, 2, 3, 4] };
 
-        _context.Hashes.Add(hash);
+        Context.Hashes.Add(hash);
 
         var tag = new Tag
         {
@@ -73,15 +73,15 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             Subtag = new() { Value = "laser" }
         };
 
-        _context.Tags.Add(tag);
+        Context.Tags.Add(tag);
 
-        _context.Mappings.Add(new()
+        Context.Mappings.Add(new()
         {
             Hash = hash,
             Tag = tag
         });
 
-        await _context.SaveChangesAsync();
+        await Context.SaveChangesAsync();
 
         return hash;
     }

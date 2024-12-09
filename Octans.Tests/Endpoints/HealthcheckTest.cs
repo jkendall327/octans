@@ -9,7 +9,7 @@ public class HealthcheckTest(WebApplicationFactory<Program> factory, ITestOutput
     [Fact]
     public async Task AppIsHealthyOnStartup()
     {
-        var client = _factory.CreateClient();
+        var client = Factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health"));
 

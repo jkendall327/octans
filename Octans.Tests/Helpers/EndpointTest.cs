@@ -19,24 +19,23 @@ namespace Octans.Tests;
 
 public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
-    protected readonly WebApplicationFactory<Program> _factory;
+    protected WebApplicationFactory<Program> Factory { get; }
 
     // Database
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
-    protected ServerDbContext _context = null!;
+    protected ServerDbContext Context { get; private set; } = null!;
 
     // Filesystem
-    protected readonly string _appRoot = "C:/app";
-    protected readonly MockFileSystem _fileSystem = new();
+    protected const string AppRoot = "C:/app";
+    protected MockFileSystem FileSystem1 { get; } = new();
 
-    // Channels
-    protected readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
-
-    protected readonly IOctansApi _api;
+    // Other
+    protected SpyChannelWriter<ThumbnailCreationRequest> SpyChannel { get; } = new();
+    protected IOctansApi Api { get; }
 
     protected EndpointTest(WebApplicationFactory<Program> factory, ITestOutputHelper testOutputHelper)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
+        Factory = factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureLogging(logging =>
             {
@@ -53,12 +52,12 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 // This will replace any IOptions<GlobalSettings> already configured.
                 services.Configure<GlobalSettings>(s =>
                 {
-                    s.AppRoot = _appRoot;
+                    s.AppRoot = AppRoot;
                 });
             });
         });
 
-        _api = RestService.For<IOctansApi>(_factory.CreateClient());
+        Api = RestService.For<IOctansApi>(Factory.CreateClient());
     }
 
     /// <summary>
@@ -68,9 +67,9 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     {
         await _connection.OpenAsync();
 
-        _context = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+        Context = Factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
 
-        var connectionString = _context.Database.GetConnectionString();
+        var connectionString = Context.Database.GetConnectionString();
 
         if (connectionString != "DataSource=:memory:")
         {
@@ -78,9 +77,9 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 "The in-memory database wasn't set up for tests (check the service replacement code)");
         }
 
-        await _context.Database.EnsureCreatedAsync();
+        await Context.Database.EnsureCreatedAsync();
 
-        var filesystem = _factory.Services.GetRequiredService<IFileSystem>();
+        var filesystem = Factory.Services.GetRequiredService<IFileSystem>();
 
         if (filesystem is FileSystem)
         {
@@ -90,18 +89,18 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
 
     public async Task DisposeAsync()
     {
-        await _context.DisposeAsync();
+        await Context.DisposeAsync();
         await _connection.DisposeAsync();
     }
 
     private void ReplaceNormalServices(IServiceCollection services)
     {
-        services.ReplaceExistingRegistrationsWith(_fileSystem.Path);
-        services.ReplaceExistingRegistrationsWith(_fileSystem.DirectoryInfo);
-        services.ReplaceExistingRegistrationsWith(_fileSystem.File);
-        services.ReplaceExistingRegistrationsWith<IFileSystem>(_fileSystem);
+        services.ReplaceExistingRegistrationsWith(FileSystem1.Path);
+        services.ReplaceExistingRegistrationsWith(FileSystem1.DirectoryInfo);
+        services.ReplaceExistingRegistrationsWith(FileSystem1.File);
+        services.ReplaceExistingRegistrationsWith<IFileSystem>(FileSystem1);
 
-        services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
+        services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(SpyChannel);
     }
 
     private void AddFakeDatabase(IServiceCollection services)
