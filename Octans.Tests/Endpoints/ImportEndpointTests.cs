@@ -86,11 +86,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
 
     private static ImportRequest BuildRequest(string source, string? @namespace, string subtag)
     {
-        var tag = new TagModel
-        {
-            Namespace = @namespace,
-            Subtag = subtag
-        };
+        var tag = new TagModel(Namespace: @namespace, Subtag: subtag);
 
         var item = new ImportItem
         {

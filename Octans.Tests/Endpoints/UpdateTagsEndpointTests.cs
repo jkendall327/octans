@@ -17,20 +17,8 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
         var hash = await SetupInitialData();
 
         var request = new UpdateTagsRequest(hash.Id,
-            [
-                new TagModel
-                {
-                    Namespace = "character",
-                    Subtag = "samus aran"
-                }
-            ],
-            [
-                new TagModel
-                {
-                    Namespace = "weapon",
-                    Subtag = "laser"
-                }
-            ]);
+            [new("character", "samus aran")],
+            [new("weapon", "laser")]);
 
         var response = await Api.UpdateTags(request);
 
@@ -52,7 +40,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     [Fact]
     public async Task UpdateTags_InvalidHashId_ReturnsNotFound()
     {
-        var tag = new TagModel { Namespace = "new", Subtag = "tag" };
+        var tag = new TagModel("new", "tag");
 
         var request = new UpdateTagsRequest(999, [tag], []);
 

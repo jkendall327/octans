@@ -77,7 +77,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
         var item = new ImportItem
         {
             Source = new("C:/myfile.jpeg"),
-            Tags = [new() { Namespace = "test", Subtag = "reimport" }]
+            Tags = [new("test", "reimport")]
         };
 
         var request = new ImportRequest

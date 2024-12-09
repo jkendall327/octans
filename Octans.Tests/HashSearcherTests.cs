@@ -91,7 +91,7 @@ public class HashSearcherTests : IAsyncLifetime
 
         var request = new DecomposedQuery()
         {
-            TagsToInclude = [new() { Namespace = "character", Subtag = "samus aran" }]
+            TagsToInclude = [new("character", "samus aran")]
         };
 
         var results = await _sut.Search(request);

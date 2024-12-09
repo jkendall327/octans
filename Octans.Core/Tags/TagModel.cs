@@ -1,7 +1,3 @@
 namespace Octans.Core;
 
-public class TagModel
-{
-    public string? Namespace { get; set; }
-    public required string Subtag { get; set; }
-}
+public record TagModel(string? Namespace, string Subtag);

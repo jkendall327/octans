@@ -36,7 +36,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
         var item = new ImportItem
         {
             Source = new(imagePath),
-            Tags = [new() { Namespace = "category", Subtag = "test" }]
+            Tags = [new("category", "test")]
         };
 
         var request = new ImportRequest
@@ -58,18 +58,10 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     {
         var updateTagsRequest = new UpdateTagsRequest(hashId,
             [
-                new()
-                {
-                    Namespace = "character",
-                    Subtag = "mario"
-                }
+                new("character", "mario")
             ],
             [
-                new()
-                {
-                    Namespace = "category",
-                    Subtag = "test"
-                }
+                new("category", "test")
             ]);
 
         await Api.UpdateTags(updateTagsRequest);

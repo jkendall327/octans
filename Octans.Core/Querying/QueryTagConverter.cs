@@ -43,13 +43,9 @@ public class QueryTagConverter
     private void ProcessTagPredicate(TagPredicate tagPredicate, HashSet<TagModel> includeTags, HashSet<TagModel> excludeTags)
     {
         if (tagPredicate.IsWildcard())
-            return; // Ignoring wildcards as per requirements
+            return;
 
-        var model = new TagModel
-        {
-            Namespace = tagPredicate.NamespacePattern,
-            Subtag = tagPredicate.SubtagPattern,
-        };
+        var model = new TagModel(Namespace: tagPredicate.NamespacePattern, Subtag: tagPredicate.SubtagPattern);
 
         if (tagPredicate.IsExclusive)
         {
