@@ -39,7 +39,8 @@ public class BandwidthLimiter
 
         if (!canMakeRequest)
         {
-            throw new BandwidthLimitExceededException(domain, usage.BytesPerHour, retryAfter);
+            // TODO: reintroduce a domain-specific exception here.
+            throw new InvalidOperationException("Too many requests");
         }
     }
 }

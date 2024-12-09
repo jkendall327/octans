@@ -126,4 +126,9 @@ public sealed class Downloader : IDisposable
     {
         throw new NotImplementedException();
     }
+
+    public DownloaderUrlClassification ClassifyUrl(Uri url)
+    {
+        throw new NotImplementedException();
+    }
 }

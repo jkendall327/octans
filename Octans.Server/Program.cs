@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Octans.Core;
 using Octans.Core.Models;
@@ -56,4 +57,5 @@ scope.Dispose();
 
 await app.RunAsync();
 
+[SuppressMessage("Maintainability", "CA1515:Consider making public types internal")]
 public partial class Program { }

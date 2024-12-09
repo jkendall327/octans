@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Octans.Core.Importing;
 using Octans.Core.Models;
 
 namespace Octans.Client;
 
+[SuppressMessage("Maintainability", "CA1515:Consider making public types internal")]
 public class ServerClient(HttpClient client)
 {
     public async Task<bool> IsHealthy()
