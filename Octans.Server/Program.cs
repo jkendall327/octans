@@ -54,6 +54,6 @@ var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 await db.Database.EnsureCreatedAsync();
 scope.Dispose();
 
-app.Run();
+await app.RunAsync();
 
 public partial class Program {}

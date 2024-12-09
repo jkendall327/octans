@@ -4,7 +4,11 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <NoWarn>CA1707;CA2007</NoWarn>
 	<WarningsAsErrors>$(WarningsAsErrors);CS1591;CS8600;CS8602;CS8603;CS8604;CS8618;CS8625;CS4014</WarningsAsErrors>
         <LangVersion>preview</LangVersion>
+        <AnalysisLevel>latest-all</AnalysisLevel>
+        <AnalysisMode>All</AnalysisMode>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
    </PropertyGroup>
 </Project>

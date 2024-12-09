@@ -9,7 +9,7 @@ using Octans.Server.Services;
 
 namespace Octans.Server;
 
-public static class Endpoints
+public static class ServerEndpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {

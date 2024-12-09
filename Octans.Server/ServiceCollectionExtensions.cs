@@ -12,7 +12,7 @@ using Octans.Server.Services;
 
 namespace Octans.Server;
 
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
     public static void AddOptions(this WebApplicationBuilder builder)
     {
