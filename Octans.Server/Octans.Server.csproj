@@ -9,12 +9,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Dapper" Version="2.1.35" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
+        <PackageReference Include="Dapper"  />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi"  />
+        <PackageReference Include="Microsoft.Data.Sqlite"  />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory"  />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"  />
+        <PackageReference Include="Swashbuckle.AspNetCore"  />
     </ItemGroup>
 
     <ItemGroup>
