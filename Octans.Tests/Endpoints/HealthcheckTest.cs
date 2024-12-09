@@ -11,7 +11,7 @@ public class HealthcheckTest(WebApplicationFactory<Program> factory, ITestOutput
     {
         var client = _factory.CreateClient();
         
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync(new Uri("/health"));
         
         response.EnsureSuccessStatusCode();
         
