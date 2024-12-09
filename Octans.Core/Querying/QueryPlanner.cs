@@ -6,15 +6,8 @@ namespace Octans.Core.Querying;
 /// Service for optimising a set of generated predicates.
 /// Removes duplicates, short-circuits in case of negating predicates, removes redundant predicates, etc.
 /// </summary>
-public class QueryPlanner
+public class QueryPlanner(IMemoryCache memoryCache)
 {
-    private readonly IMemoryCache _cache;
-
-    public QueryPlanner(IMemoryCache memoryCache)
-    {
-        _cache = memoryCache;
-    }
-
     public QueryPlan OptimiseQuery(IList<IPredicate> predicates)
     {
         var hashes = predicates
@@ -23,7 +16,7 @@ public class QueryPlanner
 
         var cacheKey = string.Join("|", hashes);
 
-        if (_cache.TryGetValue(cacheKey, out QueryPlan? cachedPlan) && cachedPlan is not null)
+        if (memoryCache.TryGetValue(cacheKey, out QueryPlan? cachedPlan) && cachedPlan is not null)
         {
             return cachedPlan;
         }
@@ -32,7 +25,7 @@ public class QueryPlanner
 
         var cacheEntryOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(5));
 
-        _cache.Set(cacheKey, plan, cacheEntryOptions);
+        memoryCache.Set(cacheKey, plan, cacheEntryOptions);
 
         return plan;
     }
