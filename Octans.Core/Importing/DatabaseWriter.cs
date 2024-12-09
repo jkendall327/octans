@@ -18,16 +18,16 @@ public class DatabaseWriter
     public async Task AddItemToDatabase(ImportItem item, HashedBytes hashed)
     {
         var hashItem = new HashItem { Hash = hashed.Bytes };
-        
+
         _context.Hashes.Add(hashItem);
 
         AddTags(item, hashItem);
 
         _logger.LogInformation("Persisting item to database");
-        
+
         await _context.SaveChangesAsync();
     }
-    
+
     private void AddTags(ImportItem request, HashItem hashItem)
     {
         var tags = request.Tags;
@@ -36,10 +36,10 @@ public class DatabaseWriter
         {
             return;
         }
-        
+
         // TODO: does this work when a namespace/subtag already exists?
         // Upserts in EF Core?
-        
+
         foreach (var tag in tags)
         {
             var tagDto = new Tag

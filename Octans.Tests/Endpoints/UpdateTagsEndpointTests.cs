@@ -31,7 +31,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             .Where(m => m.Hash.Id == hash.Id)
             .Select(m => new
             {
-                Namespace = m.Tag.Namespace.Value, 
+                Namespace = m.Tag.Namespace.Value,
                 Subtag = m.Tag.Subtag.Value
             })
             .ToListAsync();
@@ -44,11 +44,11 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     public async Task UpdateTags_InvalidHashId_ReturnsNotFound()
     {
         var tag = new TagModel { Namespace = "new", Subtag = "tag" };
-        
+
         var request = new UpdateTagsRequest
         {
             // Non-existent hash ID
-            HashId = 999, 
+            HashId = 999,
             TagsToAdd = new[]
             {
                 tag
@@ -64,7 +64,7 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
     private async Task<HashItem> SetupInitialData()
     {
         var hash = new HashItem { Hash = [1, 2, 3, 4] };
-        
+
         _context.Hashes.Add(hash);
 
         var tag = new Tag
@@ -72,12 +72,12 @@ public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITe
             Namespace = new() { Value = "weapon" },
             Subtag = new() { Value = "laser" }
         };
-        
+
         _context.Tags.Add(tag);
 
         _context.Mappings.Add(new()
         {
-            Hash = hash, 
+            Hash = hash,
             Tag = tag
         });
 

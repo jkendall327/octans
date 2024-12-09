@@ -20,7 +20,7 @@ public class ResolutionFilter : IImportFilter
         {
             return Task.FromResult(false);
         }
-        
+
         if (request.MinWidth is not null && request.MinWidth > width)
         {
             return Task.FromResult(false);
@@ -35,7 +35,7 @@ public class ResolutionFilter : IImportFilter
         {
             return Task.FromResult(false);
         }
-        
+
         return Task.FromResult(true);
     }
 }
@@ -48,15 +48,15 @@ public class FiletypeFilter : IImportFilter
         {
             return Task.FromResult(true);
         }
-        
+
         var type = bytes.DetectMimeType();
 
         var extension = type.Extension.ToLower();
-        
+
         var valid = request.AllowedFileTypes
             .Select(filetype => filetype.ToLower())
             .Contains(extension);
-        
+
         return Task.FromResult(valid);
     }
 }
@@ -66,7 +66,7 @@ public class FilesizeFilter : IImportFilter
     public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
         (var max, var min) = (request.MaxFileSize, request.MinFileSize);
-        
+
         if (max is null && min is null)
         {
             return Task.FromResult(true);

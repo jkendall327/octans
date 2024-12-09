@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
@@ -22,7 +21,7 @@ public class FileFinder
     {
         return await _context.Hashes.ToListAsync();
     }
-    
+
     public async Task<string?> GetFile(int id)
     {
         var hashItem = await _context.FindAsync<HashItem>(id);
@@ -33,7 +32,7 @@ public class FileFinder
         }
 
         var hashed = HashedBytes.FromHashed(hashItem.Hash);
-        
+
         var subfolder = _subfolderManager.GetSubfolder(hashed);
 
         return Directory
@@ -44,15 +43,15 @@ public class FileFinder
     public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)
     {
         var found = _context.Tags
-            .Where(t => 
+            .Where(t =>
                 tags.Any(tag =>
                 tag.Namespace.Value == t.Namespace.Value && tag.Subtag.Value == t.Namespace.Value));
 
-        var query = 
+        var query =
             from mapping in _context.Mappings
             join tag in found on mapping.Tag equals tag
             select mapping.Hash;
-        
+
         return await query.ToListAsync();
     }
 }

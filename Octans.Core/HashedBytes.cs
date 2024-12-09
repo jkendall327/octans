@@ -25,7 +25,7 @@ public class HashedBytes
     public string ThumbnailBucket => "t" + Bucket;
 
     public FileType MimeType { get; }
-    
+
     private HashedBytes(byte[] source)
     {
         Bytes = source;

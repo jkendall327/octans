@@ -19,24 +19,24 @@ internal static class ServiceCollectionExtensions
         var configuration = builder.Configuration.GetSection("GlobalSettings");
         builder.Services.Configure<GlobalSettings>(configuration);
     }
-    
+
     public static void AddDatabase(this WebApplicationBuilder builder)
     {
         builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
         {
             var config = s.GetRequiredService<IOptions<GlobalSettings>>();
-            
+
             var root = config.Value.AppRoot;
-            
+
             var path = s.GetRequiredService<IFileSystem>().Path;
-            
+
             var dbFolder = path.Join(root, "db");
 
             var db = path.Join(dbFolder, "octans.db");
 
             opt.UseSqlite($"Data Source={db};");
         });
-        
+
         builder.Services
             .AddHealthChecks()
             .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
@@ -57,7 +57,7 @@ internal static class ServiceCollectionExtensions
         builder.Services.AddSingleton(channel.Reader);
         builder.Services.AddSingleton(channel.Writer);
     }
-    
+
     public static void AddBusinessServices(this WebApplicationBuilder builder)
     {
         // Imports
@@ -65,7 +65,7 @@ internal static class ServiceCollectionExtensions
         builder.Services.AddScoped<SimpleImporter>();
         builder.Services.AddScoped<FileImporter>();
         builder.Services.AddScoped<PostImporter>();
-        
+
         // Import services
         builder.Services.AddScoped<ReimportChecker>();
         builder.Services.AddScoped<DatabaseWriter>();
@@ -74,13 +74,13 @@ internal static class ServiceCollectionExtensions
         builder.Services.AddSingleton<ThumbnailCreator>();
         builder.Services.AddScoped<DownloaderFactory>();
         builder.Services.AddScoped<DownloaderService>();
-        
+
         // Files
         builder.Services.AddSingleton<SubfolderManager>();
         builder.Services.AddScoped<FileFinder>();
         builder.Services.AddScoped<FileDeleter>();
         builder.Services.AddScoped<TagUpdater>();
-        
+
         // Queries
         builder.Services.AddScoped<QueryService>();
         builder.Services.AddScoped<QueryParser>();

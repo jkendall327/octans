@@ -25,7 +25,7 @@ public class TagUpdater
         await AddTags(request.TagsToAdd, hash);
 
         await _context.SaveChangesAsync();
-        
+
         return true;
     }
 
@@ -40,19 +40,19 @@ public class TagUpdater
         // TODO: this is probably bad when we have lots of mappings for a given hash.
         // But trying to do it against an IQueryable makes EF Core explode as it can't translate it.
         var forThisHash = await all.Where(m => m.Hash.Id == hash.Id).ToListAsync();
-        
+
         var mappingsToRemove = forThisHash.Where(m =>
         {
             return tagsToRemove.Any(t =>
             {
-                var namespacesMatch = 
+                var namespacesMatch =
                     (t.Namespace == null && string.IsNullOrEmpty(m.Tag.Namespace.Value)) ||
                     (t.Namespace != null && m.Tag.Namespace.Value == t.Namespace);
-                
+
                 return namespacesMatch && m.Tag.Subtag.Value == t.Subtag;
             });
         });
-        
+
         _context.Mappings.RemoveRange(mappingsToRemove);
     }
 
@@ -75,19 +75,21 @@ public class TagUpdater
             {
                 tag = new()
                 {
-                    Namespace = @namespace, Subtag = subtag
+                    Namespace = @namespace,
+                    Subtag = subtag
                 };
-                
+
                 _context.Tags.Add(tag);
             }
 
             var exists = await _context.Mappings.AnyAsync(m => m.Hash == hash && m.Tag == tag);
-            
+
             if (!exists)
             {
                 _context.Mappings.Add(new()
                 {
-                    Hash = hash, Tag = tag
+                    Hash = hash,
+                    Tag = tag
                 });
             }
         }

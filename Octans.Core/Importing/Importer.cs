@@ -95,7 +95,7 @@ public abstract class Importer
         await _filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
 
         await _databaseWriter.AddItemToDatabase(item, hashed);
-        
+
         _logger.LogInformation("Sending thumbnail creation request");
 
         await _thumbnailChannel.WriteAsync(new()
@@ -107,7 +107,7 @@ public abstract class Importer
         _logger.LogInformation("Import successful");
 
         await OnImportComplete(request, item);
-        
+
         var result = new ImportItemResult
         {
             Ok = true
@@ -117,6 +117,6 @@ public abstract class Importer
     }
 
     protected abstract Task<byte[]> GetRawBytes(ImportItem item);
-    
+
     protected virtual Task OnImportComplete(ImportRequest request, ImportItem item) => Task.CompletedTask;
 }

@@ -37,9 +37,9 @@ public class DomainBandwidthUsage
     private void ResetIfNecessary()
     {
         var now = _timeProvider.GetUtcNow();
-        
+
         if (!((now - _lastResetTime).TotalHours >= 1)) return;
-        
+
         _bytesUsed = 0;
         _lastResetTime = now;
     }

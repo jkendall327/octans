@@ -22,7 +22,7 @@ public class QuerySuggestionFinder
         {
             return [];
         }
-        
+
         (var space, var subtag) = SplitTag(search);
 
         if (string.IsNullOrWhiteSpace(subtag))
@@ -54,10 +54,10 @@ public class QuerySuggestionFinder
             namespaces = [found];
         }
 
-        var tagsForFoundNamespaces= from t in _context.Tags 
-            join ns in namespaces on t.Namespace.Id equals ns.Id 
-            select t;
-        
+        var tagsForFoundNamespaces = from t in _context.Tags
+                                     join ns in namespaces on t.Namespace.Id equals ns.Id
+                                     select t;
+
         List<Tag> tags = [];
 
         if (subtag == Constants.WILDCARD.ToString())
@@ -84,14 +84,14 @@ public class QuerySuggestionFinder
         var source = namespaces.Any() ? tagsForFoundNamespaces : _context.Tags;
 
         var clean = subtag.Replace(Constants.WILDCARD.ToString(), string.Empty);
-        
+
         tags = await source
             .Where(t => t.Subtag.Value.Contains(clean))
             .ToListAsync(token);
 
         return tags.ToHashSet();
     }
-        
+
     private async Task<List<Namespace>> GetNamespacesFromQueryPortion(string wildcard, CancellationToken token = default)
     {
         if (wildcard == Constants.WILDCARD.ToString())
@@ -100,10 +100,10 @@ public class QuerySuggestionFinder
         }
 
         var clean = wildcard.Replace(Constants.WILDCARD.ToString(), string.Empty);
-        
+
         return await _context.Namespaces.Where(n => n.Value.Contains(clean)).ToListAsync(token);
     }
-    
+
     private (string space, string subtag) SplitTag(string tag)
     {
         var split = tag.Split(Constants.NAMESPACE_DELIMITER);

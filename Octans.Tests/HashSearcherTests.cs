@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
@@ -13,7 +12,7 @@ public class HashSearcherTests : IAsyncLifetime
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private ServerDbContext _db = null!;
     private HashSearcher _sut = null!;
-    
+
     public async Task InitializeAsync()
     {
         await _connection.OpenAsync();
@@ -21,11 +20,11 @@ public class HashSearcherTests : IAsyncLifetime
         var optionsBuilder = new DbContextOptionsBuilder<ServerDbContext>()
             .UseSqlite(_connection)
             .Options;
-        
+
         _db = new(optionsBuilder);
 
         await _db.Database.EnsureCreatedAsync();
-        
+
         _sut = new(_db);
     }
 
@@ -34,14 +33,14 @@ public class HashSearcherTests : IAsyncLifetime
         await _db.DisposeAsync();
         await _connection.DisposeAsync();
     }
-    
+
     [Fact]
     public async Task ReturnsEverythingWhenPredicateIsEmpty()
     {
         await SeedData();
 
         var all = await _db.Hashes.ToListAsync();
-        
+
         var result = await _sut.Search(new());
 
         result.Should().BeEquivalentTo(all);
@@ -62,7 +61,7 @@ public class HashSearcherTests : IAsyncLifetime
 
         firstSubtag.Should().NotBeEmpty();
         secondSubtag.Should().NotBeEmpty();
-        
+
         await AddMappings("character", "samus aran", firstSubtag);
         await AddMappings("character", "bayonetta", secondSubtag);
 
@@ -70,12 +69,12 @@ public class HashSearcherTests : IAsyncLifetime
         {
             WildcardNamespacesToInclude = ["character"]
         };
-        
+
         var results = await _sut.Search(request);
-        
+
         results.Should().BeEquivalentTo(items, "the items all have the character subtag");
     }
-    
+
     /// <summary>
     /// Finds all hashes with tag "character:samus aran" when the predicate is precisely "character:samus aran"
     /// </summary>
@@ -87,16 +86,16 @@ public class HashSearcherTests : IAsyncLifetime
         var items = await GetRandomItems(1);
 
         var item = items.Single();
-        
+
         await AddMappings("character", "samus aran", item);
-        
+
         var request = new DecomposedQuery()
         {
-            TagsToInclude = [new(){ Namespace = "character", Subtag = "samus aran" }]
+            TagsToInclude = [new() { Namespace = "character", Subtag = "samus aran" }]
         };
-        
+
         var results = await _sut.Search(request);
-        
+
         results.Single().Should().Be(item, "it is the only item with this namespace/tag pairing");
     }
 
@@ -105,7 +104,7 @@ public class HashSearcherTests : IAsyncLifetime
     {
         throw new NotImplementedException();
     }
-    
+
     private async Task SeedData()
     {
         var all = new List<HashItem>
@@ -116,24 +115,24 @@ public class HashSearcherTests : IAsyncLifetime
             GenerateRandomHashItem(),
             GenerateRandomHashItem(),
         };
-        
+
         _db.AddRange(all);
-        
+
         await _db.SaveChangesAsync();
     }
-    
+
     private async Task<List<HashItem>> GetRandomItems(int count)
     {
         var all = await _db.Hashes.ToListAsync();
         return all.OrderBy(i => Guid.NewGuid()).Take(count).ToList();
     }
-    
+
     private async Task AddMappings(string @namespace, string subtag, params HashItem[] items)
     {
         var ns = new Namespace { Value = @namespace };
         var st = new Subtag { Value = subtag };
         var tag = new Tag { Namespace = ns, Subtag = st };
-        
+
         _db.Tags.Add(tag);
 
         foreach (var item in items)
@@ -146,14 +145,14 @@ public class HashSearcherTests : IAsyncLifetime
 
             _db.Mappings.Add(mapping);
         }
-        
+
         await _db.SaveChangesAsync();
     }
 
     private static HashItem GenerateRandomHashItem()
     {
         var random = Random.Shared;
-    
+
         return new()
         {
             Hash = GenerateRandomHash(),

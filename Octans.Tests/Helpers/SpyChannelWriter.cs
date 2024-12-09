@@ -13,7 +13,7 @@ public class SpyChannelWriter<T> : ChannelWriter<T>
     public override bool TryWrite(T item)
     {
         WrittenItems.Add(item);
-        
+
         return _channel.Writer.TryWrite(item);
     }
 

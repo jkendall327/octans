@@ -47,7 +47,7 @@ public class DownloaderService
         {
             raw = matching.GenerateGalleryUrl(uri.AbsoluteUri, 0);
         }
-        
+
         var urls = matching.ParseHtml(raw).First();
 
         return await client.GetByteArrayAsync(urls);

@@ -1,9 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
 using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
 using Octans.Server.Services;
 
@@ -16,7 +14,7 @@ internal static class ServerEndpoints
         MapFileEndpoints(app);
 
         MapTagEndpoints(app);
-        
+
         MapDownloaderEndpoints(app);
 
         MapInfrastructureEndpoints(app);
@@ -47,7 +45,7 @@ internal static class ServerEndpoints
             var downloaders = await ds.GetDownloaders();
 
             var downloader = downloaders.SingleOrDefault(s => s.Metadata.Name == name);
-            
+
             return downloader;
         });
     }
@@ -55,7 +53,7 @@ internal static class ServerEndpoints
     private static void MapFileEndpoints(WebApplication app)
     {
         app.MapGet("/files", async (FileFinder service) => await service.GetAll());
-        
+
         app.MapGet("/files/{id:int}", async (int id, FileFinder service) =>
             {
                 var file = await service.GetFile(id);
@@ -65,18 +63,18 @@ internal static class ServerEndpoints
             .WithDescription("Get a single file by its ID")
             .WithOpenApi();
 
-        app.MapPost("/files/query", 
+        app.MapPost("/files/query",
                 async (IEnumerable<string> queries, QueryService service) => await service.Query(queries))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();
-        
-        app.MapPost("/files", 
+
+        app.MapPost("/files",
                 async (ImportRequest request, ImportRouter service, CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
             .WithDescription("Processes an import request")
             .WithOpenApi();
-        
+
         app.MapPost("/files/deletion", async (DeleteRequest request, FileDeleter deleter) =>
             {
                 var results = await deleter.ProcessDeletion(request.Ids);
@@ -103,7 +101,7 @@ internal static class ServerEndpoints
 
                 await db.SaveChangesAsync();
             });
-        
+
         app.MapHealthChecks("/health", new()
         {
             ResponseWriter = async (context, report) =>
@@ -112,13 +110,13 @@ internal static class ServerEndpoints
                 await context.Response.WriteAsync(report.Status.ToString());
             }
         });
-        
+
         app.MapGet("/version", () => new { Version = "1.0.0" })
             .WithName("GetVersion")
             .WithDescription("Returns the current API version")
             .WithOpenApi();
-        
-        app.MapGet("/config", (IConfiguration config) => 
+
+        app.MapGet("/config", (IConfiguration config) =>
                 new
                 {
                     DatabaseRoot = config["DatabaseRoot"],

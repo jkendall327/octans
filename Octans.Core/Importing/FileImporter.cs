@@ -1,10 +1,6 @@
 using System.IO.Abstractions;
 using System.Threading.Channels;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MimeDetective.InMemory;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Octans.Server;
 
 namespace Octans.Core.Importing;
@@ -49,7 +45,7 @@ public class FileImporter : Importer
             _logger.LogInformation("Deleting original local file");
             _fileSystem.File.Delete(item.Source.AbsolutePath);
         }
-        
+
         return Task.CompletedTask;
     }
 }

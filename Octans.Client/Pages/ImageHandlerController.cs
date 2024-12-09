@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-public class ImageHandlerController : Controller
+internal class ImageHandlerController : Controller
 {
     private readonly ILogger<ImageHandlerController> _logger;
 
@@ -20,11 +20,11 @@ public class ImageHandlerController : Controller
         try
         {
             // TODO: this should just be pulling the already-created thumbnail from the filesystem.
-            
+
             var decodedPath = Uri.UnescapeDataString(path);
-            
+
             using var image = Image.Load(decodedPath);
-            
+
             // Resize the image while maintaining aspect ratio
             image.Mutate(x => x.Resize(new ResizeOptions
             {
@@ -43,7 +43,7 @@ public class ImageHandlerController : Controller
             return NotFound();
         }
     }
-    
+
     [HttpGet("GetFullImage")]
     [Route("[controller]/GetFullImage")]
     public IActionResult GetFullImage(string path)
@@ -53,7 +53,7 @@ public class ImageHandlerController : Controller
             var decodedPath = Uri.UnescapeDataString(path);
 
             using var image = Image.Load(decodedPath);
-            
+
             // For full-size images, limit max dimensions while maintaining aspect ratio
             image.Mutate(x => x
                 .Resize(new ResizeOptions

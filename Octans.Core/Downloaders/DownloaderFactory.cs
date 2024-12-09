@@ -26,7 +26,7 @@ public class DownloaderFactory
         {
             return _downloaders;
         }
-        
+
         var path = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
         var downloaders = _fileSystem.DirectoryInfo.New(path);
 
@@ -35,11 +35,11 @@ public class DownloaderFactory
             _logger.LogError("Downloader folder doesn't exist");
             throw new InvalidOperationException("Downloader folder doesn't exist");
         }
-        
+
         foreach (var subdir in downloaders.EnumerateDirectories())
         {
             _logger.LogInformation("Creating downloader from {DownloaderDirectory}", subdir.Name);
-            
+
             var files = subdir.EnumerateFiles("*.lua", SearchOption.TopDirectoryOnly).ToList();
 
             var downloader = await Create(files);
@@ -49,12 +49,12 @@ public class DownloaderFactory
                 // exception on creation
                 continue;
             }
-            
+
             _downloaders.Add(downloader);
         }
 
         _logger.LogInformation("Created {DownloaderCount} downloaders", _downloaders.Count);
-        
+
         return _downloaders;
     }
 
@@ -63,9 +63,9 @@ public class DownloaderFactory
         string[] names = ["metadata", "classifier", "parser", "gug", "api"];
 
         var functions = new Dictionary<string, Lua>();
-        
+
         var metadata = new DownloaderMetadata();
-        
+
         foreach (var name in names)
         {
             var file = sources.SingleOrDefault(s =>
@@ -75,22 +75,22 @@ public class DownloaderFactory
             });
 
             if (file is null) continue;
-            
+
             _logger.LogInformation("Read file content for {LuaFile}", file.Name);
-            
+
             var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
 
             if (name is "metadata")
             {
                 metadata = ExtractMetadata(raw);
-                
+
                 if (metadata is null) return null;
-                
+
                 continue;
             }
-            
+
             using var lua = new Lua();
-            
+
             try
             {
                 lua.DoString(raw);
@@ -100,14 +100,14 @@ public class DownloaderFactory
                 _logger.LogError(e, "Error loading raw Lua string");
                 return null;
             }
-            
+
             _logger.LogInformation("Instantiated Lua from {LuaFile}", file.Name);
             functions.Add(name, lua);
         }
 
         return new(functions, metadata);
     }
-    
+
     private DownloaderMetadata? ExtractMetadata(string raw)
     {
         using Lua lua = new();
@@ -121,7 +121,7 @@ public class DownloaderFactory
             _logger.LogError(e, "Error extracting metadata");
             return null;
         }
-        
+
         var downloaderTable = lua.GetTable("Downloader");
 
         if (downloaderTable == null)

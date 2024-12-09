@@ -13,7 +13,7 @@ public class BandwidthLimitingHandler : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request.RequestUri, nameof(request));
-        
+
         var domain = request.RequestUri.Host;
         var requestSize = request.Content?.Headers.ContentLength ?? 0;
 

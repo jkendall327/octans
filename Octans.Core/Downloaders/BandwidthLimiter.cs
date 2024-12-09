@@ -34,9 +34,9 @@ public class BandwidthLimiter
     public void EnsureCanMakeRequest(string domain, long requestSize)
     {
         if (!_domainUsage.TryGetValue(domain, out var usage)) return;
-        
+
         (var canMakeRequest, var retryAfter) = usage.CanMakeRequest(requestSize);
-        
+
         if (!canMakeRequest)
         {
             throw new BandwidthLimitExceededException(domain, usage.BytesPerHour, retryAfter);

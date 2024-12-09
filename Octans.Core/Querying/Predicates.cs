@@ -24,12 +24,12 @@ public abstract class SystemPredicate : IPredicate
 
 public class FilesizePredicate : SystemPredicate
 {
-    
+
 }
 
 public class EverythingPredicate : SystemPredicate
 {
-    
+
 }
 
 public class OrPredicate : IPredicate

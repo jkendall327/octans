@@ -20,11 +20,11 @@ public class ImportRequestSenderTests
         var environment = Substitute.For<IWebHostEnvironment>();
         var path = _mockFileSystem.Path.Join("C:", "fakepath");
         environment.WebRootPath.Returns(path);
-        
+
         //_sut = new(_mockFileSystem, environment, new ServerClient());
     }
 
-    [Fact (Skip = "Work in progress")]
+    [Fact(Skip = "Work in progress")]
     public async Task SendImportRequest_WithValidUrls_ReturnsSuccessResults()
     {
         var importUrls = "http://example.com/file1\nhttp://example.com/file2";
@@ -38,7 +38,7 @@ public class ImportRequestSenderTests
         result.Should().AllBe("Success");
     }
 
-    [Fact (Skip = "Work in progress")]
+    [Fact(Skip = "Work in progress")]
     public async Task SendImportRequest_WithValidFiles_ReturnsSuccessResults()
     {
         // Arrange
@@ -50,7 +50,7 @@ public class ImportRequestSenderTests
 
         var response = GetSuccessResponse();
         SetupClient(HttpStatusCode.OK, response);
-        
+
         // Act
         var result = await _sut.SendImportRequest(string.Empty, files);
 
@@ -59,12 +59,12 @@ public class ImportRequestSenderTests
         result.Should().AllBe("Success");
 
         var uploads = _mockFileSystem.Path.Join("C:", "fakepath", "uploads");
-        
+
         _mockFileSystem.FileExists(_mockFileSystem.Path.Join(uploads, "file1.txt")).Should().BeTrue();
         _mockFileSystem.FileExists(_mockFileSystem.Path.Join(uploads, "file2.txt")).Should().BeTrue();
     }
 
-    [Fact (Skip = "Work in progress")]
+    [Fact(Skip = "Work in progress")]
     public async Task SendImportRequest_WithNoItemsToImport_ReturnsAppropriateMessage()
     {
         var result = await _sut.SendImportRequest(string.Empty, []);
@@ -73,11 +73,11 @@ public class ImportRequestSenderTests
         result.Should().Contain("Nothing to import.");
     }
 
-    [Fact (Skip = "Work in progress")]
+    [Fact(Skip = "Work in progress")]
     public async Task SendImportRequest_WithHttpFailure_ReturnsErrorMessage()
     {
         var importUrls = "http://example.com/file1";
-        
+
         SetupClient(HttpStatusCode.InternalServerError, null);
 
         var result = await _sut.SendImportRequest(importUrls, []);
@@ -85,7 +85,7 @@ public class ImportRequestSenderTests
         result.Should().HaveCount(1);
         result.Should().Contain("Failed to process import request.");
     }
-    
+
     private static ImportResult GetSuccessResponse()
     {
         List<ImportItemResult> results = [new() { Ok = true }, new() { Ok = true }];
@@ -97,12 +97,12 @@ public class ImportRequestSenderTests
         var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
         return new FormFile(stream, 0, stream.Length, "files", fileName);
     }
-    
+
     private void SetupClient(HttpStatusCode code, object? content)
     {
         var client = new HttpClient(new FakeHttpMessageHandler(code, content));
         client.BaseAddress = new("http://foobar.com/");
-        
+
         _factory.CreateClient("ServerApi").Returns(client);
     }
 }

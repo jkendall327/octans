@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 
@@ -24,7 +23,7 @@ public class HashSearcher
             var allHashes = await _context.Hashes.ToListAsync(cancellationToken);
             return allHashes.ToHashSet();
         }
-        
+
         var tags = _context.Tags
             .Include(tag => tag.Namespace)
             .Include(tag => tag.Subtag);
@@ -33,7 +32,7 @@ public class HashSearcher
         var toExclude = request.TagsToExclude.Select(ToTagDto).ToList();
 
         var all = await tags.AsNoTracking().ToListAsync(cancellationToken);
-        
+
         var matching = all
             .Join(toInclude,
                 s => s.Namespace.Value + ":" + s.Subtag.Value,
@@ -52,10 +51,10 @@ public class HashSearcher
             var namespaceTags = all
                 .Join(spaces, t => t.Namespace.Id, n => n.Id, (s, t) => s)
                 .ToList();
-            
+
             matching.AddRange(namespaceTags);
         }
-        
+
         matching = matching.Except(toExclude).ToList();
 
         var allMappings = await _context.Mappings
@@ -68,7 +67,7 @@ public class HashSearcher
             .ToList();
 
         var hashes = allMappings.Select(x => x.Hash).ToHashSet();
-        
+
         return hashes;
     }
 

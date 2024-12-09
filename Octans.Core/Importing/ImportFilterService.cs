@@ -33,7 +33,7 @@ public sealed class ImportFilterService
             _logger.LogDebug("{FilterName} result: {FilterResult}", filter.GetType().Name, result);
 
             if (result) continue;
-            
+
             _logger.LogInformation("File rejected by import filters");
 
             return new()

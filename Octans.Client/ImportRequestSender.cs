@@ -38,7 +38,7 @@ public class ImportRequestSender
             foreach (var file in files)
             {
                 if (file.Length <= 0) continue;
-                
+
                 var filePath = _fileSystem.Path.Combine(uploadPath, file.FileName);
                 await using var stream = _fileSystem.FileStream.New(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
@@ -61,7 +61,7 @@ public class ImportRequestSender
         var response = await _client.Import(request);
 
         var results = response.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
-            
+
         return results;
     }
 }

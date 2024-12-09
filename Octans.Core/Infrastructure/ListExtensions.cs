@@ -10,7 +10,7 @@ public static class ListExtensions
         where T3 : IPredicate
     {
         var src = source.ToArray();
-        
+
         return (
             src.OfType<T1>().ToList(),
             src.OfType<T2>().ToList(),

@@ -5,7 +5,7 @@ using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(s 
+builder.WebHost.ConfigureKestrel(s
     => s.ListenLocalhost(CommunicationConstants.OCTANS_SERVER_PORT));
 
 builder.Services
@@ -56,4 +56,4 @@ scope.Dispose();
 
 await app.RunAsync();
 
-public partial class Program {}
+public partial class Program { }

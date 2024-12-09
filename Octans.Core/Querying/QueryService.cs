@@ -22,9 +22,9 @@ public class QueryService
         var predicates = _parser.Parse(queries);
 
         var plan = _planner.OptimiseQuery(predicates);
-        
+
         var query = _converter.Reduce(plan);
-        
+
         var items = await _searcher.Search(query);
 
         return items;

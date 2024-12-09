@@ -1,5 +1,4 @@
 using System.IO.Abstractions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using MimeDetective.InMemory;
 
@@ -25,7 +24,7 @@ public class SubfolderManager
     public void MakeSubfolders()
     {
         // Perform a Cartesian join, i.e. get every permutation of chars in the string.
-        var query = 
+        var query =
             from a in Hexadecimal
             from b in Hexadecimal
             select string.Concat(a, b);
@@ -33,20 +32,20 @@ public class SubfolderManager
         var permutations = query.ToList();
 
         var root = _fileSystem.DirectoryInfo.New(_hashFolderPath);
-        
+
         foreach (var permutation in permutations)
         {
             var fileDirectory = string.Concat("f", permutation);
             var thumbnailDirectory = string.Concat("t", permutation);
-            
+
             root.CreateSubdirectory(fileDirectory);
             root.CreateSubdirectory(thumbnailDirectory);
         }
-        
+
         var path = _fileSystem.Path.Join(_settings.Value.AppRoot, "downloaders");
         _fileSystem.Directory.CreateDirectory(path);
     }
-    
+
     public string GetDestination(HashedBytes hashed, byte[] originalBytes)
     {
         var fileType = originalBytes.DetectMimeType();
@@ -56,14 +55,14 @@ public class SubfolderManager
         var subfolder = GetSubfolder(hashed);
 
         var destination = _fileSystem.Path.Join(subfolder.AbsolutePath, fileName);
-        
+
         return destination;
     }
-    
+
     public Uri GetSubfolder(HashedBytes hashed)
     {
         var path = _fileSystem.Path.Join(_hashFolderPath, hashed.ContentBucket);
-        
+
         return new(path);
     }
 
@@ -83,7 +82,7 @@ public class SubfolderManager
     public IFileSystemInfo? GetThumbnail(HashedBytes hashed)
     {
         var path = _fileSystem.Path.Join(_hashFolderPath, hashed.ThumbnailBucket);
-        
+
         return _fileSystem.DirectoryInfo.New(path)
             .EnumerateFileSystemInfos()
             .FirstOrDefault(f =>

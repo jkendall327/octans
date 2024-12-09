@@ -1,29 +1,28 @@
 using System.IO.Abstractions;
 using Octans.Core;
-using Octans.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Octans.Client.Pages;
 
-public class IndexModel : PageModel
+internal class IndexModel : PageModel
 {
     public List<IFileInfo> Filepaths { get; private set; } = new();
 
     private readonly SubfolderManager _subfolderManager;
     private readonly ServerClient _client;
-    
+
     public IndexModel(SubfolderManager subfolderManager, ServerClient client)
     {
         _subfolderManager = subfolderManager;
         _client = client;
     }
-    
+
     public IActionResult OnGetFilePreview(Uri path)
     {
         return PhysicalFile(path.ToString(), "image/jpeg");
     }
-    
+
     public async Task<IActionResult> OnPostAsync()
     {
         var response = await _client.GetAll();
@@ -34,7 +33,7 @@ public class IndexModel : PageModel
         }
 
         var hashed = response.Select(x => HashedBytes.FromHashed(x.Hash));
-        
+
         Filepaths = hashed
             .Select(hash => _subfolderManager.GetFilepath(hash))
             .OfType<IFileInfo>()

@@ -20,7 +20,7 @@ public class QueryPlanner
         var hashes = predicates
             .Select(p => p.GetHashCode())
             .OrderBy(h => h);
-        
+
         var cacheKey = string.Join("|", hashes);
 
         if (_cache.TryGetValue(cacheKey, out QueryPlan? cachedPlan) && cachedPlan is not null)
@@ -36,15 +36,15 @@ public class QueryPlanner
 
         return plan;
     }
-    
+
     private QueryPlan Optimise(IList<IPredicate> predicates)
     {
         if (!predicates.Any())
         {
             return QueryPlan.NoResults;
         }
-        
-        (var system, var tags, var ors) = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>(); 
+
+        (var system, var tags, var ors) = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
 
         if (system.OfType<EverythingPredicate>().Any())
         {
@@ -52,12 +52,12 @@ public class QueryPlanner
         }
 
         // negative ORs are isomorphic to two separate negatives.
-        
+
         // we don't want to remove specific tags in favour of wildcard tags
         // as specific tags are probably way cheaper to search for and cut down the results massively.
-        
+
         // see the query optimisation doc for guidelines here
-        
+
         return new()
         {
             Predicates = predicates.ToList()
@@ -69,6 +69,6 @@ public class QueryPlan
 {
     public required List<IPredicate> Predicates { get; init; }
 
-    public static readonly QueryPlan NoResults = new() { Predicates = []};
-    public static readonly QueryPlan GetEverything = new() { Predicates = [new EverythingPredicate()]};
+    public static readonly QueryPlan NoResults = new() { Predicates = [] };
+    public static readonly QueryPlan GetEverything = new() { Predicates = [new EverythingPredicate()] };
 }

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Octans.Core;
 using Refit;
 using Xunit.Abstractions;
@@ -21,20 +20,20 @@ namespace Octans.Tests;
 public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
     protected readonly WebApplicationFactory<Program> _factory;
-    
+
     // Database
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     protected ServerDbContext _context = null!;
-    
+
     // Filesystem
     protected readonly string _appRoot = "C:/app";
     protected readonly MockFileSystem _fileSystem = new();
-    
+
     // Channels
     protected readonly SpyChannelWriter<ThumbnailCreationRequest> _spyChannel = new();
 
     protected readonly IOctansApi _api;
-    
+
     protected EndpointTest(WebApplicationFactory<Program> factory, ITestOutputHelper testOutputHelper)
     {
         _factory = factory.WithWebHostBuilder(builder =>
@@ -44,11 +43,11 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 logging.ClearProviders();
                 logging.AddProvider(new XUnitLoggerProvider(testOutputHelper));
             });
-            
+
             builder.ConfigureServices(services =>
             {
                 ReplaceNormalServices(services);
-                
+
                 AddFakeDatabase(services);
 
                 // This will replace any IOptions<GlobalSettings> already configured.
@@ -58,27 +57,27 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
                 });
             });
         });
-        
+
         _api = RestService.For<IOctansApi>(_factory.CreateClient());
     }
-    
+
     /// <summary>
     /// Checks we've correctly set things up with fakes rather than the real DB, filesystem etc.
     /// </summary>
     public async Task InitializeAsync()
     {
         await _connection.OpenAsync();
-        
+
         _context = _factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var connectionString = _context.Database.GetConnectionString();
-        
+
         if (connectionString != "DataSource=:memory:")
         {
             throw new InvalidOperationException(
                 "The in-memory database wasn't set up for tests (check the service replacement code)");
         }
-        
+
         await _context.Database.EnsureCreatedAsync();
 
         var filesystem = _factory.Services.GetRequiredService<IFileSystem>();
@@ -101,7 +100,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         services.ReplaceExistingRegistrationsWith(_fileSystem.DirectoryInfo);
         services.ReplaceExistingRegistrationsWith(_fileSystem.File);
         services.ReplaceExistingRegistrationsWith<IFileSystem>(_fileSystem);
-        
+
         services.ReplaceExistingRegistrationsWith<ChannelWriter<ThumbnailCreationRequest>>(_spyChannel);
     }
 

@@ -32,25 +32,25 @@ public class FileDeleter
 
         return results;
     }
-    
+
     private async Task<DeleteResult> DeleteFile(int id)
     {
         var entry = await _context.Hashes.FindAsync(id);
-        
+
         if (entry is null)
         {
             return new(id, false, "Hash not found");
         }
 
         var hashed = HashedBytes.FromHashed(entry.Hash);
-        
+
         var file = _subfolderManager.GetFilepath(hashed);
 
         if (file?.Exists == true)
         {
             file.Delete();
         }
-        
+
         var thumbnail = _subfolderManager.GetThumbnail(hashed);
 
         if (thumbnail?.Exists == true)

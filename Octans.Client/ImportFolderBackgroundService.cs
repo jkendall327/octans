@@ -10,7 +10,7 @@ internal class ImportFolderBackgroundService : BackgroundService
     private readonly ILogger<ImportFolderBackgroundService> _logger;
 
     private readonly string[] _importFolders;
-    
+
     public ImportFolderBackgroundService(IConfiguration configuration,
         IHttpClientFactory clientFactory,
         IFileSystem fileSystem,
@@ -34,7 +34,7 @@ internal class ImportFolderBackgroundService : BackgroundService
             await ScanAndImportFolders(stoppingToken);
         }
     }
-    
+
     private async Task ScanAndImportFolders(CancellationToken stoppingToken)
     {
         var request = new ImportRequest
@@ -47,7 +47,7 @@ internal class ImportFolderBackgroundService : BackgroundService
                 AllowedFileTypes = [".jpg", ".jpeg", ".png", ".gif"]
             }
         };
-        
+
         foreach (var folder in _importFolders)
         {
             if (!_fileSystem.Directory.Exists(folder))
@@ -59,14 +59,14 @@ internal class ImportFolderBackgroundService : BackgroundService
             var imports = _fileSystem.Directory
                 .GetFiles(folder, "*.*", SearchOption.AllDirectories)
                 .Where(IsImageFile)
-                .Select(file => new ImportItem 
+                .Select(file => new ImportItem
                 {
                     Source = new(file)
                 }).ToList();
 
             request.Items.AddRange(imports);
         }
-        
+
         await SendImportRequest(request, stoppingToken);
     }
 
@@ -77,9 +77,9 @@ internal class ImportFolderBackgroundService : BackgroundService
         try
         {
             var response = await client.PostAsJsonAsync("import", importRequest, stoppingToken);
-            
+
             response.EnsureSuccessStatusCode();
-            
+
             _logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
         }
         catch (HttpRequestException ex)

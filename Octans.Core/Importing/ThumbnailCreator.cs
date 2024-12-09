@@ -35,9 +35,9 @@ public class ThumbnailCreator
         });
 
         _logger.LogInformation("Starting thumbnail creation");
-        
+
         using var image = Image.Load(request.Bytes);
-        
+
         image.Mutate(x => x.Resize(new ResizeOptions
         {
             Size = new(200, 200),
@@ -47,7 +47,7 @@ public class ThumbnailCreator
         var thumbnailBytes = await SaveThumbnailAsync(image, stoppingToken);
 
         _logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
-        
+
         var destination = _fileSystem.Path.Join(_globalSettings.Value.AppRoot,
             "db",
             "files",
@@ -55,16 +55,16 @@ public class ThumbnailCreator
             request.Hashed.Hexadecimal + ".jpeg");
 
         _logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
-        
+
         await _fileSystem.File.WriteAllBytesAsync(destination, thumbnailBytes, stoppingToken);
     }
 
     private async Task<byte[]> SaveThumbnailAsync(Image image, CancellationToken stoppingToken)
     {
         using var memoryStream = new MemoryStream();
-        
+
         await image.SaveAsJpegAsync(memoryStream, stoppingToken);
-        
+
         return memoryStream.ToArray();
     }
 }

@@ -26,7 +26,7 @@ public class XUnitLogger : ILogger
             _testOutputHelper.WriteLine(exception.Message);
             _testOutputHelper.WriteLine(exception.StackTrace);
         }
-        
+
         var message = formatter(state, exception);
         _testOutputHelper.WriteLine($"{DateTime.UtcNow:o} {logLevel} {_categoryName} - {message}");
     }

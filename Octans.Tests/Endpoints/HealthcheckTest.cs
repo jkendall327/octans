@@ -10,13 +10,13 @@ public class HealthcheckTest(WebApplicationFactory<Program> factory, ITestOutput
     public async Task AppIsHealthyOnStartup()
     {
         var client = _factory.CreateClient();
-        
+
         var response = await client.GetAsync(new Uri("/health"));
-        
+
         response.EnsureSuccessStatusCode();
-        
+
         var result = await response.Content.ReadAsStringAsync();
-        
+
         result.Should().Be("Healthy");
     }
 }

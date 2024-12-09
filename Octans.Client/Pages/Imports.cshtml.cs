@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Octans.Client.Pages;
 
-public class Imports : PageModel
+internal class Imports : PageModel
 {
     private readonly ImportRequestSender _sender;
 
@@ -14,13 +14,13 @@ public class Imports : PageModel
 
     [BindProperty]
     public string ImportUrls { get; set; } = string.Empty;
-    
+
     [BindProperty]
     public List<IFormFile> Files { get; set; } = new();
 
     public List<string>? ImportResults { get; set; }
 
-    
+
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid)

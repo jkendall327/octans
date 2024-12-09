@@ -1,15 +1,10 @@
-using System.IO.Abstractions;
 using System.Threading.Channels;
-using Microsoft.Extensions.Options;
-using Octans.Core;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 
 namespace Octans.Server;
 
 
 
-public class ThumbnailCreationBackgroundService : BackgroundService
+internal class ThumbnailCreationBackgroundService : BackgroundService
 {
     private readonly ChannelReader<ThumbnailCreationRequest> _channel;
     private readonly ILogger<ThumbnailCreationBackgroundService> _logger;

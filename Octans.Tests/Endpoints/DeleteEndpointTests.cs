@@ -25,7 +25,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         // Ensure it's marked as deleted in the database
         var deletedHash = await _context.Hashes.FindAsync(id);
         await _context.Entry(deletedHash!).ReloadAsync();
-        
+
         deletedHash.Should().NotBeNull();
         deletedHash!.DeletedAt.Should().NotBeNull();
     }
@@ -33,24 +33,24 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     private async Task<int> AddFileToDatabase(HashedBytes hashed)
     {
         var hashItem = new HashItem { Hash = hashed.Bytes };
-        
+
         _context.Hashes.Add(hashItem);
-        
+
         await _context.SaveChangesAsync();
-        
+
         return hashItem.Id;
     }
 
     private HashedBytes AddFileToFilesystem(out string filePath)
     {
         var fileBytes = TestingConstants.MinimalJpeg;
-        
+
         var hashed = HashedBytes.FromUnhashed(fileBytes);
-        
+
         filePath = _fileSystem.Path.Combine(_appRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
-        
+
         _fileSystem.AddFile(filePath, new(fileBytes));
-        
+
         return hashed;
     }
 
@@ -60,7 +60,7 @@ public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOu
         var response = await _api.DeleteFiles(new([888]));
 
         var itemResult = response.Content!.Results.Single();
-        
+
         itemResult.Success.Should().BeFalse();
         itemResult.Error.Should().NotBeNullOrEmpty();
     }

@@ -13,11 +13,11 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
         var hash = await SetupDeletedImage();
-        
+
         var request = BuildRequest();
 
         request.AllowReimportDeleted = false;
-        
+
         var result = await _api.ProcessImport(request);
 
         result.Content.Should().NotBeNull();
@@ -42,17 +42,17 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
         request.AllowReimportDeleted = true;
 
         var result = await _api.ProcessImport(request);
-        
+
         result.Content.Should().NotBeNull();
         result.Content!.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
-        
+
         var dbHash = await _context.Hashes.FindAsync(hash.Id);
-        
+
         dbHash.Should().NotBeNull();
 
         // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
         await _context.Entry(dbHash!).ReloadAsync();
-        
+
         dbHash!.DeletedAt.Should().BeNull("reimporting was allowed, so its soft-deletion mark should be gone");
     }
 
@@ -69,7 +69,7 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
 
         return hash;
     }
-    
+
     private ImportRequest BuildRequest()
     {
         _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
@@ -79,15 +79,15 @@ public class ReimportTests(WebApplicationFactory<Program> factory, ITestOutputHe
             Source = new("C:/myfile.jpeg"),
             Tags = [new() { Namespace = "test", Subtag = "reimport" }]
         };
-        
+
         var request = new ImportRequest
         {
             Items = [item],
             ImportType = ImportType.File,
             DeleteAfterImport = false,
-            AllowReimportDeleted = false 
+            AllowReimportDeleted = false
         };
-        
+
         return request;
     }
 }

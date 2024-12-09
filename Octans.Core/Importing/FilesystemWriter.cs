@@ -21,7 +21,7 @@ public class FilesystemWriter
         var destination = _subfolderManager.GetDestination(hashed, bytes);
 
         _logger.LogDebug("Persisting file to {Destination}", destination);
-        
+
         await _fileSystem.File.WriteAllBytesAsync(destination, bytes);
     }
 }

@@ -7,13 +7,13 @@ public class QueryTagConverter
 {
     public DecomposedQuery Reduce(QueryPlan plan)
     {
-        (var system, var tags, var ors) = plan.Predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>(); 
+        (var system, var tags, var ors) = plan.Predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
 
         var include = new HashSet<TagModel>();
         var exclude = new HashSet<TagModel>();
-        
+
         var wellFormed = tags.Where(x => x.IsSpecificTag());
-        
+
         foreach (var tagPredicate in wellFormed)
         {
             ProcessTagPredicate(tagPredicate, include, exclude);
@@ -26,7 +26,7 @@ public class QueryTagConverter
             TagsToExclude = exclude
         };
     }
-    
+
     private void ProcessPredicate(IPredicate predicate, HashSet<TagModel> includeTags, HashSet<TagModel> excludeTags)
     {
         switch (predicate)
@@ -50,7 +50,7 @@ public class QueryTagConverter
             Namespace = tagPredicate.NamespacePattern,
             Subtag = tagPredicate.SubtagPattern,
         };
-        
+
         if (tagPredicate.IsExclusive)
         {
             excludeTags.Add(model);
@@ -82,7 +82,7 @@ public class DecomposedQuery
     public List<SystemPredicate> SystemPredicates { get; set; } = [];
     public HashSet<TagModel> TagsToInclude { get; set; } = [];
     public HashSet<TagModel> TagsToExclude { get; set; } = [];
-    
+
     public HashSet<string> WildcardNamespacesToInclude { get; set; } = [];
     public HashSet<string> WildcardNamespacesToExclude { get; set; } = [];
     public HashSet<string> WildcardSubtagsToInclude { get; set; } = [];

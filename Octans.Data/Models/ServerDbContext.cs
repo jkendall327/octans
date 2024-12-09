@@ -7,9 +7,9 @@ public class ServerDbContext : DbContext
 {
     public ServerDbContext(DbContextOptions<ServerDbContext> context) : base(context)
     {
-        
+
     }
-    
+
     public virtual DbSet<FileRecord> FileRecords { get; set; }
     public virtual DbSet<HashItem> Hashes { get; set; }
     public virtual DbSet<Tag> Tags { get; set; }

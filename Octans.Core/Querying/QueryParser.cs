@@ -10,16 +10,16 @@ public class QueryParser
     public List<IPredicate> Parse(IEnumerable<string> queries)
     {
         var cleaned = queries.Select(StringToRawQuery);
-        
+
         var predicates = ConvertRawQueriesToPredicates(cleaned);
-        
+
         return predicates;
     }
 
     private List<IPredicate> ConvertRawQueriesToPredicates(IEnumerable<RawQuery> cleaned)
     {
         var predicates = new List<IPredicate>();
-        
+
         foreach (var query in cleaned)
         {
             var result = query.Prefix switch
@@ -28,7 +28,7 @@ public class QueryParser
                 "or" => ParseOrPredicate(query),
                 var _ => ParseTagPredicate(query)
             };
-           
+
             predicates.Add(result);
         }
 
@@ -41,7 +41,7 @@ public class QueryParser
         {
             return new EverythingPredicate();
         }
-        
+
         throw new NotImplementedException();
     }
 
@@ -51,12 +51,12 @@ public class QueryParser
 
         var head = components.First();
         var tail = string.Join("OR", components.Skip(1));
-        
+
         tail = tail.Replace("(", "").Replace(")", "");
 
         var rawHead = StringToRawQuery(head);
         var rawTail = StringToRawQuery(tail);
-        
+
         var parsedHead = ConvertRawQueriesToPredicates([rawHead, rawTail]);
 
         return new OrPredicate
@@ -76,16 +76,16 @@ public class QueryParser
 
         return predicate;
     }
-    
+
     private RawQuery StringToRawQuery(string raw)
     {
         // Remove leading/trailing whitespace and collapse multiple consecutive whitespace.
         var cleaned = Regex.Replace(raw.Trim(), @"\s+", " ");
 
         // TODO: this should also replace multiple consecutive wildcards with just one.
-        
+
         var exclusive = cleaned.StartsWith(Constants.QUERY_NEGATION);
-        
+
         var split = cleaned.Split(Constants.NAMESPACE_DELIMITER);
 
         (var prefix, var query) = split.Length switch
@@ -100,7 +100,7 @@ public class QueryParser
         };
 
         prefix = prefix.Replace("-", string.Empty);
-        
+
         return new()
         {
             Exclusive = exclusive,
