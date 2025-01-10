@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Data", "Octans.Data\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Tests", "Octans.Tests\Octans.Tests.csproj", "{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Client", "Octans.Client\Octans.Client.csproj", "{DF955C2A-8384-4BFF-B10B-DE8ED1B91C64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED67EBC8-0863-48C3-88DA-F99A32C08AB5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF955C2A-8384-4BFF-B10B-DE8ED1B91C64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF955C2A-8384-4BFF-B10B-DE8ED1B91C64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF955C2A-8384-4BFF-B10B-DE8ED1B91C64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF955C2A-8384-4BFF-B10B-DE8ED1B91C64}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
