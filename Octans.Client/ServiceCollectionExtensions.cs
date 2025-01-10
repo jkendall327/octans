@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddViewmodels(this IServiceCollection services)
     {
         services.AddScoped<GalleryViewmodel>();
+        services.AddScoped<ImportsViewmodel>();
         return services;
     }
 

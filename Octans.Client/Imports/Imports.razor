@@ -5,10 +5,10 @@
 
 <InputFile OnChange="@LoadFiles" multiple />
 
-<button @onclick="@Send"></button>
+<button @onclick="@Send">Send</button>
 
 @code {
-    private List<IBrowserFile> _localFiles = [];
+    private readonly List<IBrowserFile> _localFiles = [];
     
     private void LoadFiles(InputFileChangeEventArgs arg)
     {
