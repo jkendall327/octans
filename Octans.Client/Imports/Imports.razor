@@ -1,0 +1,24 @@
+@page "/Imports"
+@inject ImportsViewmodel Viewmodel
+@using Microsoft.AspNetCore.Components.Forms
+<h3>Imports</h3>
+
+<InputFile OnChange="@LoadFiles" multiple />
+
+<button @onclick="@Send"></button>
+
+@code {
+    private List<IBrowserFile> _localFiles = [];
+    
+    private void LoadFiles(InputFileChangeEventArgs arg)
+    {
+        var files = arg.GetMultipleFiles(5000);
+
+        _localFiles.AddRange(files);
+    }
+
+    private async Task Send()
+    {
+        await Viewmodel.SendLocalFilesToServer(_localFiles);
+    }
+}
