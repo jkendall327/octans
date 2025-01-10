@@ -1,5 +1,4 @@
 ﻿<Solution>
-  <Project Path="Octans.ClientLegacy\Octans.ClientLegacy.csproj" Type="Classic C#" />
   <Project Path="Octans.Client\Octans.Client.csproj" Type="Classic C#" />
   <Project Path="Octans.Core\Octans.Core.csproj" Type="Classic C#" />
   <Project Path="Octans.Data\Octans.Data.csproj" Type="Classic C#" />
