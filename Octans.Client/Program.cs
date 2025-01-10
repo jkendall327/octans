@@ -1,20 +1,18 @@
 using System.IO.Abstractions;
 using Octans.Client;
 using Octans.Client.Components;
+using Octans.Client.Components.Pages;
 using Octans.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
-
-builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<SubfolderManager>();
 builder.Services.AddSingleton<IFileSystem>(new FileSystem());
 builder.Services.AddSingleton<ImportRequestSender>();
 
-builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection("GlobalSettings"));
+builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection(nameof(GlobalSettings)));
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {
@@ -22,13 +20,9 @@ builder.Services.AddHttpClient<ServerClient>(client =>
     client.BaseAddress = new($"http://localhost:{port}/");
 });
 
-builder.Services.AddHostedService<ImportFolderBackgroundService>();
+builder.Services.AddScoped<GalleryViewmodel>();
 
-builder.Services.Configure<ServiceProviderOptions>(s =>
-{
-    s.ValidateOnBuild = true;
-    s.ValidateScopes = true;
-});
+builder.Services.AddHostedService<ImportFolderBackgroundService>();
 
 var app = builder.Build();
 
