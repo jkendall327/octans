@@ -3,19 +3,8 @@ using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-public class ImportRequestSender
+public class ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment environment, ServerClient client)
 {
-    private readonly IFileSystem _fileSystem;
-    private readonly IWebHostEnvironment _environment;
-    private readonly ServerClient _client;
-
-    public ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment environment, ServerClient client)
-    {
-        _fileSystem = fileSystem;
-        _environment = environment;
-        _client = client;
-    }
-
     public async Task<List<string>> SendImportRequest(string importUrls, List<IFormFile> files)
     {
         var importItems = new List<ImportItem>();
@@ -32,15 +21,15 @@ public class ImportRequestSender
         // ASP.NET Core doesn't let us get the filepaths natively, so copy them over...
         if (files.Count > 0 && false)
         {
-            var uploadPath = _fileSystem.Path.Combine(_environment.WebRootPath, "uploads");
-            _fileSystem.Directory.CreateDirectory(uploadPath);
+            var uploadPath = fileSystem.Path.Combine(environment.WebRootPath, "uploads");
+            fileSystem.Directory.CreateDirectory(uploadPath);
 
             foreach (var file in files)
             {
                 if (file.Length <= 0) continue;
 
-                var filePath = _fileSystem.Path.Combine(uploadPath, file.FileName);
-                await using var stream = _fileSystem.FileStream.New(filePath, FileMode.Create);
+                var filePath = fileSystem.Path.Combine(uploadPath, file.FileName);
+                await using var stream = fileSystem.FileStream.New(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
                 importItems.Add(new() { Source = new(filePath) });
             }
@@ -58,7 +47,7 @@ public class ImportRequestSender
             DeleteAfterImport = false
         };
 
-        var response = await _client.Import(request);
+        var response = await client.Import(request);
 
         var results = response.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
 

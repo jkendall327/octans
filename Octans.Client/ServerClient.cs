@@ -21,13 +21,13 @@ public class ServerClient(HttpClient client)
         return result ?? throw new InvalidOperationException("The hash items deserialized to null");
     }
 
-    public async Task<ImportResult> Import(ImportRequest request)
+    public async Task<ImportResult> Import(ImportRequest request, CancellationToken cancellationToken = default)
     {
-        var response = await client.PostAsJsonAsync("files", request);
+        var response = await client.PostAsJsonAsync("files", request, cancellationToken);
 
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Failed to process import request.");
 
-        var result = await response.Content.ReadFromJsonAsync<ImportResult>();
+        var result = await response.Content.ReadFromJsonAsync<ImportResult>(cancellationToken);
 
         return result ?? throw new InvalidOperationException("The import result deserialized to null");
     }

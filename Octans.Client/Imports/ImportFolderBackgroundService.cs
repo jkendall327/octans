@@ -3,26 +3,14 @@ using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-internal sealed class ImportFolderBackgroundService : BackgroundService
+internal sealed class ImportFolderBackgroundService(
+    IConfiguration configuration,
+    ServerClient client,
+    IFileSystem fileSystem,
+    ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
-    private readonly IHttpClientFactory _clientFactory;
-    private readonly IFileSystem _fileSystem;
-    private readonly ILogger<ImportFolderBackgroundService> _logger;
-
-    private readonly string[] _importFolders;
+    private readonly string[] _importFolders = configuration.GetValue<string[]>("importFolders") ?? [];
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
-
-    public ImportFolderBackgroundService(IConfiguration configuration,
-        IHttpClientFactory clientFactory,
-        IFileSystem fileSystem,
-        ILogger<ImportFolderBackgroundService> logger)
-    {
-        _logger = logger;
-        _clientFactory = clientFactory;
-        _fileSystem = fileSystem;
-
-        _importFolders = configuration.GetValue<string[]>("importFolders") ?? [];
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -30,7 +18,7 @@ internal sealed class ImportFolderBackgroundService : BackgroundService
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            _logger.LogInformation("Checking for files in import folders...");
+            logger.LogInformation("Checking for files in import folders...");
 
             await ScanAndImportFolders(stoppingToken);
         }
@@ -51,13 +39,13 @@ internal sealed class ImportFolderBackgroundService : BackgroundService
 
         foreach (var folder in _importFolders)
         {
-            if (!_fileSystem.Directory.Exists(folder))
+            if (!fileSystem.Directory.Exists(folder))
             {
-                _logger.LogWarning("Import folder does not exist: {Folder}", folder);
+                logger.LogWarning("Import folder does not exist: {Folder}", folder);
                 continue;
             }
 
-            var imports = _fileSystem.Directory
+            var imports = fileSystem.Directory
                 .GetFiles(folder, "*.*", SearchOption.AllDirectories)
                 .Where(IsImageFile)
                 .Select(file => new ImportItem
@@ -73,25 +61,21 @@ internal sealed class ImportFolderBackgroundService : BackgroundService
 
     private async Task SendImportRequest(ImportRequest importRequest, CancellationToken stoppingToken)
     {
-        var client = _clientFactory.CreateClient("ServerApi");
-
         try
         {
-            var response = await client.PostAsJsonAsync("import", importRequest, stoppingToken);
+            var response = await client.Import(importRequest, stoppingToken);
 
-            response.EnsureSuccessStatusCode();
-
-            _logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
+            logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Error sending import request to API");
+            logger.LogError(ex, "Error sending import request to API");
         }
     }
 
     private bool IsImageFile(string filePath)
     {
-        var extension = _fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
+        var extension = fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
         return ImageExtensions.Contains(extension);
     }
 }
