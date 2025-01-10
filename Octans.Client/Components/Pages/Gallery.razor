@@ -1,0 +1,12 @@
+@page "/Gallery"
+@inject GalleryViewmodel Viewmodel
+
+<h3>Gallery</h3>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await Viewmodel.GetAllImages();
+        await base.OnInitializedAsync();
+    }
+}

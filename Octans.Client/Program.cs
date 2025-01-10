@@ -24,6 +24,12 @@ builder.Services.AddHttpClient<ServerClient>(client =>
 
 builder.Services.AddHostedService<ImportFolderBackgroundService>();
 
+builder.Services.Configure<ServiceProviderOptions>(s =>
+{
+    s.ValidateOnBuild = true;
+    s.ValidateScopes = true;
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
