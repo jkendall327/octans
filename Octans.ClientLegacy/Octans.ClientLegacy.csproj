@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>$(ProjectTargetFramework)</TargetFramework>
+        <RootNamespace>Octans.Client</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Server", "Octans.Server\Octans.Server.csproj", "{F09AD775-E977-4535-8B8E-B79DA706356F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Client", "Octans.Client\Octans.Client.csproj", "{79D0E3BF-4D38-4B0A-9D10-05EEFC6F403E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.ClientLegacy", "Octans.ClientLegacy\Octans.ClientLegacy.csproj", "{79D0E3BF-4D38-4B0A-9D10-05EEFC6F403E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Octans.Core", "Octans.Core\Octans.Core.csproj", "{9735D5D7-7B8F-4A73-B91C-7502847F17A8}"
 EndProject

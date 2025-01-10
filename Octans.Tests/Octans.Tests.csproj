@@ -31,7 +31,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Octans.Client\Octans.Client.csproj" />
+        <ProjectReference Include="..\Octans.ClientLegacy\Octans.ClientLegacy.csproj" />
         <ProjectReference Include="..\Octans.Server\Octans.Server.csproj" />
     </ItemGroup>
 
