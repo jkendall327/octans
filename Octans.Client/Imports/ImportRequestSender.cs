@@ -1,9 +1,10 @@
 using System.IO.Abstractions;
+using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-public class ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment environment, ServerClient client)
+public class ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment environment, IOctansApi client)
 {
     public async Task<List<string>> SendImportRequest(string importUrls, List<IFormFile> files)
     {
@@ -47,9 +48,11 @@ public class ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment env
             DeleteAfterImport = false
         };
 
-        var response = await client.Import(request);
+        var response = await client.ProcessImport(request);
 
-        var results = response.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
+        var content = response.Content ?? throw new InvalidOperationException();
+        
+        var results = content.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
 
         return results;
     }

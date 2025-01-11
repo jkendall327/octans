@@ -1,11 +1,12 @@
 using System.IO.Abstractions;
+using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
 
 internal sealed class ImportFolderBackgroundService(
     IConfiguration configuration,
-    ServerClient client,
+    IOctansApi client,
     IFileSystem fileSystem,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
@@ -63,7 +64,7 @@ internal sealed class ImportFolderBackgroundService(
     {
         try
         {
-            var response = await client.Import(importRequest, stoppingToken);
+            var response = await client.ProcessImport(importRequest);
 
             logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
         }

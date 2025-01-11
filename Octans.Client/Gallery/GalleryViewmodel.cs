@@ -1,9 +1,10 @@
 using System.IO.Abstractions;
 using Octans.Core;
+using Octans.Core.Communication;
 
 namespace Octans.Client.Components.Pages;
 
-public class GalleryViewmodel(ServerClient client, SubfolderManager manager)
+public class GalleryViewmodel(IOctansApi client, SubfolderManager manager)
 {
     public List<string> ImagePaths { get; private set; } = new();
     public const int MaxImages = 10;
@@ -12,12 +13,14 @@ public class GalleryViewmodel(ServerClient client, SubfolderManager manager)
 
     public async Task GetAllImages()
     {
-        var response = await client.GetAll();
+        var response = await client.GetAllFiles();
 
-        var hashed = response.Select(x => HashedBytes.FromHashed(x.Hash));
+        var items = response.Content ?? throw new ArgumentNullException(nameof(response.Content));
+        
+        var hashed = items.Select(x => HashedBytes.FromHashed(x.Hash));
 
         var paths = hashed
-            .Select(hash => manager.GetFilepath(hash))
+            .Select(manager.GetFilepath)
             .OfType<IFileSystemInfo>()
             .Select(x => x.FullName)
             .ToList();

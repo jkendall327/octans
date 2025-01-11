@@ -1,10 +1,11 @@
 using System.IO.Abstractions;
 using Microsoft.AspNetCore.Components.Forms;
+using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment environment, ServerClient client)
+public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment environment, IOctansApi client)
 {
     public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
     {
@@ -35,6 +36,6 @@ public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment enviro
             DeleteAfterImport = false
         };
 
-        await client.Import(request);
+        await client.ProcessImport(request);
     }
 }
