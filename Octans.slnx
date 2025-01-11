@@ -1,7 +1,0 @@
-﻿<Solution>
-  <Project Path="Octans.Client\Octans.Client.csproj" Type="Classic C#" />
-  <Project Path="Octans.Core\Octans.Core.csproj" Type="Classic C#" />
-  <Project Path="Octans.Data\Octans.Data.csproj" Type="Classic C#" />
-  <Project Path="Octans.Server\Octans.Server.csproj" Type="Classic C#" />
-  <Project Path="Octans.Tests\Octans.Tests.csproj" Type="Classic C#" />
-</Solution>
