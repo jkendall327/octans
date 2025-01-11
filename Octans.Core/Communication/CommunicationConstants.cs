@@ -1,4 +1,4 @@
-namespace Octans.Core;
+namespace Octans.Core.Communication;
 
 public static class CommunicationConstants
 {

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Octans.Core;
+using Octans.Core.Communication;
 using Octans.Core.Models;
 using Octans.Server;
 

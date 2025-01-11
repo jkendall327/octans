@@ -1,11 +1,10 @@
-using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Models;
 using Octans.Server.Services;
 using Refit;
 
-namespace Octans.Tests;
+namespace Octans.Core.Communication;
 
 public interface IOctansApi
 {

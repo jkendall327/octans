@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Octans.Core;
+using Octans.Core.Communication;
 using Refit;
 using Xunit.Abstractions;
 

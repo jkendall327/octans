@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Octans.Client.Components.Pages;
 using Octans.Core;
+using Octans.Core.Communication;
 
 namespace Octans.Client;
 
