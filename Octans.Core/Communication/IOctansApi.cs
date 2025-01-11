@@ -18,17 +18,23 @@ public interface IOctansApi
     Task<IApiResponse<Downloader>> GetDownloader(string name);
 
     [Get("/files")]
-    Task<IApiResponse<IEnumerable<FileRecord>>> GetAllFiles();
+    Task<IApiResponse<List<HashItem>>> GetAllFiles();
 
     [Get("/files/{id}")]
-    Task<IApiResponse<FileRecord>> GetFile(int id);
+    Task<IApiResponse<string?>> GetFile(int id);
 
     [Post("/files/query")]
-    Task<IApiResponse<IEnumerable<FileRecord>>> SearchByQuery([Body] IEnumerable<string> queries);
+    Task<IApiResponse<HashSet<HashItem>>> SearchByQuery([Body] IEnumerable<string> queries);
 
     [Post("/files")]
     Task<IApiResponse<ImportResult>> ProcessImport([Body] ImportRequest request);
 
     [Post("/files/deletion")]
     Task<IApiResponse<DeleteResponse>> DeleteFiles(DeleteRequest request);
+    
+    [Get("/health")]
+    Task<IApiResponse> HealthCheck();
+    
+    [Post("/clearAllData")]
+    Task<IApiResponse> ClearAllData();
 }
