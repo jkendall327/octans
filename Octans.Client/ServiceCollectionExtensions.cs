@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<ImportRequestSender>();
         services.AddHostedService<ImportFolderBackgroundService>();
-        
+
         return services;
     }
 
@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
-    
+
     public static IServiceCollection AddViewmodels(this IServiceCollection services)
     {
         services.AddScoped<GalleryViewmodel>();

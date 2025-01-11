@@ -9,22 +9,22 @@ public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment enviro
     public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
     {
         if (!files.Any()) return;
-        
+
         var uploadPath = fileSystem.Path.Combine(environment.WebRootPath, "uploads");
         fileSystem.Directory.CreateDirectory(uploadPath);
 
         var items = new List<ImportItem>();
-        
+
         foreach (var file in files)
         {
             if (file.Size <= 0) continue;
 
             var filePath = fileSystem.Path.Combine(uploadPath, file.Name);
-            
+
             await using var stream = fileSystem.FileStream.New(filePath, FileMode.Create);
             await using var source = file.OpenReadStream();
             await source.CopyToAsync(stream);
-            
+
             items.Add(new() { Source = new(filePath) });
         }
 
@@ -34,7 +34,7 @@ public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment enviro
             Items = items,
             DeleteAfterImport = false
         };
-        
+
         await client.Import(request);
     }
 }
