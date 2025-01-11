@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using Octans.Client.Components.Pages;
 using Octans.Core;
 using Octans.Core.Communication;
+using Refit;
 
 namespace Octans.Client;
 
@@ -24,7 +25,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddHttpClients(this IServiceCollection services)
     {
-        services.AddHttpClient<ServerClient>(client =>
+        services.AddRefitClient<IOctansApi>().ConfigureHttpClient(client =>
         {
             var port = CommunicationConstants.OCTANS_SERVER_PORT;
             client.BaseAddress = new($"http://localhost:{port}/");
