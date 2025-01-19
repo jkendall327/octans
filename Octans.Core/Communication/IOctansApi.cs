@@ -31,10 +31,10 @@ public interface IOctansApi
 
     [Post("/files/deletion")]
     Task<IApiResponse<DeleteResponse>> DeleteFiles(DeleteRequest request);
-    
+
     [Get("/health")]
     Task<IApiResponse> HealthCheck();
-    
+
     [Post("/clearAllData")]
     Task<IApiResponse> ClearAllData();
 }

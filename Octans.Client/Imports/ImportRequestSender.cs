@@ -51,7 +51,7 @@ public class ImportRequestSender(IFileSystem fileSystem, IWebHostEnvironment env
         var response = await client.ProcessImport(request);
 
         var content = response.Content ?? throw new InvalidOperationException();
-        
+
         var results = content.Results.Select(r => r.Ok ? "Success" : $"Failed: {false}").ToList();
 
         return results;

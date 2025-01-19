@@ -16,7 +16,7 @@ public class GalleryViewmodel(IOctansApi client, SubfolderManager manager)
         var response = await client.GetAllFiles();
 
         var items = response.Content ?? throw new ArgumentNullException(nameof(response.Content));
-        
+
         var hashed = items.Select(x => HashedBytes.FromHashed(x.Hash));
 
         var paths = hashed
