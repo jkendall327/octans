@@ -1,21 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
-  <!-- Background (transparent) -->
-  
-  <!-- Constellation points (stars) -->
-  <circle cx="240" cy="120" r="4" fill="#4A90E2"/>
-  <circle cx="340" cy="150" r="3" fill="#4A90E2"/>
-  <circle cx="440" cy="180" r="5" fill="#4A90E2"/>
-  <circle cx="340" cy="200" r="3" fill="#4A90E2"/>
-  
-  <!-- Constellation lines -->
-  <line x1="240" y1="120" x2="340" y2="150" stroke="#4A90E2" stroke-width="1.5"/>
-  <line x1="340" y1="150" x2="440" y2="180" stroke="#4A90E2" stroke-width="1.5"/>
-  <line x1="440" y1="180" x2="340" y2="200" stroke="#4A90E2" stroke-width="1.5"/>
-  <line x1="340" y1="200" x2="240" y2="120" stroke="#4A90E2" stroke-width="1.5"/>
-  
-  <!-- Text "OCTANS" -->
-  <text x="600" y="155" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333333">OCTANS</text>
-  
-  <!-- Subtle geometric element -->
-  <polygon points="340,70 355,95 380,100 360,120 365,145 340,135 315,145 320,120 300,100 325,95" fill="none" stroke="#4A90E2" stroke-width="1" opacity="0.6"/>
+<svg width="1500" height="500" xmlns="http://www.w3.org/2000/svg">
+ <!-- Background (transparent) -->
+
+ <!-- Constellation points (stars) -->
+ <!-- Constellation lines -->
+ <!-- Text "OCTANS" -->
+ <!-- Subtle geometric element -->
+ <g>
+  <title>Layer 1</title>
+  <circle style="--darkreader-inline-fill: var(--darkreader-text-4a90e2, #54a1e4);" id="svg_1" fill="#4A90E2" r="9.75032" cy="196.67861" cx="346.8261"/>
+  <circle style="--darkreader-inline-fill: var(--darkreader-text-4a90e2, #54a1e4);" id="svg_2" fill="#4A90E2" r="7.31277" cy="274.21518" cx="617.47797"/>
+  <circle style="--darkreader-inline-fill: var(--darkreader-text-4a90e2, #54a1e4);" id="svg_3" fill="#4A90E2" r="12.18793" cy="351.75175" cx="888.12984"/>
+  <circle style="--darkreader-inline-fill: var(--darkreader-text-4a90e2, #54a1e4);" id="svg_4" fill="#4A90E2" r="7.31274" cy="403.44279" cx="617.47797"/>
+  <line style="--darkreader-inline-stroke: var(--darkreader-border-4a90e2, #174e8e);" id="svg_5" stroke-width="1.5" stroke="#4A90E2" y2="274.21518" x2="617.47797" y1="196.67861" x1="346.8261"/>
+  <line style="--darkreader-inline-stroke: var(--darkreader-border-4a90e2, #174e8e);" id="svg_6" stroke-width="1.5" stroke="#4A90E2" y2="351.75175" x2="888.12984" y1="274.21518" x1="617.47797"/>
+  <line style="--darkreader-inline-stroke: var(--darkreader-border-4a90e2, #174e8e);" id="svg_7" stroke-width="1.5" stroke="#4A90E2" y2="403.44279" x2="617.47797" y1="351.75175" x1="888.12984"/>
+  <line style="--darkreader-inline-stroke: var(--darkreader-border-4a90e2, #174e8e);" id="svg_8" stroke-width="1.5" stroke="#4A90E2" y2="196.67861" x2="346.8261" y1="403.44279" x1="617.47797"/>
+  <text style="--darkreader-inline-fill: var(--darkreader-text-333333, #c8c3bc);" font-style="normal" transform="matrix(3.07394, 0, 0, 2.77214, -1152.03, -557.455)" id="svg_9" fill="#333333" text-anchor="middle" font-weight="bold" font-size="32" font-family="'Bodoni Moda'" y="269.83665" x="700.82039">octans</text>
+  <polygon style="--darkreader-inline-stroke: var(--darkreader-text-4a90e2, #54a1e4);" id="svg_10" opacity="0.6" stroke="#4A90E2" fill="none" points="617.477897644043,67.45098686218262 658.0756759643555,132.06481742858887 725.7387008666992,144.98756217956543 671.608268737793,196.67863273620605 685.1408615112305,261.29240226745605 617.477897644043,235.446928024292 549.8149948120117,261.29240226745605 563.3475875854492,196.67863273620605 509.2172164916992,144.98756217956543 576.8801803588867,132.06481742858887 "/>
+ </g>
 </svg>
