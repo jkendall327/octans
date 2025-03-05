@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Octans.Core;
+using Octans.Core.Communication;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Models;
@@ -111,6 +113,14 @@ internal static class ServerEndpoints
                 await context.Response.WriteAsync(report.Status.ToString());
             }
         });
+
+        app.MapGet("/stats", async (StatsService statsService) =>
+            {
+                return await statsService.GetHomeStats();
+            })
+            .WithName("GetHomeStats")
+            .WithDescription("Returns statistics for the homepage")
+            .WithOpenApi();
 
         app.MapGet("/version", () => new { Version = "1.0.0" })
             .WithName("GetVersion")
