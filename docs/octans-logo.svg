@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <!-- Background (transparent) -->
+  
+  <!-- Constellation points (stars) -->
+  <circle cx="240" cy="120" r="4" fill="#4A90E2"/>
+  <circle cx="340" cy="150" r="3" fill="#4A90E2"/>
+  <circle cx="440" cy="180" r="5" fill="#4A90E2"/>
+  <circle cx="340" cy="200" r="3" fill="#4A90E2"/>
+  
+  <!-- Constellation lines -->
+  <line x1="240" y1="120" x2="340" y2="150" stroke="#4A90E2" stroke-width="1.5"/>
+  <line x1="340" y1="150" x2="440" y2="180" stroke="#4A90E2" stroke-width="1.5"/>
+  <line x1="440" y1="180" x2="340" y2="200" stroke="#4A90E2" stroke-width="1.5"/>
+  <line x1="340" y1="200" x2="240" y2="120" stroke="#4A90E2" stroke-width="1.5"/>
+  
+  <!-- Text "OCTANS" -->
+  <text x="600" y="155" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333333">OCTANS</text>
+  
+  <!-- Subtle geometric element -->
+  <polygon points="340,70 355,95 380,100 360,120 365,145 340,135 315,145 320,120 300,100 325,95" fill="none" stroke="#4A90E2" stroke-width="1" opacity="0.6"/>
+</svg>

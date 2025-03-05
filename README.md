@@ -1,8 +1,12 @@
 # Octans
 
-Octans is a WIP image management system which uses tags for organisation.
+![Logo for Octans, showing a constellation and the project name](docs/octans-logo.svg "Title")
 
-Not ready for serious use yet, but making it public because I have no reason not to.
+> There is no real mythology related to Octans, partially due to its faintness and relative recentness, but mostly because of its extreme southerly latitude.
+
+—[Wikipedia](https://en.wikipedia.org/wiki/Octans)
+
+Octans is a WIP tag-based image management system.
 
 It's essentially my reimplementation of [the Hydrus Network](https://hydrusnetwork.github.io/hydrus/index.html) in C#.
 I'm developing it because:
@@ -19,21 +23,17 @@ I'm developing it because:
 - Support for tag relationships (siblings/parents) [prospective]
 - Lua-based extensibility to work with custom sites [WIP]
 
-## Getting Started
-
-1. Clone the repository
-2. Navigate to the project directory
-3. Run the application:
-   ```bash
-   dotnet run --project HydrusReplacement.Server
-   ```
-
-## Project Structure & Getting Started
+## Project structure & getting started
 
 - `Octans.Server`: lower-level API project that manages the database, filesystem etc.
 - `Octans.Client`: User interface in Razor pages, rather janky
 
 Run `dotnet test` on the `Octans.Tests` project to run automated tests.
+
+   ```bash
+   dotnet run --project HydrusReplacement.Server
+   dotnet run --project HydrusReplacement.Client
+   ```
 
 ## Tech used
 
