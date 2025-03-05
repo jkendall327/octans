@@ -26,7 +26,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<StorageService>();
         services.AddHealthChecks()
             .AddCheck<OctansApiHealthCheck>("octans-api");
-        
+
         return services;
     }
 

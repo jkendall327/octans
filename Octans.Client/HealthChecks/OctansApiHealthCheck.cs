@@ -18,12 +18,12 @@ public class OctansApiHealthCheck : IHealthCheck
         try
         {
             var response = await _octansApi.HealthCheck();
-            
+
             if (response.IsSuccessStatusCode)
             {
                 return HealthCheckResult.Healthy("API is healthy");
             }
-            
+
             return HealthCheckResult.Degraded($"API returned status code {response.StatusCode}");
         }
         catch (ApiException apiEx)
@@ -33,7 +33,7 @@ public class OctansApiHealthCheck : IHealthCheck
             {
                 return HealthCheckResult.Unhealthy($"API is unavailable (503): {apiEx.Message}");
             }
-            
+
             return HealthCheckResult.Unhealthy($"API error: {apiEx.StatusCode}", apiEx);
         }
         catch (HttpRequestException httpEx)

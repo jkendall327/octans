@@ -3,7 +3,6 @@ using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Extensions.Options;
 using Octans.Core;
 using Octans.Core.Infrastructure;
-using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests.Infrastructure;
@@ -58,7 +57,7 @@ public class StorageServiceTests
         // Arrange
         _fileSystem.Directory.CreateDirectory(_testAppRoot);
         _fileSystem.File.WriteAllText(
-            Path.Combine(_testAppRoot, "test.txt"), 
+            Path.Combine(_testAppRoot, "test.txt"),
             new string('a', 1024)); // 1KB file
 
         // Act
@@ -73,15 +72,15 @@ public class StorageServiceTests
     {
         // Arrange
         _fileSystem.Directory.CreateDirectory(_testAppRoot);
-        
+
         // Create 1KB file
         _fileSystem.File.WriteAllText(
-            Path.Combine(_testAppRoot, "test1.txt"), 
+            Path.Combine(_testAppRoot, "test1.txt"),
             new string('a', 1024));
-        
+
         // Create 2KB file
         _fileSystem.File.WriteAllText(
-            Path.Combine(_testAppRoot, "test2.txt"), 
+            Path.Combine(_testAppRoot, "test2.txt"),
             new string('b', 2048));
 
         // Act
@@ -97,15 +96,15 @@ public class StorageServiceTests
         // Arrange
         _fileSystem.Directory.CreateDirectory(_testAppRoot);
         _fileSystem.Directory.CreateDirectory(Path.Combine(_testAppRoot, "subdir"));
-        
+
         // Create 1KB file in root
         _fileSystem.File.WriteAllText(
-            Path.Combine(_testAppRoot, "test1.txt"), 
+            Path.Combine(_testAppRoot, "test1.txt"),
             new string('a', 1024));
-        
+
         // Create 2KB file in subdirectory
         _fileSystem.File.WriteAllText(
-            Path.Combine(_testAppRoot, "subdir", "test2.txt"), 
+            Path.Combine(_testAppRoot, "subdir", "test2.txt"),
             new string('b', 2048));
 
         // Act
@@ -120,17 +119,17 @@ public class StorageServiceTests
     {
         // Arrange
         _fileSystem.Directory.CreateDirectory(_testAppRoot);
-        
+
         // Create 1MB file
         var oneMB = 1024 * 1024;
         _fileSystem.AddFile(
-            Path.Combine(_testAppRoot, "1mb.bin"), 
+            Path.Combine(_testAppRoot, "1mb.bin"),
             new MockFileData(new byte[oneMB]));
-        
+
         // Create 5MB file
         var fiveMB = 5 * 1024 * 1024;
         _fileSystem.AddFile(
-            Path.Combine(_testAppRoot, "5mb.bin"), 
+            Path.Combine(_testAppRoot, "5mb.bin"),
             new MockFileData(new byte[fiveMB]));
 
         // Act

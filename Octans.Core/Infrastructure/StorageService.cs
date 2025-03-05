@@ -18,7 +18,7 @@ public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> set
 
             var directoryInfo = fileSystem.DirectoryInfo.New(_appRoot);
             var size = GetDirectorySize(directoryInfo);
-            
+
             return FormatSize(size);
         }
         catch (Exception)
@@ -30,19 +30,19 @@ public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> set
     private long GetDirectorySize(IDirectoryInfo directory)
     {
         long size = 0;
-        
+
         // Add size of all files
         foreach (var file in directory.GetFiles())
         {
             size += file.Length;
         }
-        
+
         // Add size of all subdirectories
         foreach (var subdir in directory.GetDirectories())
         {
             size += GetDirectorySize(subdir);
         }
-        
+
         return size;
     }
 
@@ -50,19 +50,19 @@ public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> set
     {
         return FormatFileSize(bytes);
     }
-    
+
     public string FormatFileSize(long bytes)
     {
         string[] suffixes = ["B", "KB", "MB", "GB", "TB", "PB"];
         var counter = 0;
         decimal number = bytes;
-        
+
         while (Math.Round(number / 1024) >= 1)
         {
             number /= 1024;
             counter++;
         }
-        
+
         return $"{number:n1} {suffixes[counter]}";
     }
 }

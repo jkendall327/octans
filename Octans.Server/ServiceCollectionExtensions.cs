@@ -89,7 +89,7 @@ internal static class ServiceCollectionExtensions
         builder.Services.AddScoped<QueryPlanner>();
         builder.Services.AddScoped<QueryTagConverter>();
         builder.Services.AddScoped<HashSearcher>();
-        
+
         // Stats
         builder.Services.AddScoped<StatsService>();
         builder.Services.AddScoped<StorageService>();

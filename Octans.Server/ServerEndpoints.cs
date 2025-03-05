@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using Octans.Core;
-using Octans.Core.Communication;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Models;
