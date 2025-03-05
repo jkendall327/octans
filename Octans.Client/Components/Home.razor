@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using Octans.Core.Communication
+@inject IOctansApi OctansApi
+@inject ILogger<Home> Logger
 
 <PageTitle>Octans - Home</PageTitle>
 
@@ -10,7 +13,10 @@
     <div class="welcome-section">
         <h1>Welcome to Octans</h1>
         <p class="subtitle">Your personal media management system</p>
-        <p class="subtitle">(the numbers below are currently fake)</p>
+        @if (!_statsLoaded)
+        {
+            <p class="subtitle">(Loading stats...)</p>
+        }
     </div>
 
     <div class="stats-container">
@@ -181,26 +187,52 @@
 </style>
 
 @code {
-    private int _totalImages = 1247;
-    private int _inboxCount = 42;
-    private int _tagCount = 156;
-    private string _storageUsed = "4.2 GB";
+    private int _totalImages;
+    private int _inboxCount;
+    private int _tagCount;
+    private string _storageUsed = "0 B";
+    private bool _statsLoaded;
 
-    // In a real implementation, you would fetch these values from the API
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     try
-    //     {
-    //         var response = await OctansApi.GetAllFiles();
-    //         if (response.IsSuccessStatusCode && response.Content != null)
-    //         {
-    //             _totalImages = response.Content.Count;
-    //             // Calculate other stats based on the response
-    //         }
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         // Handle error
-    //     }
-    // }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var response = await OctansApi.GetHomeStats();
+            
+            if (response is {IsSuccessStatusCode: true, Content: not null})
+            {
+                _totalImages = response.Content.TotalImages;
+                _inboxCount = response.Content.InboxCount;
+                _tagCount = response.Content.TagCount;
+                _storageUsed = response.Content.StorageUsed;
+            }
+            else
+            {
+                // Use fallback values
+                _totalImages = 0;
+                _inboxCount = 0;
+                _tagCount = 0;
+                _storageUsed = "0 GB";
+                _statsLoaded = true;
+            }
+
+            _statsLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading stats for homepage");
+            
+            // Use fallback values
+            _totalImages = 0;
+            _inboxCount = 0;
+            _tagCount = 0;
+            _storageUsed = "0 GB";
+            _statsLoaded = true;
+        }
+    }
 }

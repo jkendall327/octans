@@ -34,6 +34,9 @@ public interface IOctansApi
 
     [Get("/health")]
     Task<IApiResponse> HealthCheck();
+    
+    [Get("/stats")]
+    Task<IApiResponse<HomeStats>> GetHomeStats();
 
     [Post("/clearAllData")]
     Task<IApiResponse> ClearAllData();
