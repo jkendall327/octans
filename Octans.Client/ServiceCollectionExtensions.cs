@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IFileSystem>(new FileSystem());
         services.AddSingleton<StorageService>();
+        services.AddHealthChecks();
+        
         return services;
     }
 

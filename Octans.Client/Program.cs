@@ -25,6 +25,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
+app.MapHealthChecks("/health");
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();
