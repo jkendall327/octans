@@ -4,6 +4,24 @@
 
 <h3>Gallery</h3>
 
+<div class="gallery-container">
+    @if (Viewmodel.ImagePaths.Any())
+    {
+        <div class="image-grid">
+            @foreach (var imagePath in Viewmodel.ImagePaths)
+            {
+                <div class="image-card">
+                    <img src="@imagePath" alt="Gallery image" />
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No images found.</p>
+    }
+</div>
+
 @code {
     protected override async Task OnInitializedAsync()
     {
