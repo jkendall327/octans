@@ -58,6 +58,11 @@ public class StorageService
 
     private static string FormatSize(long bytes)
     {
+        return FormatFileSize(bytes);
+    }
+    
+    public static string FormatFileSize(long bytes)
+    {
         string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
         int counter = 0;
         decimal number = bytes;
