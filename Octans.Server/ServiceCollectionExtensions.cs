@@ -91,6 +91,7 @@ internal static class ServiceCollectionExtensions
         
         // Stats
         builder.Services.AddScoped<StatsService>();
+        builder.Services.AddScoped<StorageService>();
 
         builder.Services.AddMemoryCache();
     }
