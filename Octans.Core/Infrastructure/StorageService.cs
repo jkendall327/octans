@@ -1,32 +1,22 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Options;
-using Octans.Core;
 
-namespace Octans.Server.Services;
+namespace Octans.Core.Infrastructure;
 
-public class StorageService
+public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> settings)
 {
-    private readonly IFileSystem _fileSystem;
-    private readonly string _appRoot;
-
-    public StorageService(
-        IFileSystem fileSystem,
-        IOptions<GlobalSettings> settings)
-    {
-        _fileSystem = fileSystem;
-        _appRoot = settings.Value.AppRoot;
-    }
+    private readonly string _appRoot = settings.Value.AppRoot;
 
     public string GetStorageUsed()
     {
         try
         {
-            if (!_fileSystem.Directory.Exists(_appRoot))
+            if (!fileSystem.Directory.Exists(_appRoot))
             {
                 return "0 B";
             }
 
-            var directoryInfo = _fileSystem.DirectoryInfo.New(_appRoot);
+            var directoryInfo = fileSystem.DirectoryInfo.New(_appRoot);
             var size = GetDirectorySize(directoryInfo);
             
             return FormatSize(size);
@@ -56,15 +46,15 @@ public class StorageService
         return size;
     }
 
-    private static string FormatSize(long bytes)
+    private string FormatSize(long bytes)
     {
         return FormatFileSize(bytes);
     }
     
-    public static string FormatFileSize(long bytes)
+    public string FormatFileSize(long bytes)
     {
-        string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
-        int counter = 0;
+        string[] suffixes = ["B", "KB", "MB", "GB", "TB", "PB"];
+        var counter = 0;
         decimal number = bytes;
         
         while (Math.Round(number / 1024) >= 1)

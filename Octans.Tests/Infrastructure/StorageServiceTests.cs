@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Extensions.Options;
 using Octans.Core;
+using Octans.Core.Infrastructure;
 using Octans.Server.Services;
 using Xunit.Abstractions;
 

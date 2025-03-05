@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Communication;
+using Octans.Core.Infrastructure;
 using Octans.Core.Models;
 
 namespace Octans.Server.Services;

@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using Octans.Client.Components.Pages;
 using Octans.Core;
 using Octans.Core.Communication;
+using Octans.Core.Infrastructure;
 using Refit;
 
 namespace Octans.Client;
@@ -20,6 +21,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IFileSystem>(new FileSystem());
+        services.AddSingleton<StorageService>();
         return services;
     }
 

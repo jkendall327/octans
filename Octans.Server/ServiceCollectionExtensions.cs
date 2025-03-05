@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
+using Octans.Core.Infrastructure;
 using Octans.Core.Querying;
 using Octans.Core.Tags;
 using Octans.Server.Services;
