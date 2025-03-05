@@ -1,0 +1,149 @@
+.home-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.server-status {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: bold;
+}
+
+.online {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.offline {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo {
+    max-width: 300px;
+    height: auto;
+}
+
+.welcome-section {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #666;
+}
+
+.stats-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.stat-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    flex: 1;
+    min-width: 150px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4A90E2;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 1rem;
+    color: #666;
+}
+
+.navigation-cards {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.nav-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.nav-card-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.nav-card-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.nav-card-description {
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .stats-container {
+        flex-direction: column;
+    }
+    
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .navigation-cards {
+        flex-direction: column;
+    }
+    
+    .nav-card {
+        margin-bottom: 1.5rem;
+    }
+}
