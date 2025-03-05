@@ -17,6 +17,9 @@
         {
             <p class="subtitle">(Loading stats...)</p>
         }
+        <div class="server-status @(_serverOnline ? "online" : "offline")">
+            Server Status: @(_serverOnline ? "Online" : "Offline")
+        </div>
     </div>
 
     <div class="stats-container">
@@ -58,6 +61,24 @@
         margin: 0 auto;
         padding: 2rem;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .server-status {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        display: inline-block;
+        font-weight: bold;
+    }
+    
+    .online {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .offline {
+        background-color: #f8d7da;
+        color: #721c24;
     }
 
     .logo-container {
@@ -192,10 +213,25 @@
     private int _tagCount;
     private string _storageUsed = "0 B";
     private bool _statsLoaded;
+    private bool _serverOnline;
 
     protected override async Task OnInitializedAsync()
     {
+        await CheckServerHealth();
         await LoadStats();
+    }
+    
+    private async Task CheckServerHealth()
+    {
+        try
+        {
+            var response = await OctansApi.HealthCheck();
+            _serverOnline = response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            _serverOnline = false;
+        }
     }
 
     private async Task LoadStats()
