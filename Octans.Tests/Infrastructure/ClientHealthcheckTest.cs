@@ -29,7 +29,7 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync(new Uri("/health"));
 
         // The health check might return Healthy, Degraded, or Unhealthy
         // depending on the state of the API, but the endpoint itself should work
@@ -103,7 +103,7 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
             .CreateClient();
 
         // Act
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync(new Uri("/health"));
 
         // Assert
         response.EnsureSuccessStatusCode();
