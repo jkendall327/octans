@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Octans.Client.HealthChecks;
 using Octans.Core.Communication;
@@ -11,6 +10,9 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
+/// <summary>
+/// The actual value of these tests is checking if DI is set up correctly for the client project.
+/// </summary>
 public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.Client.Program>>, IAsyncLifetime
 {
     private readonly WebApplicationFactory<Octans.Client.Program> _factory;

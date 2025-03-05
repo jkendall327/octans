@@ -14,6 +14,12 @@ builder.Services.AddViewmodels();
 
 builder.SetupConfiguration();
 
+builder.Services.Configure<ServiceProviderOptions>(sp =>
+{
+    sp.ValidateScopes = true;
+    sp.ValidateOnBuild = true;
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
