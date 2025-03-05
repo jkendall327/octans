@@ -26,7 +26,7 @@ I'm developing it because:
 ## Project structure & getting started
 
 - `Octans.Server`: lower-level API project that manages the database, filesystem etc.
-- `Octans.Client`: User interface in Razor pages, rather janky
+- `Octans.Client`: User interface in Blazor, rather janky and bare at present.
 
 Run `dotnet test` on the `Octans.Tests` project to run automated tests.
 
