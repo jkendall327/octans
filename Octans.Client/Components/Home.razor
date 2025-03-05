@@ -217,8 +217,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CheckServerHealth();
-        await LoadStats();
+        if (RendererInfo.IsInteractive)
+        {
+            await CheckServerHealth();
+            await LoadStats();
+        }
     }
     
     private async Task CheckServerHealth()
