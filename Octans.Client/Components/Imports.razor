@@ -1,11 +1,40 @@
 @page "/Imports"
 @inject ImportsViewmodel Viewmodel
 
-<h3>Imports</h3>
+<div class="imports-container">
+    <h3>Import Files</h3>
 
-<InputFile OnChange="@LoadFiles" multiple />
+    <div class="upload-section">
+        <div class="file-input-wrapper">
+            <label class="custom-file-upload">
+                <InputFile OnChange="@LoadFiles" multiple />
+                Choose Files
+            </label>
+        </div>
 
-<button @onclick="@Send">Send</button>
+        <div class="upload-info">
+            Select files to upload
+        </div>
+
+        @if (_localFiles.Count > 0)
+        {
+            <div class="file-list">
+                <h5>Selected Files (@_localFiles.Count):</h5>
+                @foreach (var file in _localFiles)
+                {
+                    <div class="file-item">
+                        <span>@file.Name</span>
+                        <span>@FormatFileSize(file.Size)</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <button class="send-button" @onclick="@Send" disabled="@(_localFiles.Count == 0)">
+        Upload Files
+    </button>
+</div>
 
 @code {
     private readonly List<IBrowserFile> _localFiles = [];
@@ -20,5 +49,21 @@
     private async Task Send()
     {
         await Viewmodel.SendLocalFilesToServer(_localFiles);
+        _localFiles.Clear();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
     }
 }
