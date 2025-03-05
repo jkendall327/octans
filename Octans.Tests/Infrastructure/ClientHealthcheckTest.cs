@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Octans.Client.HealthChecks;
 using Octans.Core.Communication;
 using Refit;
 using System.Net;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -17,7 +19,6 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
     public ClientHealthcheckTest(WebApplicationFactory<Octans.Client.Program> factory, ITestOutputHelper helper)
     {
         _factory = factory;
-        
         _helper = helper;
     }
 
@@ -26,7 +27,7 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync(new Uri("/health"));
+        var response = await client.GetAsync("/health");
 
         // The health check might return Healthy, Degraded, or Unhealthy
         // depending on the state of the API, but the endpoint itself should work
@@ -57,6 +58,55 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
         // Assert
         result.Status.Should().Be(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
         result.Description.Should().Contain("503");
+    }
+    
+    [Fact]
+    public async Task HealthCheck_ReturnsHealthyWhenApiIsHealthy()
+    {
+        // Arrange
+        var mockApi = Substitute.For<IOctansApi>();
+        var apiResponse = Substitute.For<IApiResponse>();
+        apiResponse.IsSuccessStatusCode.Returns(true);
+        
+        mockApi.HealthCheck().Returns(Task.FromResult(apiResponse));
+        
+        var healthCheck = new OctansApiHealthCheck(mockApi);
+        
+        // Act
+        var result = await healthCheck.CheckHealthAsync(new(), CancellationToken.None);
+        
+        // Assert
+        result.Status.Should().Be(HealthStatus.Healthy);
+        result.Description.Should().Be("API is healthy");
+    }
+    
+    [Fact]
+    public async Task HealthcheckEndpoint_ReturnsHealthyWhenApiIsHealthy()
+    {
+        // Arrange
+        var mockApi = Substitute.For<IOctansApi>();
+        var apiResponse = Substitute.For<IApiResponse>();
+        apiResponse.IsSuccessStatusCode.Returns(true);
+        
+        mockApi.HealthCheck().Returns(Task.FromResult(apiResponse));
+        
+        var client = _factory
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    services.ReplaceExistingRegistrationsWith(mockApi);
+                });
+            })
+            .CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/health");
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadAsStringAsync();
+        result.Should().Be("Healthy");
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
