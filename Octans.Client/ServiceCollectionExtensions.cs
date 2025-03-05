@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Octans.Client.Components.Pages;
+using Octans.Client.HealthChecks;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Infrastructure;
@@ -14,6 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<ImportRequestSender>();
         services.AddHostedService<ImportFolderBackgroundService>();
+        services.AddTransient<OctansApiHealthCheck>();
 
         return services;
     }
@@ -22,7 +24,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IFileSystem>(new FileSystem());
         services.AddSingleton<StorageService>();
-        services.AddHealthChecks();
+        services.AddHealthChecks()
+            .AddCheck<OctansApiHealthCheck>("octans-api");
         
         return services;
     }

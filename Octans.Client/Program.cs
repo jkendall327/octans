@@ -25,7 +25,23 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new()
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "text/plain";
+        await context.Response.WriteAsync(report.Status.ToString());
+    }
+});
+
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();
+
+namespace Octans.Client
+{
+    public partial class Program
+    {
+    }
+}
+
