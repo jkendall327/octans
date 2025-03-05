@@ -19,8 +19,8 @@ I'm developing it because:
 ## Features
 
 - Local and remote image import and management
-- Tag-based organization system with namespaces
-- Support for tag relationships (siblings/parents) [prospective]
+- Namespaced tag-based organization system
+- Support for tag relationships (siblings/parents) [WIP]
 - Lua-based extensibility to work with custom sites [WIP]
 
 ## Project structure & getting started
@@ -37,7 +37,7 @@ Run `dotnet test` on the `Octans.Tests` project to run automated tests.
 
 ## Tech used
 
-- Razor pages
+- Blazor for the UI
 - EF Core w/ SQLite
 - SixLabors.ImageSharp for image processing
 - Lua for extensible downloaders
