@@ -14,6 +14,11 @@ public class DomainBandwidth
 
 public class DomainBandwidthOptions
 {
+    private List<IndividualDomainBandwidthOptions> Domains { get; set; }
+}
+
+public class IndividualDomainBandwidthOptions
+{
     public required string Domain { get; set; }
     public long BandwidthLimit { get; set; } // in bytes per second
 }
