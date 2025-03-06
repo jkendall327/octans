@@ -1,57 +1,127 @@
 @page "/Imports"
 @using Octans.Core.Infrastructure
+@using Octans.Core.Importing
 @inject ImportsViewmodel Viewmodel
 @inject StorageService StorageService
 
 <div class="imports-container">
-    <h3>Import Files</h3>
+    <h3>Import Content</h3>
 
-    <div class="upload-section">
-        <div class="file-input-wrapper">
-            <label class="custom-file-upload">
-                <InputFile OnChange="@LoadFiles" multiple />
-                Choose Files
-            </label>
+    <div class="import-tabs">
+        <div class="tab @(_activeTab == ImportType.File ? "active" : "")" @onclick="() => SetActiveTab(ImportType.File)">
+            Files
         </div>
-
-        <div class="upload-info">
-            Select files to upload
+        <div class="tab @(_activeTab == ImportType.RawUrl ? "active" : "")" @onclick="() => SetActiveTab(ImportType.RawUrl)">
+            URLs
         </div>
-
-        @if (_localFiles.Count > 0)
-        {
-            <div class="file-list">
-                <h5>Selected Files (@_localFiles.Count):</h5>
-                @foreach (var file in _localFiles)
-                {
-                    <div class="file-item">
-                        <span>@file.Name</span>
-                        <span>@FormatFileSize(file.Size)</span>
-                    </div>
-                }
-            </div>
-        }
+        <div class="tab @(_activeTab == ImportType.Post ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Post)">
+            Post
+        </div>
+        <div class="tab @(_activeTab == ImportType.Gallery ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Gallery)">
+            Gallery
+        </div>
+        <div class="tab @(_activeTab == ImportType.Watchable ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Watchable)">
+            Watchable
+        </div>
     </div>
 
-    <button class="send-button" @onclick="@Send" disabled="@(_localFiles.Count == 0)">
-        Upload Files
-    </button>
+    @if (_activeTab == ImportType.File)
+    {
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <label class="custom-file-upload">
+                    <InputFile OnChange="@LoadFiles" multiple />
+                    Choose Files
+                </label>
+            </div>
+
+            <div class="upload-info">
+                Select files to upload
+            </div>
+
+            @if (_localFiles.Count > 0)
+            {
+                <div class="file-list">
+                    <h5>Selected Files (@_localFiles.Count):</h5>
+                    @foreach (var file in _localFiles)
+                    {
+                        <div class="file-item">
+                            <span>@file.Name</span>
+                            <span>@FormatFileSize(file.Size)</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <button class="send-button" @onclick="@SendFiles" disabled="@(_localFiles.Count == 0)">
+                Upload Files
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="url-section">
+            <div class="input-group">
+                <textarea 
+                    @bind="_urlInput" 
+                    placeholder="Enter URLs (one per line)" 
+                    rows="5" 
+                    class="url-input">
+                </textarea>
+            </div>
+            
+            <div class="import-options">
+                <label class="option">
+                    <input type="checkbox" @bind="_allowReimportDeleted" />
+                    Allow reimport of deleted items
+                </label>
+            </div>
+
+            <button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(_urlInput))">
+                Import @_activeTab
+            </button>
+        </div>
+    }
 </div>
 
 @code {
     private readonly List<IBrowserFile> _localFiles = [];
+    private string _urlInput = string.Empty;
+    private ImportType _activeTab = ImportType.File;
+    private bool _allowReimportDeleted = false;
     
     private void LoadFiles(InputFileChangeEventArgs arg)
     {
         var files = arg.GetMultipleFiles(5000);
-
         _localFiles.AddRange(files);
     }
 
-    private async Task Send()
+    private async Task SendFiles()
     {
         await Viewmodel.SendLocalFilesToServer(_localFiles);
         _localFiles.Clear();
+    }
+
+    private async Task SendUrls()
+    {
+        if (string.IsNullOrWhiteSpace(_urlInput))
+            return;
+
+        var urls = _urlInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(url => url.Trim())
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .ToList();
+
+        if (urls.Count > 0)
+        {
+            await Viewmodel.SendUrlsToServer(urls, _activeTab, _allowReimportDeleted);
+            _urlInput = string.Empty;
+        }
+    }
+
+    private void SetActiveTab(ImportType tabType)
+    {
+        _activeTab = tabType;
     }
 
     private string FormatFileSize(long bytes)

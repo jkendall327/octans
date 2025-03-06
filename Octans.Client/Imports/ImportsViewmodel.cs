@@ -1,16 +1,23 @@
 using System.IO.Abstractions;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
 
-public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment environment, IOctansApi client)
+public class ImportsViewmodel(
+    IFileSystem fileSystem, 
+    IWebHostEnvironment environment, 
+    IOctansApi client,
+    ILogger<ImportsViewmodel> logger)
 {
     public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
     {
         if (!files.Any()) return;
 
+        logger.LogInformation("Sending {Count} files to server", files.Count);
+        
         var uploadPath = fileSystem.Path.Combine(environment.WebRootPath, "uploads");
         fileSystem.Directory.CreateDirectory(uploadPath);
 
@@ -34,6 +41,27 @@ public class ImportsViewmodel(IFileSystem fileSystem, IWebHostEnvironment enviro
             ImportType = ImportType.File,
             Items = items,
             DeleteAfterImport = false
+        };
+
+        await client.ProcessImport(request);
+    }
+    
+    public async Task SendUrlsToServer(List<string> urls, ImportType importType, bool allowReimportDeleted)
+    {
+        if (!urls.Any()) return;
+        
+        logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, importType);
+        
+        var importItems = urls
+            .Select(url => new ImportItem { Source = new Uri(url) })
+            .ToList();
+
+        var request = new ImportRequest
+        {
+            ImportType = importType,
+            Items = importItems,
+            DeleteAfterImport = false,
+            AllowReimportDeleted = allowReimportDeleted
         };
 
         await client.ProcessImport(request);
