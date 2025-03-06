@@ -1,4 +1,6 @@
 using System.IO.Abstractions;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Octans.Client.Components.Pages;
 using Octans.Client.HealthChecks;
 using Octans.Core;
@@ -52,5 +54,58 @@ public static class ServiceCollectionExtensions
     {
         var config = builder.Configuration.GetSection(nameof(GlobalSettings));
         builder.Services.Configure<GlobalSettings>(config);
+    }
+
+    public static IEndpointRouteBuilder MapStaticAssets(this IEndpointRouteBuilder app)
+    {
+        var serviceProvider = app.ServiceProvider;
+        var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>().Value;
+        
+        if (!string.IsNullOrEmpty(globalSettings.AppRoot) && Directory.Exists(globalSettings.AppRoot))
+        {
+            app.MapGet("/approot/{**path}", async (string path, HttpContext context) =>
+            {
+                var fullPath = Path.Combine(globalSettings.AppRoot, path);
+                if (File.Exists(fullPath))
+                {
+                    var contentType = GetContentType(Path.GetExtension(fullPath));
+                    context.Response.ContentType = contentType;
+                    await context.Response.SendFileAsync(fullPath);
+                    return;
+                }
+                context.Response.StatusCode = 404;
+            });
+
+            // Also serve static files directly
+            var fileProvider = new PhysicalFileProvider(globalSettings.AppRoot);
+            var staticFileOptions = new StaticFileOptions
+            {
+                FileProvider = fileProvider,
+                RequestPath = "/approot"
+            };
+            
+            ((IApplicationBuilder)app).UseStaticFiles(staticFileOptions);
+        }
+        
+        return app;
+    }
+
+    private static string GetContentType(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".css" => "text/css",
+            ".js" => "application/javascript",
+            ".html" or ".htm" => "text/html",
+            ".txt" => "text/plain",
+            ".json" => "application/json",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            _ => "application/octet-stream"
+        };
     }
 }
