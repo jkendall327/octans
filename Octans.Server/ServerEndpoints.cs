@@ -88,6 +88,14 @@ internal static class ServerEndpoints
 
     private static void MapInfrastructureEndpoints(WebApplication app)
     {
+        app.MapPost("/subscriptions", () =>
+            {
+                throw new NotImplementedException("Subscription endpoint not yet implemented");
+            })
+            .WithName("SubmitSubscription")
+            .WithDescription("Submits a subscription request for automated queries")
+            .WithOpenApi();
+            
         app.MapPost("/clearAllData",
             async (ServerDbContext db) =>
             {

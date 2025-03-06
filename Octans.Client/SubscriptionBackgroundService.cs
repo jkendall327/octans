@@ -1,3 +1,5 @@
+using Octans.Core.Communication;
+
 namespace Octans.Client;
 
 using Microsoft.Extensions.Hosting;
@@ -12,17 +14,20 @@ public class SubscriptionBackgroundService : BackgroundService
 {
     private readonly SubscriptionOptions _options;
     private readonly ILogger<SubscriptionBackgroundService> _logger;
+    private readonly IOctansApi _api;
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<string, DateTimeOffset> _subscriptions = new();
 
     public SubscriptionBackgroundService(
         IOptions<SubscriptionOptions> options,
         ILogger<SubscriptionBackgroundService> logger,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IOctansApi api)
     {
         _options = options.Value;
         _logger = logger;
         _timeProvider = timeProvider;
+        _api = api;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,18 +63,25 @@ public class SubscriptionBackgroundService : BackgroundService
         }
     }
 
-    private async Task ExecuteQueryAsync(string subscriptionName)
+    private async Task ExecuteQueryAsync(string name)
     {
-        var item = _options.Items.Find(s => s.Name == subscriptionName);
+        var item = _options.Items.Find(s => s.Name == name);
         if (item == null)
         {
-            _logger.LogWarning("Subscription {Name} not found", subscriptionName);
+            _logger.LogWarning("Subscription {Name} not found", name);
             return;
         }
 
-        // TODO: Execute the query against your endpoint
-        _logger.LogInformation("Executing query for subscription {Name}: {Query}", 
-            subscriptionName, item.Query);
+        _logger.LogInformation("Executing query for subscription {Name}: {Query}", name, item.Query);
+
+        var response = await _api.SubmitSubscription(new()
+        {
+            Name = item.Name,
+            Query = item.Query
+        });
+        
+        _logger.LogInformation("Got response for subscription: {@SubscriptionResponse}", response);
+        
         await Task.CompletedTask;
     }
 

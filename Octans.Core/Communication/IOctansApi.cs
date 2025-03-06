@@ -32,6 +32,9 @@ public interface IOctansApi
     [Post("/files/deletion")]
     Task<IApiResponse<DeleteResponse>> DeleteFiles(DeleteRequest request);
 
+    [Post("/subscriptions")]
+    Task<IApiResponse> SubmitSubscription([Body] SubscriptionRequest request);
+
     [Get("/health")]
     Task<IApiResponse> HealthCheck();
 
