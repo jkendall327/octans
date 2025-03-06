@@ -95,7 +95,7 @@ internal static class ServerEndpoints
             .WithName("SubmitSubscription")
             .WithDescription("Submits a subscription request for automated queries")
             .WithOpenApi();
-            
+
         app.MapPost("/clearAllData",
             async (ServerDbContext db) =>
             {

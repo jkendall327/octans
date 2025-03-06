@@ -40,7 +40,7 @@ public class SubscriptionBackgroundService : BackgroundService
 
             var active = _subscriptions
                 .Where(subscription => now >= subscription.Value);
-            
+
             foreach (var subscription in active)
             {
                 await ExecuteQueryAsync(subscription.Key);
@@ -54,11 +54,11 @@ public class SubscriptionBackgroundService : BackgroundService
     private void LoadSubscriptions()
     {
         var now = _timeProvider.GetUtcNow();
-        
+
         foreach (var item in _options.Items)
         {
             _subscriptions[item.Name] = now.Add(item.Interval);
-            _logger.LogInformation("Loaded subscription: {Name} with interval {Interval}", 
+            _logger.LogInformation("Loaded subscription: {Name} with interval {Interval}",
                 item.Name, item.Interval);
         }
     }
@@ -79,9 +79,9 @@ public class SubscriptionBackgroundService : BackgroundService
             Name = item.Name,
             Query = item.Query
         });
-        
+
         _logger.LogInformation("Got response for subscription: {@SubscriptionResponse}", response);
-        
+
         await Task.CompletedTask;
     }
 

@@ -3,7 +3,7 @@ namespace Octans.Client;
 public class SubscriptionOptions
 {
     public const string SectionName = "Subscriptions";
-    
+
     public List<SubscriptionItem> Items { get; init; } = [];
 }
 

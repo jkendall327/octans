@@ -16,7 +16,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<ImportFolderBackgroundService>();
         services.AddHostedService<SubscriptionBackgroundService>();
-        
+
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<ImportRequestSender>();
         services.AddTransient<OctansApiHealthCheck>();
@@ -58,8 +58,8 @@ public static class ServiceCollectionExtensions
     {
         builder.Services.Configure<GlobalSettings>(
             builder.Configuration.GetSection(nameof(GlobalSettings)));
-        
-        builder.Services.Configure<SubscriptionOptions>(                               
+
+        builder.Services.Configure<SubscriptionOptions>(
             builder.Configuration.GetSection(SubscriptionOptions.SectionName));
     }
 
@@ -67,7 +67,7 @@ public static class ServiceCollectionExtensions
     {
         var serviceProvider = app.ServiceProvider;
         var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>().Value;
-        
+
         if (!string.IsNullOrEmpty(globalSettings.AppRoot) && Directory.Exists(globalSettings.AppRoot))
         {
             app.MapGet("/approot/{**path}", async (string path, HttpContext context) =>
@@ -90,10 +90,10 @@ public static class ServiceCollectionExtensions
                 FileProvider = fileProvider,
                 RequestPath = "/approot"
             };
-            
+
             ((IApplicationBuilder)app).UseStaticFiles(staticFileOptions);
         }
-        
+
         return app;
     }
 
