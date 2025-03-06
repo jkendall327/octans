@@ -14,20 +14,24 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddOctansServices(this IServiceCollection services)
     {
+        services.AddHostedService<ImportFolderBackgroundService>();
+        services.AddHostedService<SubscriptionBackgroundService>();
+        
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<ImportRequestSender>();
-        services.AddHostedService<ImportFolderBackgroundService>();
         services.AddTransient<OctansApiHealthCheck>();
+        services.AddSingleton<StorageService>();
+
+        services.AddHealthChecks()
+            .AddCheck<OctansApiHealthCheck>("octans-api");
 
         return services;
     }
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
+        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IFileSystem>(new FileSystem());
-        services.AddSingleton<StorageService>();
-        services.AddHealthChecks()
-            .AddCheck<OctansApiHealthCheck>("octans-api");
 
         return services;
     }

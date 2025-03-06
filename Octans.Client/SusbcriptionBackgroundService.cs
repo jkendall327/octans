@@ -12,14 +12,17 @@ public class SubscriptionBackgroundService : BackgroundService
 {
     private readonly SubscriptionOptions _options;
     private readonly ILogger<SubscriptionBackgroundService> _logger;
-    private readonly Dictionary<string, DateTime> _subscriptions = new();
+    private readonly TimeProvider _timeProvider;
+    private readonly Dictionary<string, DateTimeOffset> _subscriptions = new();
 
     public SubscriptionBackgroundService(
         IOptions<SubscriptionOptions> options,
-        ILogger<SubscriptionBackgroundService> logger)
+        ILogger<SubscriptionBackgroundService> logger,
+        TimeProvider timeProvider)
     {
         _options = options.Value;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -28,13 +31,15 @@ public class SubscriptionBackgroundService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            foreach (var subscription in _subscriptions)
+            var now = _timeProvider.GetUtcNow();
+
+            var active = _subscriptions
+                .Where(subscription => now >= subscription.Value);
+            
+            foreach (var subscription in active)
             {
-                if (DateTime.Now >= subscription.Value)
-                {
-                    await ExecuteQueryAsync(subscription.Key);
-                    UpdateSubscriptionTime(subscription.Key);
-                }
+                await ExecuteQueryAsync(subscription.Key);
+                UpdateSubscriptionTime(subscription.Key);
             }
 
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
@@ -43,9 +48,11 @@ public class SubscriptionBackgroundService : BackgroundService
 
     private void LoadSubscriptions()
     {
+        var now = _timeProvider.GetUtcNow();
+        
         foreach (var item in _options.Items)
         {
-            _subscriptions[item.Name] = DateTime.Now.Add(item.Interval);
+            _subscriptions[item.Name] = now.Add(item.Interval);
             _logger.LogInformation("Loaded subscription: {Name} with interval {Interval}", 
                 item.Name, item.Interval);
         }
@@ -75,6 +82,6 @@ public class SubscriptionBackgroundService : BackgroundService
             return;
         }
 
-        _subscriptions[subscriptionName] = DateTime.Now.Add(item.Interval);
+        _subscriptions[subscriptionName] = _timeProvider.GetUtcNow().Add(item.Interval);
     }
 }
