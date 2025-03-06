@@ -52,8 +52,11 @@ public static class ServiceCollectionExtensions
 
     public static void SetupConfiguration(this WebApplicationBuilder builder)
     {
-        var config = builder.Configuration.GetSection(nameof(GlobalSettings));
-        builder.Services.Configure<GlobalSettings>(config);
+        builder.Services.Configure<GlobalSettings>(
+            builder.Configuration.GetSection(nameof(GlobalSettings)));
+        
+        builder.Services.Configure<SubscriptionOptions>(                               
+            builder.Configuration.GetSection(SubscriptionOptions.SectionName));
     }
 
     public static IEndpointRouteBuilder MapStaticAssets(this IEndpointRouteBuilder app)
