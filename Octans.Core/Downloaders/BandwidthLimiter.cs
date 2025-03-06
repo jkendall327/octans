@@ -1,10 +1,34 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 
 namespace Octans.Core.Downloaders;
 
 public class BandwidthLimiter
 {
-    private ConcurrentDictionary<string, DomainBandwidth> _domainBandwidths = new();
+    private readonly ConcurrentDictionary<string, DomainBandwidth> _domainBandwidths = new();
+    private readonly IOptions<DomainBandwidthOptions> _options;
+
+    public BandwidthLimiter(IOptions<DomainBandwidthOptions> options)
+    {
+        _options = options;
+        InitializeBandwidthSettings();
+    }
+
+    private void InitializeBandwidthSettings()
+    {
+        if (_options.Value.Domains == null || !_options.Value.Domains.Any())
+            return;
+
+        foreach (var domainOption in _options.Value.Domains)
+        {
+            _domainBandwidths.TryAdd(domainOption.Domain, new DomainBandwidth
+            {
+                Domain = domainOption.Domain,
+                BandwidthLimit = domainOption.BandwidthLimit,
+                WindowDuration = TimeSpan.FromSeconds(domainOption.WindowDurationSeconds)
+            });
+        }
+    }
     
     public bool CanMakeRequest(string domain, long requestSize)
     {
