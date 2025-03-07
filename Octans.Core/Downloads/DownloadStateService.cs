@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Models;
 
 namespace Octans.Core.Downloaders;
 
@@ -8,12 +9,12 @@ public class DownloadStateService
     private readonly Dictionary<Guid, DownloadStatus> _activeDownloads = new();
     private readonly Lock _lock = new();
     private readonly ILogger<DownloadStateService> _logger;
-    private readonly DownloadDbContext _dbContext;
+    private readonly ServerDbContext _dbContext;
 
     public event Action<DownloadStatus>? OnDownloadProgressChanged;
     public event Action? OnDownloadsChanged;
 
-    public DownloadStateService(ILogger<DownloadStateService> logger, DownloadDbContext dbContext)
+    public DownloadStateService(ILogger<DownloadStateService> logger, ServerDbContext dbContext)
     {
         _logger = logger;
         _dbContext = dbContext;

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Models;
 
 namespace Octans.Core.Downloaders;
 
@@ -13,12 +14,12 @@ public interface IDownloadQueue
 
 public class DatabaseDownloadQueue : IDownloadQueue
 {
-    private readonly DownloadDbContext _dbContext;
+    private readonly ServerDbContext _dbContext;
     private readonly IBandwidthLimiterService _bandwidthLimiter;
     private readonly ILogger<DatabaseDownloadQueue> _logger;
 
     public DatabaseDownloadQueue(
-        DownloadDbContext dbContext,
+        ServerDbContext dbContext,
         IBandwidthLimiterService bandwidthLimiter,
         ILogger<DatabaseDownloadQueue> logger)
     {
