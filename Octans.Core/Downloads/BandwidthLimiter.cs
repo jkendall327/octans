@@ -1,19 +1,15 @@
-using Microsoft.Extensions.DependencyInjection;
-
-namespace Octans.Core.Downloaders;
-
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+namespace Octans.Core.Downloaders;
+
 public class BandwidthLimiterOptions
 {
-    public Dictionary<string, long> DomainBytesPerSecond { get; set; } = new();
-    public long DefaultBytesPerSecond { get; set; } = 1024 * 1024; // 1 MB/s default
-    public TimeSpan TrackingWindow { get; set; } = TimeSpan.FromMinutes(5);
+    public Dictionary<string, long> DomainBytesPerSecond { get; init; } = new();
+    public long DefaultBytesPerSecond { get; init; } = 1024 * 1024; // 1 MB/s default
+    public TimeSpan TrackingWindow { get; init; } = TimeSpan.FromMinutes(5);
 }
 
 public interface IBandwidthLimiterService
@@ -23,7 +19,7 @@ public interface IBandwidthLimiterService
     void RecordDownload(string domain, long bytes);
 }
 
-public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
+public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
 {
     private readonly ILogger<BandwidthLimiterService> _logger;
     private readonly BandwidthLimiterOptions _options;
@@ -45,14 +41,16 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
         _options = options.Value;
         
         // Set up cleanup timer to run every minute
-        _cleanupTimer = new Timer(CleanupOldRecords, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _cleanupTimer = new(CleanupOldRecords, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
     public bool IsBandwidthAvailable(string domain)
     {
         if (string.IsNullOrEmpty(domain))
+        {
             return true;
-            
+        }
+
         // Check if domain is in cooldown
         if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
         {
@@ -65,8 +63,10 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
     public TimeSpan GetDelayForDomain(string domain)
     {
         if (string.IsNullOrEmpty(domain))
+        {
             return TimeSpan.Zero;
-            
+        }
+
         if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
         {
             var now = DateTime.UtcNow;
@@ -82,8 +82,10 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
     public void RecordDownload(string domain, long bytes)
     {
         if (string.IsNullOrEmpty(domain) || bytes <= 0)
+        {
             return;
-            
+        }
+
         var now = DateTime.UtcNow;
         
         // Add to domain usage records
@@ -105,8 +107,10 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
     private void CalculateBandwidthUsage(string domain)
     {
         if (!_domainUsage.TryGetValue(domain, out var usageQueue) || usageQueue.Count == 0)
+        {
             return;
-            
+        }
+
         var now = DateTime.UtcNow;
         var cutoff = now - _options.TrackingWindow;
         
@@ -114,7 +118,7 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
         long totalBytes = 0;
         var records = usageQueue.ToArray();
         
-        foreach (var (timestamp, bytes) in records)
+        foreach ((var timestamp, var bytes) in records)
         {
             if (timestamp >= cutoff)
             {
@@ -123,7 +127,7 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
         }
         
         // Get configured limit for this domain
-        long bytesPerSecond = _options.DefaultBytesPerSecond;
+        var bytesPerSecond = _options.DefaultBytesPerSecond;
         if (_options.DomainBytesPerSecond.TryGetValue(domain, out var domainLimit))
         {
             bytesPerSecond = domainLimit;
@@ -133,33 +137,32 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
         var bytesPerWindow = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
         
         // If we've exceeded the limit, calculate when we can download again
-        if (totalBytes > bytesPerWindow)
+        if (!(totalBytes > bytesPerWindow)) return;
+        
+        // Simple rate limiting: wait until enough of the window has passed
+        // that we're back under the limit
+        var excessRatio = totalBytes / bytesPerWindow;
+        var waitTime = TimeSpan.FromSeconds((excessRatio - 1) * _options.TrackingWindow.TotalSeconds);
+            
+        // Cap at the tracking window length
+        if (waitTime > _options.TrackingWindow)
         {
-            // Simple rate limiting: wait until enough of the window has passed
-            // that we're back under the limit
-            double excessRatio = (double)totalBytes / bytesPerWindow;
-            var waitTime = TimeSpan.FromSeconds((excessRatio - 1) * _options.TrackingWindow.TotalSeconds);
-            
-            // Cap at the tracking window length
-            if (waitTime > _options.TrackingWindow)
-            {
-                waitTime = _options.TrackingWindow;
-            }
-            
-            var nextAvailable = now + waitTime;
-            
-            _domainNextAvailable.AddOrUpdate(
-                domain,
-                nextAvailable,
-                (_, existing) => nextAvailable > existing ? nextAvailable : existing);
-                
-            _logger.LogInformation(
-                "Domain {Domain} bandwidth limit reached. Next available in {WaitTime}.", 
-                domain, waitTime);
+            waitTime = _options.TrackingWindow;
         }
+            
+        var nextAvailable = now + waitTime;
+            
+        _domainNextAvailable.AddOrUpdate(
+            domain,
+            nextAvailable,
+            (_, existing) => nextAvailable > existing ? nextAvailable : existing);
+                
+        _logger.LogInformation(
+            "Domain {Domain} bandwidth limit reached. Next available in {WaitTime}", 
+            domain, waitTime);
     }
 
-    private void CleanupOldRecords(object state)
+    private void CleanupOldRecords(object? state)
     {
         try
         {
@@ -169,19 +172,18 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
             // Clean up domain usage records
             foreach (var domain in _domainUsage.Keys)
             {
-                if (_domainUsage.TryGetValue(domain, out var queue))
+                if (!_domainUsage.TryGetValue(domain, out var queue)) continue;
+                
+                // Remove old records
+                while (queue.Count > 0 && queue.Peek().Timestamp < cutoff)
                 {
-                    // Remove old records
-                    while (queue.Count > 0 && queue.Peek().Timestamp < cutoff)
-                    {
-                        queue.Dequeue();
-                    }
+                    queue.Dequeue();
+                }
                     
-                    // If queue is empty, consider removing the domain entirely
-                    if (queue.Count == 0)
-                    {
-                        _domainUsage.TryRemove(domain, out _);
-                    }
+                // If queue is empty, consider removing the domain entirely
+                if (queue.Count == 0)
+                {
+                    _domainUsage.TryRemove(domain, out _);
                 }
             }
             
@@ -202,11 +204,10 @@ public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
 
     public void Dispose()
     {
-        _cleanupTimer?.Dispose();
+        _cleanupTimer.Dispose();
     }
 }
 
-// Extension method for service registration
 public static class BandwidthLimiterExtensions
 {
     public static IServiceCollection AddBandwidthLimiter(
