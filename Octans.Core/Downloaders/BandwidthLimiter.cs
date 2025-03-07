@@ -1,69 +1,221 @@
-using System.Collections.Concurrent;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Octans.Core.Downloaders;
 
-public class BandwidthLimiter
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+public class BandwidthLimiterOptions
 {
-    private readonly ConcurrentDictionary<string, DomainBandwidth> _domainBandwidths = new();
-    private readonly IOptions<DomainBandwidthOptions> _options;
+    public Dictionary<string, long> DomainBytesPerSecond { get; set; } = new();
+    public long DefaultBytesPerSecond { get; set; } = 1024 * 1024; // 1 MB/s default
+    public TimeSpan TrackingWindow { get; set; } = TimeSpan.FromMinutes(5);
+}
 
-    public BandwidthLimiter(IOptions<DomainBandwidthOptions> options)
+public interface IBandwidthLimiterService
+{
+    bool IsBandwidthAvailable(string domain);
+    TimeSpan GetDelayForDomain(string domain);
+    void RecordDownload(string domain, long bytes);
+}
+
+public class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
+{
+    private readonly ILogger<BandwidthLimiterService> _logger;
+    private readonly BandwidthLimiterOptions _options;
+    
+    // Track downloads per domain with timestamps
+    private readonly ConcurrentDictionary<string, Queue<(DateTime Timestamp, long Bytes)>> _domainUsage = new();
+    
+    // Track when a domain can next be used
+    private readonly ConcurrentDictionary<string, DateTime> _domainNextAvailable = new();
+    
+    // Timer to clean up old records
+    private readonly Timer _cleanupTimer;
+
+    public BandwidthLimiterService(
+        ILogger<BandwidthLimiterService> logger,
+        IOptions<BandwidthLimiterOptions> options)
     {
-        _options = options;
-        InitializeBandwidthSettings();
+        _logger = logger;
+        _options = options.Value;
+        
+        // Set up cleanup timer to run every minute
+        _cleanupTimer = new Timer(CleanupOldRecords, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
-    private void InitializeBandwidthSettings()
+    public bool IsBandwidthAvailable(string domain)
     {
-        if (_options.Value.Domains == null || !_options.Value.Domains.Any())
-            return;
-
-        foreach (var domainOption in _options.Value.Domains)
+        if (string.IsNullOrEmpty(domain))
+            return true;
+            
+        // Check if domain is in cooldown
+        if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
         {
-            _domainBandwidths.TryAdd(domainOption.Domain, new DomainBandwidth
-            {
-                Domain = domainOption.Domain,
-                BandwidthLimit = domainOption.BandwidthLimit,
-                WindowDuration = TimeSpan.FromSeconds(domainOption.WindowDurationSeconds)
-            });
+            return DateTime.UtcNow >= nextAvailable;
         }
-    }
-
-    public bool CanMakeRequest(string domain, long requestSize)
-    {
-        var bandwidth = _domainBandwidths.GetOrAdd(domain, new DomainBandwidth { Domain = domain, BandwidthLimit = 1000000 });
-
-        var now = DateTime.UtcNow;
-        var windowStart = now - bandwidth.WindowDuration;
-
-        // Remove outdated entries
-        while (bandwidth.UsageHistory.TryPeek(out var oldest) && oldest.Timestamp < windowStart)
-        {
-            bandwidth.UsageHistory.TryDequeue(out _);
-        }
-
-        // Calculate current usage within the window
-        var currentUsage = bandwidth.UsageHistory.Sum(entry => entry.Usage);
-
-        // Check if the request would exceed the limit
-        if (currentUsage + requestSize > bandwidth.BandwidthLimit * bandwidth.WindowDuration.TotalSeconds)
-            return false;
-
-        // Add new usage entry
-        bandwidth.UsageHistory.Enqueue((now, requestSize));
+        
         return true;
     }
 
-    public void SetBandwidthLimit(string domain, long limit, TimeSpan? windowDuration = null)
+    public TimeSpan GetDelayForDomain(string domain)
     {
-        _domainBandwidths.AddOrUpdate(domain,
-            new DomainBandwidth { Domain = domain, BandwidthLimit = limit, WindowDuration = windowDuration ?? TimeSpan.FromSeconds(60) },
-            (key, existing) =>
+        if (string.IsNullOrEmpty(domain))
+            return TimeSpan.Zero;
+            
+        if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
+        {
+            var now = DateTime.UtcNow;
+            if (nextAvailable > now)
             {
-                existing.BandwidthLimit = limit;
-                if (windowDuration.HasValue) existing.WindowDuration = windowDuration.Value;
-                return existing;
+                return nextAvailable - now;
+            }
+        }
+        
+        return TimeSpan.Zero;
+    }
+
+    public void RecordDownload(string domain, long bytes)
+    {
+        if (string.IsNullOrEmpty(domain) || bytes <= 0)
+            return;
+            
+        var now = DateTime.UtcNow;
+        
+        // Add to domain usage records
+        _domainUsage.AddOrUpdate(
+            domain,
+            // If key doesn't exist, create a new queue with this record
+            _ => new Queue<(DateTime, long)>(new[] { (now, bytes) }),
+            // If key exists, add to the existing queue
+            (_, queue) => 
+            {
+                queue.Enqueue((now, bytes));
+                return queue;
             });
+            
+        // Calculate current bandwidth usage for this domain
+        CalculateBandwidthUsage(domain);
+    }
+
+    private void CalculateBandwidthUsage(string domain)
+    {
+        if (!_domainUsage.TryGetValue(domain, out var usageQueue) || usageQueue.Count == 0)
+            return;
+            
+        var now = DateTime.UtcNow;
+        var cutoff = now - _options.TrackingWindow;
+        
+        // Calculate total bytes in the time window
+        long totalBytes = 0;
+        var records = usageQueue.ToArray();
+        
+        foreach (var (timestamp, bytes) in records)
+        {
+            if (timestamp >= cutoff)
+            {
+                totalBytes += bytes;
+            }
+        }
+        
+        // Get configured limit for this domain
+        long bytesPerSecond = _options.DefaultBytesPerSecond;
+        if (_options.DomainBytesPerSecond.TryGetValue(domain, out var domainLimit))
+        {
+            bytesPerSecond = domainLimit;
+        }
+        
+        // Convert to bytes per window
+        var bytesPerWindow = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
+        
+        // If we've exceeded the limit, calculate when we can download again
+        if (totalBytes > bytesPerWindow)
+        {
+            // Simple rate limiting: wait until enough of the window has passed
+            // that we're back under the limit
+            double excessRatio = (double)totalBytes / bytesPerWindow;
+            var waitTime = TimeSpan.FromSeconds((excessRatio - 1) * _options.TrackingWindow.TotalSeconds);
+            
+            // Cap at the tracking window length
+            if (waitTime > _options.TrackingWindow)
+            {
+                waitTime = _options.TrackingWindow;
+            }
+            
+            var nextAvailable = now + waitTime;
+            
+            _domainNextAvailable.AddOrUpdate(
+                domain,
+                nextAvailable,
+                (_, existing) => nextAvailable > existing ? nextAvailable : existing);
+                
+            _logger.LogInformation(
+                "Domain {Domain} bandwidth limit reached. Next available in {WaitTime}.", 
+                domain, waitTime);
+        }
+    }
+
+    private void CleanupOldRecords(object state)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var cutoff = now - _options.TrackingWindow;
+            
+            // Clean up domain usage records
+            foreach (var domain in _domainUsage.Keys)
+            {
+                if (_domainUsage.TryGetValue(domain, out var queue))
+                {
+                    // Remove old records
+                    while (queue.Count > 0 && queue.Peek().Timestamp < cutoff)
+                    {
+                        queue.Dequeue();
+                    }
+                    
+                    // If queue is empty, consider removing the domain entirely
+                    if (queue.Count == 0)
+                    {
+                        _domainUsage.TryRemove(domain, out _);
+                    }
+                }
+            }
+            
+            // Clean up expired next available times
+            foreach (var domain in _domainNextAvailable.Keys)
+            {
+                if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable) && nextAvailable <= now)
+                {
+                    _domainNextAvailable.TryRemove(domain, out _);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bandwidth limiter cleanup");
+        }
+    }
+
+    public void Dispose()
+    {
+        _cleanupTimer?.Dispose();
+    }
+}
+
+// Extension method for service registration
+public static class BandwidthLimiterExtensions
+{
+    public static IServiceCollection AddBandwidthLimiter(
+        this IServiceCollection services,
+        Action<BandwidthLimiterOptions>? configure = null)
+    {
+        services.Configure<BandwidthLimiterOptions>(options => configure?.Invoke(options));
+        services.AddSingleton<IBandwidthLimiterService, BandwidthLimiterService>();
+        
+        return services;
     }
 }

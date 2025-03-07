@@ -67,16 +67,3 @@ public class DownloadDbContext : DbContext
         modelBuilder.Entity<DownloadStatus>().HasKey(d => d.Id);
     }
 }
-
-
-// 5. Bandwidth Limiter Service Interface
-
-public interface IBandwidthLimiterService
-{
-    bool IsBandwidthAvailable(string domain);
-    TimeSpan GetDelayForDomain(string domain);
-    void RecordDownload(string domain, long bytes);
-}
-
-// 6. Download Service
-
