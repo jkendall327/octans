@@ -1,4 +1,6 @@
-namespace Octans.Core.Downloaders;
+using Octans.Core.Downloaders;
+
+namespace Octans.Core.Downloads;
 
 public interface IDownloadService
 {

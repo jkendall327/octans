@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Downloaders;
 using Octans.Core.Models;
 
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads;
 
 public class DownloadStateService
 {
@@ -74,55 +75,55 @@ public class DownloadStateService
     {
         lock (_lock)
         {
-            if (_activeDownloads.TryGetValue(id, out var status))
+            if (!_activeDownloads.TryGetValue(id, out var status)) return;
+            
+            status.State = newState;
+            status.LastUpdated = DateTime.UtcNow;
+                
+            switch (newState)
             {
-                status.State = newState;
-                status.LastUpdated = DateTime.UtcNow;
-                
-                switch (newState)
-                {
-                    case DownloadState.InProgress:
-                        status.StartedAt ??= DateTime.UtcNow;
-                        break;
-                    case DownloadState.Completed:
-                        status.CompletedAt = DateTime.UtcNow;
-                        break;
-                    case DownloadState.Failed:
-                        status.ErrorMessage = errorMessage;
-                        break;
-                }
-                
-                // Persist state change to database
-                Task.Run(async () => 
-                {
-                    await using var scope = _dbContext.Database.BeginTransaction();
-                    try
-                    {
-                        var dbStatus = await _dbContext.DownloadStatuses.FindAsync(id);
-                        if (dbStatus != null)
-                        {
-                            dbStatus.State = status.State;
-                            dbStatus.BytesDownloaded = status.BytesDownloaded;
-                            dbStatus.TotalBytes = status.TotalBytes;
-                            dbStatus.LastUpdated = status.LastUpdated;
-                            dbStatus.StartedAt = status.StartedAt;
-                            dbStatus.CompletedAt = status.CompletedAt;
-                            dbStatus.ErrorMessage = status.ErrorMessage;
-                            
-                            await _dbContext.SaveChangesAsync();
-                            await scope.CommitAsync();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to persist download state change");
-                    }
-                });
-                
-                // Notify subscribers
-                OnDownloadProgressChanged?.Invoke(status);
-                OnDownloadsChanged?.Invoke();
+                case DownloadState.InProgress:
+                    status.StartedAt ??= DateTime.UtcNow;
+                    break;
+                case DownloadState.Completed:
+                    status.CompletedAt = DateTime.UtcNow;
+                    break;
+                case DownloadState.Failed:
+                    status.ErrorMessage = errorMessage;
+                    break;
             }
+                
+            // Persist state change to database
+            Task.Run(async () => 
+            {
+                await using var scope = await _dbContext.Database.BeginTransactionAsync();
+                
+                try
+                {
+                    var dbStatus = await _dbContext.DownloadStatuses.FindAsync(id);
+                    if (dbStatus != null)
+                    {
+                        dbStatus.State = status.State;
+                        dbStatus.BytesDownloaded = status.BytesDownloaded;
+                        dbStatus.TotalBytes = status.TotalBytes;
+                        dbStatus.LastUpdated = status.LastUpdated;
+                        dbStatus.StartedAt = status.StartedAt;
+                        dbStatus.CompletedAt = status.CompletedAt;
+                        dbStatus.ErrorMessage = status.ErrorMessage;
+                            
+                        await _dbContext.SaveChangesAsync();
+                        await scope.CommitAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to persist download state change");
+                }
+            });
+                
+            // Notify subscribers
+            OnDownloadProgressChanged?.Invoke(status);
+            OnDownloadsChanged?.Invoke();
         }
     }
 
@@ -163,28 +164,27 @@ public class DownloadStateService
     {
         lock (_lock)
         {
-            if (_activeDownloads.Remove(id))
+            if (!_activeDownloads.Remove(id)) return;
+            
+            // Remove from database
+            Task.Run(async () => 
             {
-                // Remove from database
-                Task.Run(async () => 
+                try
                 {
-                    try
+                    var status = await _dbContext.DownloadStatuses.FindAsync(id);
+                    if (status != null)
                     {
-                        var status = await _dbContext.DownloadStatuses.FindAsync(id);
-                        if (status != null)
-                        {
-                            _dbContext.DownloadStatuses.Remove(status);
-                            await _dbContext.SaveChangesAsync();
-                        }
+                        _dbContext.DownloadStatuses.Remove(status);
+                        await _dbContext.SaveChangesAsync();
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to remove download status from database");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to remove download status from database");
+                }
+            });
                 
-                OnDownloadsChanged?.Invoke();
-            }
+            OnDownloadsChanged?.Invoke();
         }
     }
 }

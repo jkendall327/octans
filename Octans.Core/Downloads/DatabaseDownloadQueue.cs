@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Downloaders;
 using Octans.Core.Models;
 
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads;
 
 public interface IDownloadQueue
 {

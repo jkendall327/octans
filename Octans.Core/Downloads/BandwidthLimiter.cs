@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads;
 
 public class BandwidthLimiterOptions
 {

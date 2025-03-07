@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads;
 
 public class DomainBandwidth
 {

@@ -1,4 +1,4 @@
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads;
 
 public class DownloadRequest
 {
