@@ -11,6 +11,7 @@ public interface IDownloadService
     Task PauseDownloadAsync(Guid id);
     Task ResumeDownloadAsync(Guid id);
     Task RetryDownloadAsync(Guid id);
+    CancellationToken GetDownloadToken(Guid downloadId);
 }
 
 public class DownloadManagerOptions
@@ -117,7 +118,7 @@ public class DownloadService : IDownloadService
     public async Task ResumeDownloadAsync(Guid id)
     {
         var status = _stateService.GetDownloadById(id);
-        if (status != null && status.State == DownloadState.Paused)
+        if (status is {State: DownloadState.Paused})
         {
             // Re-queue the download
             await _queue.EnqueueAsync(new QueuedDownload
@@ -136,7 +137,7 @@ public class DownloadService : IDownloadService
     public async Task RetryDownloadAsync(Guid id)
     {
         var status = _stateService.GetDownloadById(id);
-        if (status != null && (status.State == DownloadState.Failed || status.State == DownloadState.Canceled))
+        if (status is {State: DownloadState.Failed or DownloadState.Canceled})
         {
             // Reset download state
             status.BytesDownloaded = 0;

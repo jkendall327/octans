@@ -12,7 +12,7 @@ public sealed class DownloadManager : BackgroundService
     private readonly DownloadStateService _stateService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DownloadManager> _logger;
-    private readonly DownloadService _downloadService;
+    private readonly IDownloadService _downloadService;
     private readonly int _maxConcurrentDownloads;
 
     public DownloadManager(
@@ -21,7 +21,7 @@ public sealed class DownloadManager : BackgroundService
         DownloadStateService stateService,
         IHttpClientFactory httpClientFactory,
         ILogger<DownloadManager> logger,
-        DownloadService downloadService,
+        IDownloadService downloadService,
         DownloadManagerOptions options)
     {
         _downloadQueue = downloadQueue;
