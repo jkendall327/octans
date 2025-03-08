@@ -12,7 +12,7 @@ public sealed class DownloadManager : BackgroundService
     private readonly DownloadStateService _stateService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DownloadManager> _logger;
-    private readonly IDownloadService _downloadService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly int _maxConcurrentDownloads;
 
     public DownloadManager(
@@ -21,15 +21,15 @@ public sealed class DownloadManager : BackgroundService
         DownloadStateService stateService,
         IHttpClientFactory httpClientFactory,
         ILogger<DownloadManager> logger,
-        IDownloadService downloadService,
-        DownloadManagerOptions options)
+        DownloadManagerOptions options,
+        IServiceScopeFactory scopeFactory)
     {
         _downloadQueue = downloadQueue;
         _bandwidthLimiter = bandwidthLimiter;
         _stateService = stateService;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _downloadService = downloadService;
+        _scopeFactory = scopeFactory;
         _maxConcurrentDownloads = options.MaxConcurrentDownloads;
         _concurrencyLimiter = new(options.MaxConcurrentDownloads);
     }
@@ -79,8 +79,12 @@ public sealed class DownloadManager : BackgroundService
 
     private async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
     {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IDownloadService>();
+        
         var downloadId = download.Id;
-        var downloadToken = _downloadService.GetDownloadToken(downloadId);
+        var downloadToken = service.GetDownloadToken(downloadId);
         
         // Create a combined token for this specific download
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, downloadToken);

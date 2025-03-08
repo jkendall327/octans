@@ -56,11 +56,13 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.AddEndpoints();
 
-var s = app.Services.GetRequiredService<DownloadService>();
+await using var serviceScope = app.Services.CreateAsyncScope();
+
+var s = serviceScope.ServiceProvider.GetRequiredService<IDownloadService>();
 
 await s.QueueDownloadAsync(new() {
-    Url = "https://example.com/file.zip",
-    DestinationPath = "C:/Downloads/file.zip"
+    Url = "https://upload.wikimedia.org/wikipedia/commons/d/de/Nokota_Horses_cropped.jpg",
+    DestinationPath = "/home/jackkendall/Downloads"
 });
 
 return;
