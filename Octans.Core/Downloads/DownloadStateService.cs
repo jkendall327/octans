@@ -10,20 +10,22 @@ public class DownloadStateService
     private readonly Dictionary<Guid, DownloadStatus> _activeDownloads = new();
     private readonly Lock _lock = new();
     private readonly ILogger<DownloadStateService> _logger;
-    private readonly ServerDbContext _dbContext;
+    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
 
     public event Action<DownloadStatus>? OnDownloadProgressChanged;
     public event Action? OnDownloadsChanged;
 
-    public DownloadStateService(ILogger<DownloadStateService> logger, ServerDbContext dbContext)
+    public DownloadStateService(ILogger<DownloadStateService> logger, IDbContextFactory<ServerDbContext> contextFactory)
     {
         _logger = logger;
-        _dbContext = dbContext;
+        _contextFactory = contextFactory;
     }
 
     public async Task InitializeFromDbAsync()
     {
-        var statuses = await _dbContext.DownloadStatuses
+        await using var db = await _contextFactory.CreateDbContextAsync();
+        
+        var statuses = await db.DownloadStatuses
             .Where(d => d.State != DownloadState.Completed && d.State != DownloadState.Canceled)
             .ToListAsync();
             
@@ -96,11 +98,13 @@ public class DownloadStateService
             // Persist state change to database
             Task.Run(async () => 
             {
-                await using var scope = await _dbContext.Database.BeginTransactionAsync();
+                await using var db = await _contextFactory.CreateDbContextAsync();
+
+                await using var scope = await db.Database.BeginTransactionAsync();
                 
                 try
                 {
-                    var dbStatus = await _dbContext.DownloadStatuses.FindAsync(id);
+                    var dbStatus = await db.DownloadStatuses.FindAsync(id);
                     if (dbStatus != null)
                     {
                         dbStatus.State = status.State;
@@ -111,7 +115,7 @@ public class DownloadStateService
                         dbStatus.CompletedAt = status.CompletedAt;
                         dbStatus.ErrorMessage = status.ErrorMessage;
                             
-                        await _dbContext.SaveChangesAsync();
+                        await db.SaveChangesAsync();
                         await scope.CommitAsync();
                     }
                 }
@@ -138,17 +142,20 @@ public class DownloadStateService
             {
                 try
                 {
-                    var existingStatus = await _dbContext.DownloadStatuses.FindAsync(status.Id);
+                    await using var db = await _contextFactory.CreateDbContextAsync();
+
+                    var existingStatus = await db.DownloadStatuses.FindAsync(status.Id);
+                    
                     if (existingStatus == null)
                     {
-                        _dbContext.DownloadStatuses.Add(status);
+                        db.DownloadStatuses.Add(status);
                     }
                     else
                     {
-                        _dbContext.Entry(existingStatus).CurrentValues.SetValues(status);
+                        db.Entry(existingStatus).CurrentValues.SetValues(status);
                     }
                     
-                    await _dbContext.SaveChangesAsync();
+                    await db.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
@@ -171,11 +178,13 @@ public class DownloadStateService
             {
                 try
                 {
-                    var status = await _dbContext.DownloadStatuses.FindAsync(id);
+                    await using var db = await _contextFactory.CreateDbContextAsync();
+
+                    var status = await db.DownloadStatuses.FindAsync(id);
                     if (status != null)
                     {
-                        _dbContext.DownloadStatuses.Remove(status);
-                        await _dbContext.SaveChangesAsync();
+                        db.DownloadStatuses.Remove(status);
+                        await db.SaveChangesAsync();
                     }
                 }
                 catch (Exception ex)

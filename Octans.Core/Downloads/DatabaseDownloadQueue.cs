@@ -15,16 +15,16 @@ public interface IDownloadQueue
 
 public class DatabaseDownloadQueue : IDownloadQueue
 {
-    private readonly ServerDbContext _dbContext;
+    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
     private readonly IBandwidthLimiterService _bandwidthLimiter;
     private readonly ILogger<DatabaseDownloadQueue> _logger;
 
     public DatabaseDownloadQueue(
-        ServerDbContext dbContext,
+        IDbContextFactory<ServerDbContext> contextFactory,
         IBandwidthLimiterService bandwidthLimiter,
         ILogger<DatabaseDownloadQueue> logger)
     {
-        _dbContext = dbContext;
+        _contextFactory = contextFactory;
         _bandwidthLimiter = bandwidthLimiter;
         _logger = logger;
     }
@@ -33,20 +33,24 @@ public class DatabaseDownloadQueue : IDownloadQueue
     {
         if (string.IsNullOrEmpty(download.Domain))
         {
-            Uri uri = new Uri(download.Url);
+            var uri = new Uri(download.Url);
             download.Domain = uri.Host;
         }
         
-        _dbContext.QueuedDownloads.Add(download);
-        await _dbContext.SaveChangesAsync();
+        await using var db = await _contextFactory.CreateDbContextAsync();
+        
+        db.QueuedDownloads.Add(download);
+        await db.SaveChangesAsync();
         
         return download.Id;
     }
 
     public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)
     {
+        await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
         // Get all queued downloads
-        var queuedDownloads = await _dbContext.QueuedDownloads
+        var queuedDownloads = await db.QueuedDownloads
             .OrderByDescending(d => d.Priority)
             .ThenBy(d => d.QueuedAt)
             .ToListAsync(cancellationToken);
@@ -60,8 +64,8 @@ public class DatabaseDownloadQueue : IDownloadQueue
             }
             
             // Remove from queue
-            _dbContext.QueuedDownloads.Remove(download);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            db.QueuedDownloads.Remove(download);
+            await db.SaveChangesAsync(cancellationToken);
             
             return download;
         }
@@ -71,16 +75,20 @@ public class DatabaseDownloadQueue : IDownloadQueue
 
     public async Task<int> GetQueuedCountAsync()
     {
-        return await _dbContext.QueuedDownloads.CountAsync();
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        return await db.QueuedDownloads.CountAsync();
     }
 
     public async Task RemoveAsync(Guid id)
     {
-        var download = await _dbContext.QueuedDownloads.FindAsync(id);
+        await using var db = await _contextFactory.CreateDbContextAsync();
+
+        var download = await db.QueuedDownloads.FindAsync(id);
         if (download != null)
         {
-            _dbContext.QueuedDownloads.Remove(download);
-            await _dbContext.SaveChangesAsync();
+            db.QueuedDownloads.Remove(download);
+            await db.SaveChangesAsync();
         }
     }
 }

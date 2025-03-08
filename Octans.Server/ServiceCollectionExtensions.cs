@@ -24,7 +24,7 @@ internal static class ServiceCollectionExtensions
 
     public static void AddDatabase(this WebApplicationBuilder builder)
     {
-        builder.Services.AddDbContext<ServerDbContext>((s, opt) =>
+        builder.Services.AddDbContextFactory<ServerDbContext>((s, opt) =>
         {
             var config = s.GetRequiredService<IOptions<GlobalSettings>>();
 
