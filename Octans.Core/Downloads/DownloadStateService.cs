@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
@@ -6,7 +5,11 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Downloads;
 
-[SuppressMessage("Design", "CA1003:Use generic event handler instances")]
+public class DownloadStatusChangedEventArgs : EventArgs
+{
+    public required DownloadStatus Status { get; init; }
+}
+
 public class DownloadStateService(
     ILogger<DownloadStateService> logger,
     IDbContextFactory<ServerDbContext> contextFactory)
@@ -14,8 +17,8 @@ public class DownloadStateService(
     private readonly Dictionary<Guid, DownloadStatus> _activeDownloads = new();
     private readonly Lock _lock = new();
 
-    public event Action<DownloadStatus>? OnDownloadProgressChanged;
-    public event Action? OnDownloadsChanged;
+    public event EventHandler<DownloadStatusChangedEventArgs>? OnDownloadProgressChanged;
+    public event EventHandler? OnDownloadsChanged;
 
     public async Task InitializeFromDbAsync()
     {
@@ -33,7 +36,7 @@ public class DownloadStateService(
             }
         }
 
-        OnDownloadsChanged?.Invoke();
+        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public IReadOnlyList<DownloadStatus> GetAllDownloads()
@@ -64,7 +67,7 @@ public class DownloadStateService(
             status.LastUpdated = DateTime.UtcNow;
 
             // Notify subscribers
-            OnDownloadProgressChanged?.Invoke(status);
+            OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
         }
     }
 
@@ -121,8 +124,8 @@ public class DownloadStateService(
             });
 
             // Notify subscribers
-            OnDownloadProgressChanged?.Invoke(status);
-            OnDownloadsChanged?.Invoke();
+            OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
+            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -158,7 +161,7 @@ public class DownloadStateService(
                 }
             });
 
-            OnDownloadsChanged?.Invoke();
+            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -188,7 +191,7 @@ public class DownloadStateService(
                 }
             });
 
-            OnDownloadsChanged?.Invoke();
+            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }
