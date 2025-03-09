@@ -10,7 +10,7 @@ public class BandwidthLimiterTests
 {
     private readonly ILogger<BandwidthLimiter> _logger = Substitute.For<ILogger<BandwidthLimiter>>();
     private readonly FakeTimeProvider _timeProvider = new();
-    
+
     private readonly BandwidthLimiterOptions _options = new()
     {
         DefaultBytesPerSecond = 1024 * 1024, // 1 MB/s
@@ -20,7 +20,7 @@ public class BandwidthLimiterTests
             ["slowdomain.com"] = 512 * 1024 // 512 KB/s
         }
     };
-    
+
     private readonly BandwidthLimiter _sut;
 
     public BandwidthLimiterTests()
@@ -126,7 +126,7 @@ public class BandwidthLimiterTests
         var domain = "slowdomain.com";
         var bytesPerSecond = _options.DomainBytesPerSecond[domain];
         var totalBytesAllowed = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
-        
+
         // Act - Download just over the limit
         _sut.RecordDownload(domain, (long)totalBytesAllowed + 1);
 
@@ -145,15 +145,15 @@ public class BandwidthLimiterTests
 
         // Act 1 - Exceed the limit
         _sut.RecordDownload(domain, (long)bytesToDownload);
-        
+
         // Assert 1 - Bandwidth should be unavailable
         Assert.False(_sut.IsBandwidthAvailable(domain));
         var delay = _sut.GetDelayForDomain(domain);
         Assert.True(delay > TimeSpan.Zero);
-        
+
         // Act 2 - Advance time past the delay
         _timeProvider.Advance(delay + TimeSpan.FromSeconds(1));
-        
+
         // Assert 2 - Bandwidth should be available again
         Assert.True(_sut.IsBandwidthAvailable(domain));
         Assert.Equal(TimeSpan.Zero, _sut.GetDelayForDomain(domain));
@@ -166,26 +166,26 @@ public class BandwidthLimiterTests
         var domain = "example.com";
         var bytesPerSecond = _options.DefaultBytesPerSecond;
         var totalBytesAllowed = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
-        
+
         // Act 1 - Download just under the limit
         _sut.RecordDownload(domain, (long)totalBytesAllowed - 1);
-        
+
         // Assert 1 - Bandwidth should be available
         Assert.True(_sut.IsBandwidthAvailable(domain));
-        
+
         // Act 2 - Advance time past the tracking window
         _timeProvider.Advance(_options.TrackingWindow + TimeSpan.FromMinutes(1));
-        
+
         // This should trigger the cleanup timer
         // We need to manually trigger it for testing since we're using a fake timer
         // In real usage, the timer would fire automatically
         typeof(BandwidthLimiter)
             .GetMethod("CleanupOldRecords", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.Invoke(_sut, new object?[] { null });
-        
+
         // Act 3 - Download just under the limit again
         _sut.RecordDownload(domain, (long)totalBytesAllowed - 1);
-        
+
         // Assert 3 - Bandwidth should still be available because old records were cleaned up
         Assert.True(_sut.IsBandwidthAvailable(domain));
     }
@@ -198,34 +198,34 @@ public class BandwidthLimiterTests
         var bytesPerSecond = _options.DefaultBytesPerSecond;
         var totalBytesAllowed = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
         var bytesPerDownload = totalBytesAllowed / 4; // Quarter of the limit per download
-        
+
         // Act 1 - First download
         _sut.RecordDownload(domain, (long)bytesPerDownload);
-        
+
         // Assert 1
         Assert.True(_sut.IsBandwidthAvailable(domain));
-        
+
         // Act 2 - Second download
         _sut.RecordDownload(domain, (long)bytesPerDownload);
-        
+
         // Assert 2
         Assert.True(_sut.IsBandwidthAvailable(domain));
-        
+
         // Act 3 - Third download
         _sut.RecordDownload(domain, (long)bytesPerDownload);
-        
+
         // Assert 3
         Assert.True(_sut.IsBandwidthAvailable(domain));
-        
+
         // Act 4 - Fourth download (now at limit)
         _sut.RecordDownload(domain, (long)bytesPerDownload);
-        
+
         // Assert 4
         Assert.True(_sut.IsBandwidthAvailable(domain));
-        
+
         // Act 5 - Fifth download (exceeds limit)
         _sut.RecordDownload(domain, (long)bytesPerDownload);
-        
+
         // Assert 5
         Assert.False(_sut.IsBandwidthAvailable(domain));
     }

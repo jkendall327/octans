@@ -28,7 +28,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
 builder.AddOptions();
-builder.AddFilesystem();
+builder.AddInfrastructure();
 builder.AddChannels();
 builder.AddDatabase();
 builder.AddBusinessServices();

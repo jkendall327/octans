@@ -47,9 +47,10 @@ internal static class ServiceCollectionExtensions
         opt.UseSqlite($"Data Source={db};");
     }
 
-    public static void AddFilesystem(this WebApplicationBuilder builder)
+    public static void AddInfrastructure(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<IFileSystem>(new FileSystem());
+        builder.Services.AddSingleton(TimeProvider.System);
     }
 
     public static void AddChannels(this WebApplicationBuilder builder)
