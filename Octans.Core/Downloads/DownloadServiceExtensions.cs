@@ -22,7 +22,7 @@ public static class DownloadServiceExtensions
         services.AddHttpClient("DownloadClient", client => 
         {
             // Configure default headers, etc.
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("MyApp/1.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Octans/1.0");
         });
         
         return services;

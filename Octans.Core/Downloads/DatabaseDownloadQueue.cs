@@ -13,22 +13,11 @@ public interface IDownloadQueue
     Task RemoveAsync(Guid id);
 }
 
-public class DatabaseDownloadQueue : IDownloadQueue
+public class DatabaseDownloadQueue(
+    IDbContextFactory<ServerDbContext> contextFactory,
+    IBandwidthLimiter bandwidthLimiter,
+    ILogger<DatabaseDownloadQueue> logger) : IDownloadQueue
 {
-    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
-    private readonly IBandwidthLimiterService _bandwidthLimiter;
-    private readonly ILogger<DatabaseDownloadQueue> _logger;
-
-    public DatabaseDownloadQueue(
-        IDbContextFactory<ServerDbContext> contextFactory,
-        IBandwidthLimiterService bandwidthLimiter,
-        ILogger<DatabaseDownloadQueue> logger)
-    {
-        _contextFactory = contextFactory;
-        _bandwidthLimiter = bandwidthLimiter;
-        _logger = logger;
-    }
-
     public async Task<Guid> EnqueueAsync(QueuedDownload download)
     {
         if (string.IsNullOrEmpty(download.Domain))
@@ -37,7 +26,7 @@ public class DatabaseDownloadQueue : IDownloadQueue
             download.Domain = uri.Host;
         }
         
-        await using var db = await _contextFactory.CreateDbContextAsync();
+        await using var db = await contextFactory.CreateDbContextAsync();
         
         db.QueuedDownloads.Add(download);
         await db.SaveChangesAsync();
@@ -47,7 +36,7 @@ public class DatabaseDownloadQueue : IDownloadQueue
 
     public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)
     {
-        await using var db = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         // Get all queued downloads
         var queuedDownloads = await db.QueuedDownloads
@@ -58,7 +47,7 @@ public class DatabaseDownloadQueue : IDownloadQueue
         foreach (var download in queuedDownloads)
         {
             // Check if bandwidth is available for this domain
-            if (!_bandwidthLimiter.IsBandwidthAvailable(download.Domain))
+            if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
             {
                 continue;
             }
@@ -75,14 +64,14 @@ public class DatabaseDownloadQueue : IDownloadQueue
 
     public async Task<int> GetQueuedCountAsync()
     {
-        await using var db = await _contextFactory.CreateDbContextAsync();
+        await using var db = await contextFactory.CreateDbContextAsync();
 
         return await db.QueuedDownloads.CountAsync();
     }
 
     public async Task RemoveAsync(Guid id)
     {
-        await using var db = await _contextFactory.CreateDbContextAsync();
+        await using var db = await contextFactory.CreateDbContextAsync();
 
         var download = await db.QueuedDownloads.FindAsync(id);
         if (download != null)

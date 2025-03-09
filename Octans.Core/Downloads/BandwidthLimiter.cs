@@ -1,27 +1,19 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Octans.Core.Downloads;
 
-public class BandwidthLimiterOptions
-{
-    public Dictionary<string, long> DomainBytesPerSecond { get; init; } = new();
-    public long DefaultBytesPerSecond { get; set; } = 1024 * 1024; // 1 MB/s default
-    public TimeSpan TrackingWindow { get; init; } = TimeSpan.FromMinutes(5);
-}
-
-public interface IBandwidthLimiterService
+public interface IBandwidthLimiter
 {
     bool IsBandwidthAvailable(string domain);
     TimeSpan GetDelayForDomain(string domain);
     void RecordDownload(string domain, long bytes);
 }
 
-public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposable
+public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
 {
-    private readonly ILogger<BandwidthLimiterService> _logger;
+    private readonly ILogger<BandwidthLimiter> _logger;
     private readonly BandwidthLimiterOptions _options;
     
     // Track downloads per domain with timestamps
@@ -33,8 +25,8 @@ public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposa
     // Timer to clean up old records
     private readonly Timer _cleanupTimer;
 
-    public BandwidthLimiterService(
-        ILogger<BandwidthLimiterService> logger,
+    public BandwidthLimiter(
+        ILogger<BandwidthLimiter> logger,
         IOptions<BandwidthLimiterOptions> options)
     {
         _logger = logger;
@@ -67,15 +59,18 @@ public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposa
             return TimeSpan.Zero;
         }
 
-        if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
+        if (!_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
         {
-            var now = DateTime.UtcNow;
-            if (nextAvailable > now)
-            {
-                return nextAvailable - now;
-            }
+            return TimeSpan.Zero;
         }
+
+        var now = DateTime.UtcNow;
         
+        if (nextAvailable > now)
+        {
+            return nextAvailable - now;
+        }
+
         return TimeSpan.Zero;
     }
 
@@ -92,7 +87,7 @@ public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposa
         _domainUsage.AddOrUpdate(
             domain,
             // If key doesn't exist, create a new queue with this record
-            _ => new Queue<(DateTime, long)>(new[] { (now, bytes) }),
+            _ => new Queue<(DateTime, long)>([(now, bytes)]),
             // If key exists, add to the existing queue
             (_, queue) => 
             {
@@ -205,18 +200,5 @@ public sealed class BandwidthLimiterService : IBandwidthLimiterService, IDisposa
     public void Dispose()
     {
         _cleanupTimer.Dispose();
-    }
-}
-
-public static class BandwidthLimiterExtensions
-{
-    public static IServiceCollection AddBandwidthLimiter(
-        this IServiceCollection services,
-        Action<BandwidthLimiterOptions>? configure = null)
-    {
-        services.Configure<BandwidthLimiterOptions>(options => configure?.Invoke(options));
-        services.AddSingleton<IBandwidthLimiterService, BandwidthLimiterService>();
-        
-        return services;
     }
 }

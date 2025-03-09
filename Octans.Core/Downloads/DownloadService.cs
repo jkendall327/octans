@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloaders;
 
 namespace Octans.Core.Downloads;
@@ -13,27 +12,19 @@ public interface IDownloadService
     CancellationToken GetDownloadToken(Guid downloadId);
 }
 
-public class DownloadService : IDownloadService
+public class DownloadService(IDownloadQueue queue, DownloadStateService stateService) : IDownloadService
 {
-    private readonly IDownloadQueue _queue;
-    private readonly DownloadStateService _stateService;
     private readonly CancellationTokenSource _globalCancellation = new();
     private readonly Dictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
-    private readonly object _cancellationLock = new();
-
-    public DownloadService(IDownloadQueue queue, DownloadStateService stateService)
-    {
-        _queue = queue;
-        _stateService = stateService;
-    }
+    private readonly Lock _cancellationLock = new();
 
     public async Task<Guid> QueueDownloadAsync(DownloadRequest request)
     {
         var id = Guid.NewGuid();
         var filename = Path.GetFileName(request.DestinationPath);
         
-        Uri uri = new Uri(request.Url);
-        string domain = uri.Host;
+        var uri = new Uri(request.Url);
+        var domain = uri.Host;
 
         var status = new DownloadStatus
         {
@@ -48,10 +39,10 @@ public class DownloadService : IDownloadService
         };
         
         // Add to state service for UI visibility
-        _stateService.AddOrUpdateDownload(status);
+        stateService.AddOrUpdateDownload(status);
         
         // Add to persistent queue
-        await _queue.EnqueueAsync(new QueuedDownload
+        await queue.EnqueueAsync(new()
         {
             Id = id,
             Url = request.Url,
@@ -67,29 +58,32 @@ public class DownloadService : IDownloadService
     public async Task CancelDownloadAsync(Guid id)
     {
         // First, try to remove from queue if it's still queued
-        await _queue.RemoveAsync(id);
+        await queue.RemoveAsync(id);
         
         // Then cancel if it's in progress
         CancelDownloadToken(id);
         
         // Update state
-        _stateService.UpdateState(id, DownloadState.Canceled);
+        stateService.UpdateState(id, DownloadState.Canceled);
     }
 
-    public async Task PauseDownloadAsync(Guid id)
+    public Task PauseDownloadAsync(Guid id)
     {
         // For now, we'll implement pause as cancel since we don't support resuming partial downloads
         CancelDownloadToken(id);
-        _stateService.UpdateState(id, DownloadState.Paused);
+        stateService.UpdateState(id, DownloadState.Paused);
+        
+        return Task.CompletedTask;
     }
 
     public async Task ResumeDownloadAsync(Guid id)
     {
-        var status = _stateService.GetDownloadById(id);
+        var status = stateService.GetDownloadById(id);
+        
         if (status is {State: DownloadState.Paused})
         {
             // Re-queue the download
-            await _queue.EnqueueAsync(new QueuedDownload
+            await queue.EnqueueAsync(new()
             {
                 Id = id,
                 Url = status.Url,
@@ -98,14 +92,14 @@ public class DownloadService : IDownloadService
                 Domain = status.Domain
             });
             
-            _stateService.UpdateState(id, DownloadState.Queued);
+            stateService.UpdateState(id, DownloadState.Queued);
         }
     }
 
     public async Task RetryDownloadAsync(Guid id)
     {
-        var status = _stateService.GetDownloadById(id);
-        if (status is {State: DownloadState.Failed or DownloadState.Canceled})
+        var status = stateService.GetDownloadById(id);
+        if (status is { State: DownloadState.Failed or DownloadState.Canceled })
         {
             // Reset download state
             status.BytesDownloaded = 0;
@@ -115,7 +109,7 @@ public class DownloadService : IDownloadService
             status.CompletedAt = null;
             
             // Re-queue the download
-            await _queue.EnqueueAsync(new QueuedDownload
+            await queue.EnqueueAsync(new()
             {
                 Id = id,
                 Url = status.Url,
@@ -124,7 +118,7 @@ public class DownloadService : IDownloadService
                 Domain = status.Domain
             });
             
-            _stateService.UpdateState(id, DownloadState.Queued);
+            stateService.UpdateState(id, DownloadState.Queued);
         }
     }
 
@@ -132,24 +126,25 @@ public class DownloadService : IDownloadService
     {
         lock (_cancellationLock)
         {
-            if (_downloadCancellations.TryGetValue(id, out var cts))
-            {
-                cts.Cancel();
-                _downloadCancellations.Remove(id);
-            }
+            if (!_downloadCancellations.TryGetValue(id, out var cts)) return;
+            
+            cts.Cancel();
+            _downloadCancellations.Remove(id);
         }
     }
 
-    public CancellationToken GetDownloadToken(Guid id)
+    public CancellationToken GetDownloadToken(Guid downloadId)
     {
         lock (_cancellationLock)
         {
-            if (!_downloadCancellations.TryGetValue(id, out var cts))
+            if (_downloadCancellations.TryGetValue(downloadId, out var cts))
             {
-                cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
-                _downloadCancellations[id] = cts;
+                return cts.Token;
             }
-            
+
+            cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
+            _downloadCancellations[downloadId] = cts;
+
             return cts.Token;
         }
     }

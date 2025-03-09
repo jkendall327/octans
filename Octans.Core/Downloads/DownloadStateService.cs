@@ -5,25 +5,19 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Downloads;
 
-public class DownloadStateService
+public class DownloadStateService(
+    ILogger<DownloadStateService> logger,
+    IDbContextFactory<ServerDbContext> contextFactory)
 {
     private readonly Dictionary<Guid, DownloadStatus> _activeDownloads = new();
     private readonly Lock _lock = new();
-    private readonly ILogger<DownloadStateService> _logger;
-    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
 
     public event Action<DownloadStatus>? OnDownloadProgressChanged;
     public event Action? OnDownloadsChanged;
 
-    public DownloadStateService(ILogger<DownloadStateService> logger, IDbContextFactory<ServerDbContext> contextFactory)
-    {
-        _logger = logger;
-        _contextFactory = contextFactory;
-    }
-
     public async Task InitializeFromDbAsync()
     {
-        await using var db = await _contextFactory.CreateDbContextAsync();
+        await using var db = await contextFactory.CreateDbContextAsync();
         
         var statuses = await db.DownloadStatuses
             .Where(d => d.State != DownloadState.Completed && d.State != DownloadState.Canceled)
@@ -60,16 +54,15 @@ public class DownloadStateService
     {
         lock (_lock)
         {
-            if (_activeDownloads.TryGetValue(id, out var status))
-            {
-                status.BytesDownloaded = bytesDownloaded;
-                status.TotalBytes = totalBytes;
-                status.CurrentSpeed = speed;
-                status.LastUpdated = DateTime.UtcNow;
+            if (!_activeDownloads.TryGetValue(id, out var status)) return;
+            
+            status.BytesDownloaded = bytesDownloaded;
+            status.TotalBytes = totalBytes;
+            status.CurrentSpeed = speed;
+            status.LastUpdated = DateTime.UtcNow;
                 
-                // Notify subscribers
-                OnDownloadProgressChanged?.Invoke(status);
-            }
+            // Notify subscribers
+            OnDownloadProgressChanged?.Invoke(status);
         }
     }
 
@@ -98,7 +91,7 @@ public class DownloadStateService
             // Persist state change to database
             Task.Run(async () => 
             {
-                await using var db = await _contextFactory.CreateDbContextAsync();
+                await using var db = await contextFactory.CreateDbContextAsync();
 
                 await using var scope = await db.Database.BeginTransactionAsync();
                 
@@ -121,7 +114,7 @@ public class DownloadStateService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to persist download state change");
+                    logger.LogError(ex, "Failed to persist download state change");
                 }
             });
                 
@@ -142,7 +135,7 @@ public class DownloadStateService
             {
                 try
                 {
-                    await using var db = await _contextFactory.CreateDbContextAsync();
+                    await using var db = await contextFactory.CreateDbContextAsync();
 
                     var existingStatus = await db.DownloadStatuses.FindAsync(status.Id);
                     
@@ -159,7 +152,7 @@ public class DownloadStateService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to persist download status");
+                    logger.LogError(ex, "Failed to persist download status");
                 }
             });
             
@@ -178,7 +171,7 @@ public class DownloadStateService
             {
                 try
                 {
-                    await using var db = await _contextFactory.CreateDbContextAsync();
+                    await using var db = await contextFactory.CreateDbContextAsync();
 
                     var status = await db.DownloadStatuses.FindAsync(id);
                     if (status != null)
@@ -189,7 +182,7 @@ public class DownloadStateService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to remove download status from database");
+                    logger.LogError(ex, "Failed to remove download status from database");
                 }
             });
                 
