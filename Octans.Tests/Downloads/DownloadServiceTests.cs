@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
 using Xunit;
@@ -10,8 +10,8 @@ namespace Octans.Tests.Downloads;
 
 public class DownloadServiceTests
 {
-    private readonly Mock<IDownloadQueue> _mockQueue = new();
-    private readonly Mock<IDownloadStateService> _mockStateService = new();
+    private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
+    private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly ILogger<DownloadService> _logger = NullLogger<DownloadService>.Instance;
     private readonly DownloadService _service;
 
@@ -37,23 +37,19 @@ public class DownloadServiceTests
         // Assert
         Assert.NotEqual(Guid.Empty, id);
         
-        _mockStateService.Verify(s => s.AddOrUpdateDownloadAsync(
-            It.Is<DownloadStatus>(ds => 
-                ds.Id == id && 
-                ds.Url == request.Url.ToString() &&
-                ds.DestinationPath == request.DestinationPath &&
-                ds.State == DownloadState.Queued &&
-                ds.Domain == "example.com")), 
-            Times.Once);
+        await _mockStateService.Received(1).AddOrUpdateDownloadAsync(Arg.Is<DownloadStatus>(ds => 
+            ds.Id == id && 
+            ds.Url == request.Url.ToString() &&
+            ds.DestinationPath == request.DestinationPath &&
+            ds.State == DownloadState.Queued &&
+            ds.Domain == "example.com"));
         
-        _mockQueue.Verify(q => q.EnqueueAsync(
-            It.Is<QueuedDownload>(qd => 
-                qd.Id == id && 
-                qd.Url == request.Url.ToString() &&
-                qd.DestinationPath == request.DestinationPath &&
-                qd.Priority == request.Priority &&
-                qd.Domain == "example.com")), 
-            Times.Once);
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
+            qd.Id == id && 
+            qd.Url == request.Url.ToString() &&
+            qd.DestinationPath == request.DestinationPath &&
+            qd.Priority == request.Priority &&
+            qd.Domain == "example.com"));
     }
 
     [Fact]
@@ -66,8 +62,8 @@ public class DownloadServiceTests
         await _service.CancelDownloadAsync(id);
         
         // Assert
-        _mockQueue.Verify(q => q.RemoveAsync(id), Times.Once);
-        _mockStateService.Verify(s => s.UpdateState(id, DownloadState.Canceled), Times.Once);
+        await _mockQueue.Received(1).RemoveAsync(id);
+        _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
     }
 
     [Fact]
@@ -80,7 +76,7 @@ public class DownloadServiceTests
         await _service.PauseDownloadAsync(id);
         
         // Assert
-        _mockStateService.Verify(s => s.UpdateState(id, DownloadState.Paused), Times.Once);
+        _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 
     [Fact]
@@ -94,23 +90,22 @@ public class DownloadServiceTests
             Url = "https://example.com/file.zip",
             DestinationPath = "/downloads/file.zip",
             State = DownloadState.Paused,
-            Domain = "example.com"
+            Domain = "example.com",
+            Filename = string.Empty
         };
         
-        _mockStateService.Setup(s => s.GetDownloadById(id)).Returns(status);
+        _mockStateService.GetDownloadById(id).Returns(status);
         
         // Act
         await _service.ResumeDownloadAsync(id);
         
         // Assert
-        _mockQueue.Verify(q => q.EnqueueAsync(
-            It.Is<QueuedDownload>(qd => 
-                qd.Id == id && 
-                qd.Url == status.Url &&
-                qd.DestinationPath == status.DestinationPath)), 
-            Times.Once);
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
+            qd.Id == id && 
+            qd.Url == status.Url &&
+            qd.DestinationPath == status.DestinationPath));
         
-        _mockStateService.Verify(s => s.UpdateState(id, DownloadState.Queued), Times.Once);
+        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -124,17 +119,18 @@ public class DownloadServiceTests
             Url = "https://example.com/file.zip",
             DestinationPath = "/downloads/file.zip",
             State = DownloadState.Failed,
-            Domain = "example.com"
+            Domain = "example.com",
+            Filename = string.Empty
         };
         
-        _mockStateService.Setup(s => s.GetDownloadById(id)).Returns(status);
+        _mockStateService.GetDownloadById(id).Returns(status);
         
         // Act
         await _service.ResumeDownloadAsync(id);
         
         // Assert
-        _mockQueue.Verify(q => q.EnqueueAsync(It.IsAny<QueuedDownload>()), Times.Never);
-        _mockStateService.Verify(s => s.UpdateState(id, It.IsAny<DownloadState>()), Times.Never);
+        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
+        _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
     [Fact]
@@ -151,10 +147,11 @@ public class DownloadServiceTests
             BytesDownloaded = 1024,
             CurrentSpeed = 100,
             ErrorMessage = "Connection error",
-            Domain = "example.com"
+            Domain = "example.com",
+            Filename = string.Empty
         };
         
-        _mockStateService.Setup(s => s.GetDownloadById(id)).Returns(status);
+        _mockStateService.GetDownloadById(id).Returns(status);
         
         // Act
         await _service.RetryDownloadAsync(id);
@@ -166,14 +163,12 @@ public class DownloadServiceTests
         Assert.Null(status.StartedAt);
         Assert.Null(status.CompletedAt);
         
-        _mockQueue.Verify(q => q.EnqueueAsync(
-            It.Is<QueuedDownload>(qd => 
-                qd.Id == id && 
-                qd.Url == status.Url &&
-                qd.DestinationPath == status.DestinationPath)), 
-            Times.Once);
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
+            qd.Id == id && 
+            qd.Url == status.Url &&
+            qd.DestinationPath == status.DestinationPath));
         
-        _mockStateService.Verify(s => s.UpdateState(id, DownloadState.Queued), Times.Once);
+        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -187,17 +182,18 @@ public class DownloadServiceTests
             Url = "https://example.com/file.zip",
             DestinationPath = "/downloads/file.zip",
             State = DownloadState.Canceled,
-            Domain = "example.com"
+            Domain = "example.com",
+            Filename = string.Empty
         };
         
-        _mockStateService.Setup(s => s.GetDownloadById(id)).Returns(status);
+        _mockStateService.GetDownloadById(id).Returns(status);
         
         // Act
         await _service.RetryDownloadAsync(id);
         
         // Assert
-        _mockQueue.Verify(q => q.EnqueueAsync(It.IsAny<QueuedDownload>()), Times.Once);
-        _mockStateService.Verify(s => s.UpdateState(id, DownloadState.Queued), Times.Once);
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Any<QueuedDownload>());
+        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -211,17 +207,18 @@ public class DownloadServiceTests
             Url = "https://example.com/file.zip",
             DestinationPath = "/downloads/file.zip",
             State = DownloadState.InProgress,
-            Domain = "example.com"
+            Domain = "example.com",
+            Filename = string.Empty
         };
         
-        _mockStateService.Setup(s => s.GetDownloadById(id)).Returns(status);
+        _mockStateService.GetDownloadById(id).Returns(status);
         
         // Act
         await _service.RetryDownloadAsync(id);
         
         // Assert
-        _mockQueue.Verify(q => q.EnqueueAsync(It.IsAny<QueuedDownload>()), Times.Never);
-        _mockStateService.Verify(s => s.UpdateState(id, It.IsAny<DownloadState>()), Times.Never);
+        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
+        _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
     [Fact]
@@ -234,7 +231,7 @@ public class DownloadServiceTests
         var token = _service.GetDownloadToken(id);
         
         // Assert
-        Assert.NotNull(token);
+        Assert.False(token == CancellationToken.None);
         Assert.False(token.IsCancellationRequested);
     }
 
