@@ -175,9 +175,6 @@ public class BandwidthLimiterTests
 
         // Act 2 - Advance time past the tracking window
         _timeProvider.Advance(_options.TrackingWindow + TimeSpan.FromMinutes(1));
-        
-        // Trigger the timer by advancing time and firing all pending timers
-        _timeProvider.FireAllTimers();
 
         // Act 3 - Download just under the limit again
         _sut.RecordDownload(domain, (long)totalBytesAllowed - 1);
