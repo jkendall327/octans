@@ -31,16 +31,16 @@ public class DownloadServiceTests
         var id = await _service.QueueDownloadAsync(request);
 
         Assert.NotEqual(Guid.Empty, id);
-        
-        await _mockStateService.Received(1).AddOrUpdateDownloadAsync(Arg.Is<DownloadStatus>(ds => 
-            ds.Id == id && 
+
+        await _mockStateService.Received(1).AddOrUpdateDownloadAsync(Arg.Is<DownloadStatus>(ds =>
+            ds.Id == id &&
             ds.Url == request.Url.ToString() &&
             ds.DestinationPath == request.DestinationPath &&
             ds.State == DownloadState.Queued &&
             ds.Domain == "example.com"));
-        
-        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
-            qd.Id == id && 
+
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd =>
+            qd.Id == id &&
             qd.Url == request.Url.ToString() &&
             qd.DestinationPath == request.DestinationPath &&
             qd.Priority == request.Priority &&
@@ -51,9 +51,9 @@ public class DownloadServiceTests
     public async Task CancelDownloadAsync_ShouldCancelAndUpdateState()
     {
         var id = Guid.NewGuid();
-        
+
         await _service.CancelDownloadAsync(id);
-        
+
         await _mockQueue.Received(1).RemoveAsync(id);
         _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
     }
@@ -62,9 +62,9 @@ public class DownloadServiceTests
     public async Task PauseDownloadAsync_ShouldUpdateState()
     {
         var id = Guid.NewGuid();
-        
+
         await _service.PauseDownloadAsync(id);
-        
+
         _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 
@@ -72,7 +72,7 @@ public class DownloadServiceTests
     public async Task ResumeDownloadAsync_WhenPaused_ShouldRequeueAndUpdateState()
     {
         var id = Guid.NewGuid();
-        
+
         var status = new DownloadStatus
         {
             Id = id,
@@ -82,16 +82,16 @@ public class DownloadServiceTests
             Domain = "example.com",
             Filename = string.Empty
         };
-        
+
         _mockStateService.GetDownloadById(id).Returns(status);
-        
+
         await _service.ResumeDownloadAsync(id);
-        
-        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
-            qd.Id == id && 
+
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd =>
+            qd.Id == id &&
             qd.Url == status.Url &&
             qd.DestinationPath == status.DestinationPath));
-        
+
         _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
@@ -99,7 +99,7 @@ public class DownloadServiceTests
     public async Task ResumeDownloadAsync_WhenNotPaused_ShouldNotRequeue()
     {
         var id = Guid.NewGuid();
-        
+
         var status = new DownloadStatus
         {
             Id = id,
@@ -109,11 +109,11 @@ public class DownloadServiceTests
             Domain = "example.com",
             Filename = string.Empty
         };
-        
+
         _mockStateService.GetDownloadById(id).Returns(status);
-        
+
         await _service.ResumeDownloadAsync(id);
-        
+
         await _mockQueue.DidNotReceiveWithAnyArgs().EnqueueAsync(null!);
         _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
@@ -122,7 +122,7 @@ public class DownloadServiceTests
     public async Task RetryDownloadAsync_WhenFailed_ShouldResetAndRequeue()
     {
         var id = Guid.NewGuid();
-        
+
         var status = new DownloadStatus
         {
             Id = id,
@@ -135,22 +135,22 @@ public class DownloadServiceTests
             Domain = "example.com",
             Filename = string.Empty
         };
-        
+
         _mockStateService.GetDownloadById(id).Returns(status);
-        
+
         await _service.RetryDownloadAsync(id);
-        
+
         Assert.Equal(0, status.BytesDownloaded);
         Assert.Equal(0, status.CurrentSpeed);
         Assert.Null(status.ErrorMessage);
         Assert.Null(status.StartedAt);
         Assert.Null(status.CompletedAt);
-        
-        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd => 
-            qd.Id == id && 
+
+        await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd =>
+            qd.Id == id &&
             qd.Url == status.Url &&
             qd.DestinationPath == status.DestinationPath));
-        
+
         _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
@@ -167,11 +167,11 @@ public class DownloadServiceTests
             Domain = "example.com",
             Filename = string.Empty
         };
-        
+
         _mockStateService.GetDownloadById(id).Returns(status);
-        
+
         await _service.RetryDownloadAsync(id);
-        
+
         await _mockQueue.Received(1).EnqueueAsync(Arg.Any<QueuedDownload>());
         _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
@@ -189,11 +189,11 @@ public class DownloadServiceTests
             Domain = "example.com",
             Filename = string.Empty
         };
-        
+
         _mockStateService.GetDownloadById(id).Returns(status);
-        
+
         await _service.RetryDownloadAsync(id);
-        
+
         await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
         _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
@@ -202,9 +202,9 @@ public class DownloadServiceTests
     public void GetDownloadToken_ShouldReturnCancellationToken()
     {
         var id = Guid.NewGuid();
-        
+
         var token = _service.GetDownloadToken(id);
-        
+
         Assert.False(token == CancellationToken.None);
         Assert.False(token.IsCancellationRequested);
     }
@@ -214,9 +214,9 @@ public class DownloadServiceTests
     {
         var id = Guid.NewGuid();
         var token = _service.GetDownloadToken(id);
-        
+
         await _service.CancelDownloadAsync(id);
-        
+
         Assert.True(token.IsCancellationRequested);
     }
 
@@ -227,7 +227,7 @@ public class DownloadServiceTests
         var token = _service.GetDownloadToken(id);
 
         _service.Dispose();
-        
+
         Assert.True(token.IsCancellationRequested);
     }
 }

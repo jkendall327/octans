@@ -85,7 +85,7 @@ public class DownloadProcessor(
 
             // Get current elapsed time in milliseconds
             var currentElapsedMs = timeProvider.GetElapsedTime(startTime).TotalMilliseconds;
-            
+
             // Report progress every 100ms
             if (currentElapsedMs - lastReportTime <= 100) continue;
 
