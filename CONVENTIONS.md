@@ -34,11 +34,43 @@ public class Foo(ILogger<Foo> logger)
 
 Do NOT convert primary constructors back to traditional constructors.
 
+## Testable code
+When working with dates or times, inject `System.TimeProvider` as a clock abstraction.
+
+```csharp
+public class Foo(TimeProvider clock)
+{
+    public void Example()
+    {
+        var now = _timeProvider.GetUtcNow();
+        Console.WriteLine($"Current time: {now}");
+    }
+}
+```
+
+Do NOT use DateTime.Now, DateTime.UtcNow etc.
+
+When working with the filesystem, inject an `IFileSystem` from `System.IO.Abstractions` or a more specific type from that package.
+
+```csharp
+public class Foo(IFileSystem filesystem)
+{
+    public async Task Example()
+    {
+        await filesystem.File.WriteAllTextAsync("foo.txt", "Hello world");
+    }
+}
+```
+
 ## Tests
 When writing tests, avoid pointless '// Arrange' or '// Act' comments unless the test is actually complex.
 
 Do not use reflection when writing tests. 
 If a test would require reflection, either don't implement it or change the SUT so reflection is not required. 
+
+Instead of mocking out `ILogger<T>`, use `NullLogger<T>.Instance` instead.
+Instead of mocking out `TimeProvider`, create a new `FakeTimeProvider` instead.
+Instead of mocking out `IFilesystem`, create a new `MockFileSystem` instead.
 
 ## Comments
 Avoid pointless comments that simply explain what the code is doing.
