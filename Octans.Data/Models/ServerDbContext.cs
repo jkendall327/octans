@@ -5,24 +5,11 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Models;
 
-public class ServerDbContext : DbContext, IDesignTimeDbContextFactory<ServerDbContext>
+public class ServerDbContext : DbContext
 {
     public ServerDbContext(DbContextOptions<ServerDbContext> context) : base(context)
     {
 
-    }
-
-    public ServerDbContext()
-    {
-        
-    }
-    
-    public ServerDbContext CreateDbContext(string[] args)
-    {
-        var optionsBuilder = new DbContextOptionsBuilder<ServerDbContext>();
-        optionsBuilder.UseSqlite("Data Source=fake.db");
-
-        return new(optionsBuilder.Options);
     }
 
     public virtual DbSet<FileRecord> FileRecords { get; set; }
