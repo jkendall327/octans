@@ -24,17 +24,17 @@ public sealed class DownloadManager(
         await using var scope = scopeFactory.CreateAsyncScope();
 
         var processor = scope.ServiceProvider.GetRequiredService<DownloadProcessor>();
-        
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 // Only proceed if we have available slots
                 await _concurrencyLimiter.WaitAsync(stoppingToken);
-                
+
                 // Get next eligible download
                 var nextDownload = await downloadQueue.DequeueNextEligibleAsync(stoppingToken);
-                
+
                 if (nextDownload != null)
                 {
                     // Start download in background

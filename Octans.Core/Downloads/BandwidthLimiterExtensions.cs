@@ -10,7 +10,7 @@ public static class BandwidthLimiterExtensions
     {
         services.Configure<BandwidthLimiterOptions>(options => configure?.Invoke(options));
         services.AddSingleton<IBandwidthLimiter, BandwidthLimiter>();
-        
+
         return services;
     }
 }

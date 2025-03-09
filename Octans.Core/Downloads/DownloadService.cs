@@ -22,7 +22,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
     {
         var id = Guid.NewGuid();
         var filename = Path.GetFileName(request.DestinationPath);
-        
+
         var uri = new Uri(request.Url);
         var domain = uri.Host;
 
@@ -37,10 +37,10 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
             LastUpdated = DateTime.UtcNow,
             Domain = domain
         };
-        
+
         // Add to state service for UI visibility
         stateService.AddOrUpdateDownload(status);
-        
+
         // Add to persistent queue
         await queue.EnqueueAsync(new()
         {
@@ -51,7 +51,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
             Priority = request.Priority,
             Domain = domain
         });
-        
+
         return id;
     }
 
@@ -59,10 +59,10 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
     {
         // First, try to remove from queue if it's still queued
         await queue.RemoveAsync(id);
-        
+
         // Then cancel if it's in progress
         CancelDownloadToken(id);
-        
+
         // Update state
         stateService.UpdateState(id, DownloadState.Canceled);
     }
@@ -72,15 +72,15 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
         // For now, we'll implement pause as cancel since we don't support resuming partial downloads
         CancelDownloadToken(id);
         stateService.UpdateState(id, DownloadState.Paused);
-        
+
         return Task.CompletedTask;
     }
 
     public async Task ResumeDownloadAsync(Guid id)
     {
         var status = stateService.GetDownloadById(id);
-        
-        if (status is {State: DownloadState.Paused})
+
+        if (status is { State: DownloadState.Paused })
         {
             // Re-queue the download
             await queue.EnqueueAsync(new()
@@ -91,7 +91,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
                 QueuedAt = DateTime.UtcNow,
                 Domain = status.Domain
             });
-            
+
             stateService.UpdateState(id, DownloadState.Queued);
         }
     }
@@ -107,7 +107,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
             status.ErrorMessage = null;
             status.StartedAt = null;
             status.CompletedAt = null;
-            
+
             // Re-queue the download
             await queue.EnqueueAsync(new()
             {
@@ -117,7 +117,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
                 QueuedAt = DateTime.UtcNow,
                 Domain = status.Domain
             });
-            
+
             stateService.UpdateState(id, DownloadState.Queued);
         }
     }
@@ -127,7 +127,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
         lock (_cancellationLock)
         {
             if (!_downloadCancellations.TryGetValue(id, out var cts)) return;
-            
+
             cts.Cancel();
             _downloadCancellations.Remove(id);
         }

@@ -33,11 +33,13 @@ builder.AddChannels();
 builder.AddDatabase();
 builder.AddBusinessServices();
 
-builder.Services.AddBandwidthLimiter(options => {
+builder.Services.AddBandwidthLimiter(options =>
+{
     options.DefaultBytesPerSecond = 1024 * 1024; // 1 MB/s
 });
 
-builder.Services.AddDownloadManager(options => {
+builder.Services.AddDownloadManager(options =>
+{
     options.MaxConcurrentDownloads = 5;
 });
 
@@ -60,7 +62,8 @@ await using var serviceScope = app.Services.CreateAsyncScope();
 
 var s = serviceScope.ServiceProvider.GetRequiredService<IDownloadService>();
 
-await s.QueueDownloadAsync(new() {
+await s.QueueDownloadAsync(new()
+{
     Url = "https://upload.wikimedia.org/wikipedia/commons/d/de/Nokota_Horses_cropped.jpg",
     DestinationPath = "/home/jackkendall/Downloads/horse.jpg"
 });

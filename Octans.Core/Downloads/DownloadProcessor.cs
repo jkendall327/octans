@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
 
@@ -28,7 +27,7 @@ public class DownloadProcessor(
         {
             await ProcessCore(download, downloadId, combinedToken);
         }
-        catch (OperationCanceledException) 
+        catch (OperationCanceledException)
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
             logger.LogInformation("Download canceled: {Url}", download.Url);
@@ -48,7 +47,7 @@ public class DownloadProcessor(
 
         var directoryName = Path.GetDirectoryName(download.DestinationPath) ??
                             throw new InvalidOperationException();
-        
+
         Directory.CreateDirectory(directoryName);
 
         using var httpClient = httpClientFactory.CreateClient("DownloadClient");

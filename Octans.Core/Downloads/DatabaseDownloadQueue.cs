@@ -25,12 +25,12 @@ public class DatabaseDownloadQueue(
             var uri = new Uri(download.Url);
             download.Domain = uri.Host;
         }
-        
+
         await using var db = await contextFactory.CreateDbContextAsync();
-        
+
         db.QueuedDownloads.Add(download);
         await db.SaveChangesAsync();
-        
+
         return download.Id;
     }
 
@@ -43,7 +43,7 @@ public class DatabaseDownloadQueue(
             .OrderByDescending(d => d.Priority)
             .ThenBy(d => d.QueuedAt)
             .ToListAsync(cancellationToken);
-            
+
         foreach (var download in queuedDownloads)
         {
             // Check if bandwidth is available for this domain
@@ -51,14 +51,14 @@ public class DatabaseDownloadQueue(
             {
                 continue;
             }
-            
+
             // Remove from queue
             db.QueuedDownloads.Remove(download);
             await db.SaveChangesAsync(cancellationToken);
-            
+
             return download;
         }
-        
+
         return null;
     }
 
