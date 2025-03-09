@@ -63,8 +63,7 @@ public class Foo(IFileSystem filesystem)
 ```
 
 ## Tests
-When writing tests, avoid '// Arrange' or '// Act' comments.
-Comment tests like normal code - sparingly.
+Do NOT use 'Arrange - Act - Assert' comments in tests.
 
 Use NSubstitute, not Moq.
 

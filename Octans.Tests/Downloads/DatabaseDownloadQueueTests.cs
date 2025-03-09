@@ -1,13 +1,10 @@
-using System.Data.Common;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
 using Octans.Core.Models;
-using Xunit;
 
 namespace Octans.Tests.Downloads;
 
@@ -24,14 +21,12 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         _connection.Open();
 
         // Configure the context factory to use SQLite
-        _contextFactory.CreateDbContextAsync(Arg.Any<CancellationToken>()).Returns(CreateContext());
-        _contextFactory.CreateDbContextAsync().Returns(CreateContext());
+        _contextFactory.CreateDbContextAsync().ReturnsForAnyArgs(CreateContext());
 
         // Configure the bandwidth limiter
-        _bandwidthLimiter.IsBandwidthAvailable(Arg.Any<string>()).Returns(true);
+        _bandwidthLimiter.IsBandwidthAvailable(default!).ReturnsForAnyArgs(true);
 
-        // Create the system under test
-        _sut = new DatabaseDownloadQueue(
+        _sut = new(
             _contextFactory,
             _bandwidthLimiter,
             NullLogger<DatabaseDownloadQueue>.Instance);
@@ -44,14 +39,15 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             .Options;
 
         var context = new ServerDbContext(options);
+        
         context.Database.EnsureCreated();
+        
         return context;
     }
 
     [Fact]
     public async Task EnqueueAsync_ShouldAddDownloadToQueue()
     {
-        // Arrange
         var download = new QueuedDownload
         {
             Id = Guid.NewGuid(),
@@ -62,13 +58,11 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             QueuedAt = DateTime.UtcNow
         };
 
-        // Act
         var id = await _sut.EnqueueAsync(download);
 
-        // Assert
         Assert.Equal(download.Id, id);
 
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         var savedDownload = await context.QueuedDownloads.FindAsync(id);
         
         Assert.NotNull(savedDownload);
@@ -80,8 +74,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     [Fact]
     public async Task DequeueNextEligibleAsync_ShouldReturnHighestPriorityDownload()
     {
-        // Arrange
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         
         var download1 = new QueuedDownload
         {
@@ -106,12 +99,11 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         context.QueuedDownloads.AddRange(download1, download2);
         await context.SaveChangesAsync();
 
-        // Act
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
-        // Assert
+        // Should get the higher priority one
         Assert.NotNull(result);
-        Assert.Equal(download2.Id, result.Id); // Should get the higher priority one
+        Assert.Equal(download2.Id, result.Id); 
         
         // Verify it was removed from the queue
         var remainingCount = await context.QueuedDownloads.CountAsync();
@@ -121,8 +113,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     [Fact]
     public async Task DequeueNextEligibleAsync_ShouldRespectBandwidthLimits()
     {
-        // Arrange
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         
         var download = new QueuedDownload
         {
@@ -140,11 +131,10 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         // Set bandwidth limiter to reject this domain
         _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
 
-        // Act
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
-        // Assert
-        Assert.Null(result); // Should not dequeue anything
+        // Should not dequeue anything
+        Assert.Null(result); 
         
         // Verify it's still in the queue
         var remainingCount = await context.QueuedDownloads.CountAsync();
@@ -195,7 +185,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         // Arrange
         var downloadId = Guid.NewGuid();
         
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        await using var context = CreateContext();
         
         var download = new QueuedDownload
         {
@@ -210,25 +200,22 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         context.QueuedDownloads.Add(download);
         await context.SaveChangesAsync();
 
-        // Act
         await _sut.RemoveAsync(downloadId);
 
-        // Assert
-        var remainingDownload = await context.QueuedDownloads.FindAsync(downloadId);
+        // Do not use FindAsync here as we want to bypass the cache of the EF Core change tracker.
+        var remainingDownload = await context.QueuedDownloads.SingleOrDefaultAsync(d => d.Id == downloadId);
         Assert.Null(remainingDownload);
     }
 
     [Fact]
     public async Task RemoveAsync_ShouldNotThrowWhenDownloadDoesNotExist()
     {
-        // Act & Assert
-        await _sut.RemoveAsync(Guid.NewGuid()); // Should not throw
+        await _sut.RemoveAsync(Guid.NewGuid());
     }
 
     [Fact]
     public async Task DequeueNextEligibleAsync_ShouldReturnOldestWhenPriorityEqual()
     {
-        // Arrange
         await using var context = await _contextFactory.CreateDbContextAsync();
         
         var download1 = new QueuedDownload
@@ -254,12 +241,12 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         context.QueuedDownloads.AddRange(download1, download2);
         await context.SaveChangesAsync();
 
-        // Act
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
-        // Assert
         Assert.NotNull(result);
-        Assert.Equal(download1.Id, result.Id); // Should get the older one
+        
+        // Should get the older one
+        Assert.Equal(download1.Id, result.Id);
     }
 
     public void Dispose() => _connection.Dispose();
