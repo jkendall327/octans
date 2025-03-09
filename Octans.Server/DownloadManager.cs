@@ -4,8 +4,8 @@ namespace Octans.Server;
 
 public sealed class DownloadManager(
     IDownloadQueue downloadQueue,
+    DownloadProcessor processor,
     ILogger<DownloadManager> logger,
-    IServiceScopeFactory scopeFactory,
     DownloadManagerOptions options) : BackgroundService
 {
     private readonly SemaphoreSlim _concurrencyLimiter = new(options.MaxConcurrentDownloads);
@@ -20,10 +20,6 @@ public sealed class DownloadManager(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Download Manager started with max concurrency: {Concurrency}", _maxConcurrentDownloads);
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-
-        var processor = scope.ServiceProvider.GetRequiredService<DownloadProcessor>();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -63,5 +59,4 @@ public sealed class DownloadManager(
 
         logger.LogInformation("Download Manager stopping");
     }
-
 }

@@ -14,8 +14,8 @@ public static class DownloadServiceExtensions
         services.AddSingleton(options);
 
         services.AddSingleton<IDownloadStateService, DownloadStateService>();
-        services.AddScoped<DownloadProcessor>();
-        services.AddScoped<IDownloadService, DownloadService>();
+        services.AddSingleton<DownloadProcessor>();
+        services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
 
         // Add HTTP client
