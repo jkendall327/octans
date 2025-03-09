@@ -18,7 +18,6 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<SubscriptionBackgroundService>();
 
         services.AddScoped<SubfolderManager>();
-        services.AddSingleton<ImportRequestSender>();
         services.AddTransient<OctansApiHealthCheck>();
         services.AddSingleton<StorageService>();
 
