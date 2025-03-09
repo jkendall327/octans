@@ -112,6 +112,6 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
         services.AddDbContext<ServerDbContext>(options =>
         {
             options.UseSqlite(_connection);
-        });
+        }, optionsLifetime: ServiceLifetime.Singleton);
     }
 }
