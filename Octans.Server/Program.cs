@@ -58,20 +58,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.AddEndpoints();
 
-await using var serviceScope = app.Services.CreateAsyncScope();
-
-var s = serviceScope.ServiceProvider.GetRequiredService<IDownloadService>();
-
-await s.QueueDownloadAsync(new()
-{
-    Url = new("https://upload.wikimedia.org/wikipedia/commons/d/de/Nokota_Horses_cropped.jpg"),
-    DestinationPath = "/home/jackkendall/Downloads/horse.jpg"
-});
-
-await app.RunAsync();
-
-return;
-
 // Ensure subfolders are initialised.
 var manager = app.Services.GetRequiredService<SubfolderManager>();
 manager.MakeSubfolders();
