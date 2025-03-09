@@ -89,7 +89,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public void GetDownloadById_ReturnsCorrectDownload()
+    public async Task GetDownloadById_ReturnsCorrectDownload()
     {
         var download = new DownloadStatus
         {
@@ -103,7 +103,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         var result = _service.GetDownloadById(download.Id);
 
@@ -121,7 +121,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public void UpdateProgress_UpdatesDownloadStatus()
+    public async Task UpdateProgress_UpdatesDownloadStatus()
     {
         // Arrange
         var download = new DownloadStatus
@@ -139,7 +139,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             CurrentSpeed = 0
         };
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         var eventRaised = false;
         _service.OnDownloadProgressChanged += (_, args) => 
@@ -163,7 +163,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public void UpdateState_UpdatesStateAndRaisesEvents()
+    public async Task UpdateState_UpdatesStateAndRaisesEvents()
     {
         // Arrange
         var download = new DownloadStatus
@@ -178,7 +178,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         var progressEventRaised = false;
         var downloadsChangedEventRaised = false;
@@ -207,7 +207,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public void UpdateState_SetsCompletedAt_WhenStateIsCompleted()
+    public async Task UpdateState_SetsCompletedAt_WhenStateIsCompleted()
     {
         // Arrange
         var download = new DownloadStatus
@@ -223,7 +223,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             StartedAt = DateTime.UtcNow
         };
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
         _service.UpdateState(download.Id, DownloadState.Completed);
@@ -236,7 +236,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public void UpdateState_SetsErrorMessage_WhenStateIsFailed()
+    public async Task UpdateState_SetsErrorMessage_WhenStateIsFailed()
     {
         // Arrange
         var download = new DownloadStatus
@@ -251,7 +251,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
         _service.UpdateState(download.Id, DownloadState.Failed, "Download failed due to network error");
@@ -283,7 +283,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         _service.OnDownloadsChanged += (_, _) => eventRaised = true;
 
         // Act
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         // Assert
         var result = _service.GetDownloadById(download.Id);
@@ -334,7 +334,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         // Act
-        _service.AddOrUpdateDownload(updatedDownload);
+        await _service.AddOrUpdateDownloadAsync(updatedDownload);
 
         // Assert
         var result = _service.GetDownloadById(download.Id);
@@ -372,13 +372,13 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             await context.SaveChangesAsync();
         }
 
-        _service.AddOrUpdateDownload(download);
+        await _service.AddOrUpdateDownloadAsync(download);
 
         var eventRaised = false;
         _service.OnDownloadsChanged += (_, _) => eventRaised = true;
 
         // Act
-        _service.RemoveDownload(download.Id);
+        await _service.RemoveDownloadAsync(download.Id);
 
         // Assert
         var result = _service.GetDownloadById(download.Id);

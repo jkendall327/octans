@@ -38,7 +38,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
         };
 
         // Add to state service for UI visibility
-        stateService.AddOrUpdateDownload(status);
+        await stateService.AddOrUpdateDownloadAsync(status);
 
         // Add to persistent queue
         await queue.EnqueueAsync(new()

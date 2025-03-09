@@ -129,69 +129,69 @@ public class DownloadStateService(
         }
     }
 
-    public void AddOrUpdateDownload(DownloadStatus status)
+    public async Task AddOrUpdateDownloadAsync(DownloadStatus status)
     {
+        // Only lock the in-memory dictionary operation
         lock (_lock)
         {
             _activeDownloads[status.Id] = status;
-
-            // Persist to database
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await using var db = await contextFactory.CreateDbContextAsync();
-
-                    var existingStatus = await db.DownloadStatuses.FindAsync(status.Id);
-
-                    if (existingStatus == null)
-                    {
-                        db.DownloadStatuses.Add(status);
-                    }
-                    else
-                    {
-                        db.Entry(existingStatus).CurrentValues.SetValues(status);
-                    }
-
-                    await db.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to persist download status");
-                }
-            });
-
-            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        // Perform database operations outside the lock
+        try
+        {
+            await using var db = await contextFactory.CreateDbContextAsync();
+
+            var existingStatus = await db.DownloadStatuses.FindAsync(status.Id);
+
+            if (existingStatus == null)
+            {
+                db.DownloadStatuses.Add(status);
+            }
+            else
+            {
+                db.Entry(existingStatus).CurrentValues.SetValues(status);
+            }
+
+            await db.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist download status");
+        }
+
+        // Notification occurs after all operations are complete
+        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void RemoveDownload(Guid id)
+    public async Task RemoveDownloadAsync(Guid id)
     {
+        bool removed;
+        
         lock (_lock)
         {
-            if (!_activeDownloads.Remove(id)) return;
-
-            // Remove from database
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await using var db = await contextFactory.CreateDbContextAsync();
-
-                    var status = await db.DownloadStatuses.FindAsync(id);
-                    if (status != null)
-                    {
-                        db.DownloadStatuses.Remove(status);
-                        await db.SaveChangesAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to remove download status from database");
-                }
-            });
-
-            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
+            removed = _activeDownloads.Remove(id);
         }
+    
+        if (!removed) return;
+
+        try
+        {
+            await using var db = await contextFactory.CreateDbContextAsync();
+            var status = await db.DownloadStatuses.FindAsync(id);
+            
+            if (status != null)
+            {
+                db.DownloadStatuses.Remove(status);
+                await db.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to remove download status from database");
+        }
+
+        // Notify after everything is complete
+        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
     }
 }
