@@ -15,7 +15,7 @@ public interface IDownloadService
 
 public sealed class DownloadService(
     IDownloadQueue queue,
-    DownloadStateService stateService,
+    IDownloadStateService stateService,
     ILogger<DownloadService> logger) : IDownloadService, IDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();

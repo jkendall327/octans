@@ -9,7 +9,7 @@ namespace Octans.Core.Downloads;
 /// </summary>
 public class DownloadProcessor(
     IBandwidthLimiter bandwidthLimiter,
-    DownloadStateService stateService,
+    IDownloadStateService stateService,
     IDownloadService downloadService,
     IHttpClientFactory httpClientFactory,
     ILogger<DownloadProcessor> logger)

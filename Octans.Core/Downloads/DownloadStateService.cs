@@ -23,9 +23,22 @@ public enum DownloadChangeType
     Removed
 }
 
+public interface IDownloadStateService
+{
+    event EventHandler<DownloadStatusChangedEventArgs>? OnDownloadProgressChanged;
+    event EventHandler<DownloadsChangedEventArgs>? OnDownloadsChanged;
+    Task InitializeFromDbAsync();
+    IReadOnlyList<DownloadStatus> GetAllDownloads();
+    DownloadStatus? GetDownloadById(Guid id);
+    void UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
+    void UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
+    Task AddOrUpdateDownloadAsync(DownloadStatus status);
+    Task RemoveDownloadAsync(Guid id);
+}
+
 public class DownloadStateService(
     ILogger<DownloadStateService> logger,
-    IDbContextFactory<ServerDbContext> contextFactory)
+    IDbContextFactory<ServerDbContext> contextFactory) : IDownloadStateService
 {
     private readonly Dictionary<Guid, DownloadStatus> _activeDownloads = new();
     private readonly Lock _lock = new();
