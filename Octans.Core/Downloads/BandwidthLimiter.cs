@@ -15,25 +15,28 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
 {
     private readonly ILogger<BandwidthLimiter> _logger;
     private readonly BandwidthLimiterOptions _options;
+    private readonly TimeProvider _timeProvider;
 
     // Track downloads per domain with timestamps
-    private readonly ConcurrentDictionary<string, Queue<(DateTime Timestamp, long Bytes)>> _domainUsage = new();
+    private readonly ConcurrentDictionary<string, Queue<(DateTimeOffset Timestamp, long Bytes)>> _domainUsage = new();
 
     // Track when a domain can next be used
-    private readonly ConcurrentDictionary<string, DateTime> _domainNextAvailable = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _domainNextAvailable = new();
 
     // Timer to clean up old records
-    private readonly Timer _cleanupTimer;
+    private readonly ITimer _cleanupTimer;
 
     public BandwidthLimiter(
         ILogger<BandwidthLimiter> logger,
-        IOptions<BandwidthLimiterOptions> options)
+        IOptions<BandwidthLimiterOptions> options,
+        TimeProvider timeProvider)
     {
         _logger = logger;
         _options = options.Value;
+        _timeProvider = timeProvider;
 
         // Set up cleanup timer to run every minute
-        _cleanupTimer = new(CleanupOldRecords, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _cleanupTimer = _timeProvider.CreateTimer(CleanupOldRecords, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 
     public bool IsBandwidthAvailable(string domain)
@@ -46,7 +49,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
         // Check if domain is in cooldown
         if (_domainNextAvailable.TryGetValue(domain, out var nextAvailable))
         {
-            return DateTime.UtcNow >= nextAvailable;
+            return _timeProvider.GetUtcNow() >= nextAvailable;
         }
 
         return true;
@@ -64,7 +67,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
             return TimeSpan.Zero;
         }
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow();
 
         if (nextAvailable > now)
         {
@@ -81,13 +84,13 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
             return;
         }
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow();
 
         // Add to domain usage records
         _domainUsage.AddOrUpdate(
             domain,
             // If key doesn't exist, create a new queue with this record
-            _ => new Queue<(DateTime, long)>([(now, bytes)]),
+            _ => new Queue<(DateTimeOffset, long)>([(now, bytes)]),
             // If key exists, add to the existing queue
             (_, queue) =>
             {
@@ -106,7 +109,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
             return;
         }
 
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow();
         var cutoff = now - _options.TrackingWindow;
 
         // Calculate total bytes in the time window
@@ -161,7 +164,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
     {
         try
         {
-            var now = DateTime.UtcNow;
+            var now = _timeProvider.GetUtcNow();
             var cutoff = now - _options.TrackingWindow;
 
             // Clean up domain usage records
