@@ -10,6 +10,19 @@ public class DownloadStatusChangedEventArgs : EventArgs
     public required DownloadStatus Status { get; init; }
 }
 
+public class DownloadsChangedEventArgs : EventArgs
+{
+    public Guid? AffectedDownloadId { get; init; }
+    public DownloadChangeType ChangeType { get; init; }
+}
+
+public enum DownloadChangeType
+{
+    Added,
+    Updated,
+    Removed
+}
+
 public class DownloadStateService(
     ILogger<DownloadStateService> logger,
     IDbContextFactory<ServerDbContext> contextFactory)
@@ -18,7 +31,7 @@ public class DownloadStateService(
     private readonly Lock _lock = new();
 
     public event EventHandler<DownloadStatusChangedEventArgs>? OnDownloadProgressChanged;
-    public event EventHandler? OnDownloadsChanged;
+    public event EventHandler<DownloadsChangedEventArgs>? OnDownloadsChanged;
 
     public async Task InitializeFromDbAsync()
     {
@@ -36,7 +49,10 @@ public class DownloadStateService(
             }
         }
 
-        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
+        OnDownloadsChanged?.Invoke(this, new()
+        { 
+            ChangeType = DownloadChangeType.Updated 
+        });
     }
 
     public IReadOnlyList<DownloadStatus> GetAllDownloads()
@@ -125,7 +141,11 @@ public class DownloadStateService(
 
             // Notify subscribers
             OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
-            OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
+            OnDownloadsChanged?.Invoke(this, new()
+            { 
+                AffectedDownloadId = id,
+                ChangeType = DownloadChangeType.Updated 
+            });
         }
     }
 
@@ -161,7 +181,11 @@ public class DownloadStateService(
         }
 
         // Notification occurs after all operations are complete
-        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
+        OnDownloadsChanged?.Invoke(this, new()
+        { 
+            AffectedDownloadId = status.Id,
+            ChangeType = DownloadChangeType.Added 
+        });
     }
 
     public async Task RemoveDownloadAsync(Guid id)
@@ -192,6 +216,10 @@ public class DownloadStateService(
         }
 
         // Notify after everything is complete
-        OnDownloadsChanged?.Invoke(this, EventArgs.Empty);
+        OnDownloadsChanged?.Invoke(this, new()
+        { 
+            AffectedDownloadId = id,
+            ChangeType = DownloadChangeType.Removed 
+        });
     }
 }

@@ -182,6 +182,8 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
 
         var progressEventRaised = false;
         var downloadsChangedEventRaised = false;
+        Guid? affectedId = null;
+        DownloadChangeType? changeType = null;
 
         _service.OnDownloadProgressChanged += (_, args) => 
         {
@@ -189,9 +191,11 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             Assert.Equal(DownloadState.InProgress, args.Status.State);
         };
 
-        _service.OnDownloadsChanged += (_, _) => 
+        _service.OnDownloadsChanged += (_, args) => 
         {
             downloadsChangedEventRaised = true;
+            affectedId = args.AffectedDownloadId;
+            changeType = args.ChangeType;
         };
 
         // Act
@@ -204,6 +208,8 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         Assert.NotNull(updated.StartedAt);
         Assert.True(progressEventRaised);
         Assert.True(downloadsChangedEventRaised);
+        Assert.Equal(download.Id, affectedId);
+        Assert.Equal(DownloadChangeType.Updated, changeType);
     }
 
     [Fact]
@@ -280,7 +286,15 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         var eventRaised = false;
-        _service.OnDownloadsChanged += (_, _) => eventRaised = true;
+        Guid? affectedId = null;
+        DownloadChangeType? changeType = null;
+        
+        _service.OnDownloadsChanged += (_, args) => 
+        {
+            eventRaised = true;
+            affectedId = args.AffectedDownloadId;
+            changeType = args.ChangeType;
+        };
 
         // Act
         await _service.AddOrUpdateDownloadAsync(download);
@@ -375,7 +389,15 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         var eventRaised = false;
-        _service.OnDownloadsChanged += (_, _) => eventRaised = true;
+        Guid? affectedId = null;
+        DownloadChangeType? changeType = null;
+        
+        _service.OnDownloadsChanged += (_, args) => 
+        {
+            eventRaised = true;
+            affectedId = args.AffectedDownloadId;
+            changeType = args.ChangeType;
+        };
 
         // Act
         await _service.RemoveDownloadAsync(download.Id);
