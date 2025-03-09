@@ -14,7 +14,7 @@ public interface IDownloadService
 }
 
 public sealed class DownloadService(
-    IDownloadQueue queue, 
+    IDownloadQueue queue,
     DownloadStateService stateService,
     ILogger<DownloadService> logger) : IDownloadService, IDisposable
 {
@@ -34,7 +34,7 @@ public sealed class DownloadService(
             ["Url"] = request.Url,
             ["Domain"] = domain
         });
-        
+
         logger.LogInformation("Queueing download for {Filename}", filename);
 
         var status = new DownloadStatus
@@ -71,7 +71,7 @@ public sealed class DownloadService(
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Canceling download");
-        
+
         // First, try to remove from queue if it's still queued
         await queue.RemoveAsync(id);
 
@@ -80,7 +80,7 @@ public sealed class DownloadService(
 
         // Update state
         stateService.UpdateState(id, DownloadState.Canceled);
-        
+
         logger.LogDebug("Download canceled");
     }
 
@@ -88,11 +88,11 @@ public sealed class DownloadService(
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Pausing download");
-        
+
         // For now, we'll implement pause as cancel since we don't support resuming partial downloads
         CancelDownloadToken(id);
         stateService.UpdateState(id, DownloadState.Paused);
-        
+
         logger.LogDebug("Download paused");
         return Task.CompletedTask;
     }
@@ -101,7 +101,7 @@ public sealed class DownloadService(
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Resuming download");
-        
+
         var status = stateService.GetDownloadById(id);
 
         if (status is { State: DownloadState.Paused })
@@ -129,7 +129,7 @@ public sealed class DownloadService(
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Retrying download");
-        
+
         var status = stateService.GetDownloadById(id);
         if (status is { State: DownloadState.Failed or DownloadState.Canceled })
         {

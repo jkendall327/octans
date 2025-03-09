@@ -3,7 +3,6 @@ using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Extensions.Options;
 using Octans.Core;
 using Octans.Core.Infrastructure;
-using Xunit.Abstractions;
 
 namespace Octans.Tests.Infrastructure;
 
@@ -138,7 +137,7 @@ public class StorageServiceTests
     public void GetStorageUsed_ExceptionThrown_ReturnsUnknown()
     {
         var mockFileSystem = new ThrowingMockFileSystem();
-        
+
         var settings = Options.Create(new GlobalSettings
         {
             AppRoot = _testAppRoot
