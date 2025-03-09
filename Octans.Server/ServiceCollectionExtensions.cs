@@ -24,24 +24,27 @@ internal static class ServiceCollectionExtensions
 
     public static void AddDatabase(this WebApplicationBuilder builder)
     {
-        builder.Services.AddDbContextFactory<ServerDbContext>((s, opt) =>
-        {
-            var config = s.GetRequiredService<IOptions<GlobalSettings>>();
-
-            var root = config.Value.AppRoot;
-
-            var path = s.GetRequiredService<IFileSystem>().Path;
-
-            var dbFolder = path.Join(root, "db");
-
-            var db = path.Join(dbFolder, "octans.db");
-
-            opt.UseSqlite($"Data Source={db};");
-        });
+        builder.Services.AddDbContextFactory<ServerDbContext>(BuildDatabase);
+        builder.Services.AddDbContext<ServerDbContext>(BuildDatabase, optionsLifetime: ServiceLifetime.Singleton);
 
         builder.Services
             .AddHealthChecks()
             .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
+    }
+
+    private static void BuildDatabase(IServiceProvider s, DbContextOptionsBuilder opt)
+    {
+        var config = s.GetRequiredService<IOptions<GlobalSettings>>();
+
+        var root = config.Value.AppRoot;
+
+        var path = s.GetRequiredService<IFileSystem>().Path;
+
+        var dbFolder = path.Join(root, "db");
+
+        var db = path.Join(dbFolder, "octans.db");
+
+        opt.UseSqlite($"Data Source={db};");
     }
 
     public static void AddFilesystem(this WebApplicationBuilder builder)

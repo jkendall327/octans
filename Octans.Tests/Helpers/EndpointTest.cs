@@ -68,7 +68,8 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     {
         await _connection.OpenAsync();
 
-        Context = Factory.Services.CreateScope().ServiceProvider.GetRequiredService<ServerDbContext>();
+        var factory = Factory.Services.GetRequiredService<IDbContextFactory<ServerDbContext>>();
+        Context = await factory.CreateDbContextAsync();
 
         var connectionString = Context.Database.GetConnectionString();
 
