@@ -1,14 +1,28 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Octans.Core.Downloaders;
 using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Models;
 
-public class ServerDbContext : DbContext
+public class ServerDbContext : DbContext, IDesignTimeDbContextFactory<ServerDbContext>
 {
     public ServerDbContext(DbContextOptions<ServerDbContext> context) : base(context)
     {
 
+    }
+
+    public ServerDbContext()
+    {
+        
+    }
+    
+    public ServerDbContext CreateDbContext(string[] args)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ServerDbContext>();
+        optionsBuilder.UseSqlite("Data Source=fake.db");
+
+        return new(optionsBuilder.Options);
     }
 
     public virtual DbSet<FileRecord> FileRecords { get; set; }
