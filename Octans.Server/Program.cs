@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Octans.Core;
 using Octans.Core.Communication;
+using Octans.Core.Downloads;
 using Octans.Core.Models;
 using Octans.Server;
 
@@ -31,6 +32,18 @@ builder.AddFilesystem();
 builder.AddChannels();
 builder.AddDatabase();
 builder.AddBusinessServices();
+
+builder.Services.AddBandwidthLimiter(options =>
+{
+    options.DefaultBytesPerSecond = 1024 * 1024; // 1 MB/s
+});
+
+builder.Services.AddDownloadManager(options =>
+{
+    options.MaxConcurrentDownloads = 5;
+});
+
+builder.Services.AddHostedService<DownloadManager>();
 
 builder.Services.AddHostedService<ThumbnailCreationBackgroundService>();
 

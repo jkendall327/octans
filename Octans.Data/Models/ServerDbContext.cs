@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Octans.Core.Downloaders;
 using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Models;
@@ -18,4 +19,6 @@ public class ServerDbContext : DbContext
     public virtual DbSet<Mapping> Mappings { get; set; }
     public virtual DbSet<TagParent> TagParents { get; set; }
     public virtual DbSet<TagSibling> TagSiblings { get; set; }
+    public virtual DbSet<QueuedDownload> QueuedDownloads { get; set; }
+    public virtual DbSet<DownloadStatus> DownloadStatuses { get; set; }
 }
