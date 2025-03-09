@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
 using System.IO.Abstractions;
@@ -76,7 +73,7 @@ public class DownloadProcessor(
         var buffer = new byte[81920]; // 80 KB buffer
         long bytesDownloaded = 0;
         var startTime = timeProvider.GetTimestamp();
-        long lastReportTime = 0;
+        double lastReportTime = 0;
         var lastReportBytes = 0L;
 
         int bytesRead;
