@@ -13,24 +13,21 @@ namespace Octans.Tests.Downloads;
 
 public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 {
-    private readonly SqliteConnection _connection;
-    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
-    private readonly IBandwidthLimiter _bandwidthLimiter;
+    private readonly SqliteConnection _connection = new("Filename=:memory:");
+    private readonly IDbContextFactory<ServerDbContext> _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
+    private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly DatabaseDownloadQueue _sut;
 
     public DatabaseDownloadQueueTests()
     {
         // Create and open an in-memory SQLite connection
-        _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
 
         // Configure the context factory to use SQLite
-        _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
         _contextFactory.CreateDbContextAsync(Arg.Any<CancellationToken>()).Returns(CreateContext());
         _contextFactory.CreateDbContextAsync().Returns(CreateContext());
 
         // Configure the bandwidth limiter
-        _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
         _bandwidthLimiter.IsBandwidthAvailable(Arg.Any<string>()).Returns(true);
 
         // Create the system under test
@@ -59,8 +56,10 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file.jpg",
+            DestinationPath = "/downloads/file.jpg",
+            Domain = string.Empty, // Will be set by the queue
             Priority = 5,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = DateTime.UtcNow
         };
 
         // Act
@@ -88,18 +87,20 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file1.jpg",
+            DestinationPath = "/downloads/file1.jpg",
             Domain = "example.com",
             Priority = 3,
-            QueuedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+            QueuedAt = DateTime.UtcNow.AddMinutes(-5)
         };
         
         var download2 = new QueuedDownload
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file2.jpg",
+            DestinationPath = "/downloads/file2.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = DateTime.UtcNow
         };
         
         context.QueuedDownloads.AddRange(download1, download2);
@@ -127,9 +128,10 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file.jpg",
+            DestinationPath = "/downloads/file.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = DateTime.UtcNow
         };
         
         context.QueuedDownloads.Add(download);
@@ -161,17 +163,19 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             {
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/file1.jpg",
+                DestinationPath = "/downloads/file1.jpg",
                 Domain = "example.com",
                 Priority = 1,
-                QueuedAt = DateTimeOffset.UtcNow
+                QueuedAt = DateTime.UtcNow
             },
             new QueuedDownload
             {
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/file2.jpg",
+                DestinationPath = "/downloads/file2.jpg",
                 Domain = "example.com",
                 Priority = 2,
-                QueuedAt = DateTimeOffset.UtcNow
+                QueuedAt = DateTime.UtcNow
             }
         };
         
@@ -197,9 +201,10 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         {
             Id = downloadId,
             Url = "https://example.com/file.jpg",
+            DestinationPath = "/downloads/file.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = DateTime.UtcNow
         };
         
         context.QueuedDownloads.Add(download);
@@ -230,18 +235,20 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file1.jpg",
+            DestinationPath = "/downloads/file1.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTimeOffset.UtcNow.AddMinutes(-5) // Older
+            QueuedAt = DateTime.UtcNow.AddMinutes(-5) // Older
         };
         
         var download2 = new QueuedDownload
         {
             Id = Guid.NewGuid(),
             Url = "https://example.com/file2.jpg",
+            DestinationPath = "/downloads/file2.jpg",
             Domain = "example.com",
             Priority = 5, // Same priority
-            QueuedAt = DateTimeOffset.UtcNow // Newer
+            QueuedAt = DateTime.UtcNow // Newer
         };
         
         context.QueuedDownloads.AddRange(download1, download2);
