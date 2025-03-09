@@ -12,7 +12,7 @@ public interface IDownloadService
     CancellationToken GetDownloadToken(Guid downloadId);
 }
 
-public class DownloadService(IDownloadQueue queue, DownloadStateService stateService) : IDownloadService
+public sealed class DownloadService(IDownloadQueue queue, DownloadStateService stateService) : IDownloadService, IDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();
     private readonly Dictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
@@ -146,5 +146,10 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
 
             return cts.Token;
         }
+    }
+
+    public void Dispose()
+    {
+        _globalCancellation.Dispose();
     }
 }
