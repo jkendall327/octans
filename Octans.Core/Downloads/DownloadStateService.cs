@@ -50,8 +50,8 @@ public class DownloadStateService(
         }
 
         OnDownloadsChanged?.Invoke(this, new()
-        { 
-            ChangeType = DownloadChangeType.Updated 
+        {
+            ChangeType = DownloadChangeType.Updated
         });
     }
 
@@ -142,9 +142,9 @@ public class DownloadStateService(
             // Notify subscribers
             OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
             OnDownloadsChanged?.Invoke(this, new()
-            { 
+            {
                 AffectedDownloadId = id,
-                ChangeType = DownloadChangeType.Updated 
+                ChangeType = DownloadChangeType.Updated
             });
         }
     }
@@ -182,28 +182,28 @@ public class DownloadStateService(
 
         // Notification occurs after all operations are complete
         OnDownloadsChanged?.Invoke(this, new()
-        { 
+        {
             AffectedDownloadId = status.Id,
-            ChangeType = DownloadChangeType.Added 
+            ChangeType = DownloadChangeType.Added
         });
     }
 
     public async Task RemoveDownloadAsync(Guid id)
     {
         bool removed;
-        
+
         lock (_lock)
         {
             removed = _activeDownloads.Remove(id);
         }
-    
+
         if (!removed) return;
 
         try
         {
             await using var db = await contextFactory.CreateDbContextAsync();
             var status = await db.DownloadStatuses.FindAsync(id);
-            
+
             if (status != null)
             {
                 db.DownloadStatuses.Remove(status);
@@ -217,9 +217,9 @@ public class DownloadStateService(
 
         // Notify after everything is complete
         OnDownloadsChanged?.Invoke(this, new()
-        { 
+        {
             AffectedDownloadId = id,
-            ChangeType = DownloadChangeType.Removed 
+            ChangeType = DownloadChangeType.Removed
         });
     }
 }

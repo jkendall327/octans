@@ -1,6 +1,5 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
@@ -35,7 +34,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
 
         // Setup the mock context factory
         var contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
-        
+
         contextFactory
             .CreateDbContextAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new(_contextOptions));
@@ -142,7 +141,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         var eventRaised = false;
-        _service.OnDownloadProgressChanged += (_, args) => 
+        _service.OnDownloadProgressChanged += (_, args) =>
         {
             eventRaised = true;
             Assert.Equal(500, args.Status.BytesDownloaded);
@@ -185,13 +184,13 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         Guid? affectedId = null;
         DownloadChangeType? changeType = null;
 
-        _service.OnDownloadProgressChanged += (_, args) => 
+        _service.OnDownloadProgressChanged += (_, args) =>
         {
             progressEventRaised = true;
             Assert.Equal(DownloadState.InProgress, args.Status.State);
         };
 
-        _service.OnDownloadsChanged += (_, args) => 
+        _service.OnDownloadsChanged += (_, args) =>
         {
             downloadsChangedEventRaised = true;
             affectedId = args.AffectedDownloadId;
@@ -288,8 +287,8 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         var eventRaised = false;
         Guid? affectedId = null;
         DownloadChangeType? changeType = null;
-        
-        _service.OnDownloadsChanged += (_, args) => 
+
+        _service.OnDownloadsChanged += (_, args) =>
         {
             eventRaised = true;
             affectedId = args.AffectedDownloadId;
@@ -391,8 +390,8 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         var eventRaised = false;
         Guid? affectedId = null;
         DownloadChangeType? changeType = null;
-        
-        _service.OnDownloadsChanged += (_, args) => 
+
+        _service.OnDownloadsChanged += (_, args) =>
         {
             eventRaised = true;
             affectedId = args.AffectedDownloadId;
