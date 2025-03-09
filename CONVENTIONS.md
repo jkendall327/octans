@@ -67,23 +67,12 @@ When writing tests, avoid '// Arrange' or '// Act' comments.
 Comment tests like normal code - sparingly.
 
 Use NSubstitute, not Moq.
-Use NSubstitute's 'WithAnyArg' methods when appropriate.
-
-```csharp
-// Bad
-await _mockQueue.Received(1).EnqueueAsync(Arg.Any<QueuedDownload>());
-
-// Better: clearer intent, visually simpler.
-await _mockQueue.ReceivedWithAnyArgs(1).EnqueueAsync(default!);
-
-// DidNotReceiveWithAnyArgs() and ReturnsForAnyArgs() also exist.
-```
 
 Do not use reflection when writing tests. 
 If a test would require reflection, either don't implement it or change the SUT so reflection is not required. 
 
 Instead of mocking out `ILogger<T>`, use `NullLogger<T>.Instance` instead.
-Instead of mocking out `TimeProvider`, create a new `FakeTimeProvider` instead.
+Instead of mocking out `TimeProvider`, create a new `Microsoft.Extensions.Time.Testing.FakeTimeProvider` instead.
 Instead of mocking out `IFilesystem`, create a new `MockFileSystem` instead.
 
 Name the variable for the system under test as `_sut` (if a field) or `sut` (a local variable).
