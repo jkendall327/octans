@@ -6,17 +6,15 @@ using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
 using Octans.Core.Models;
 using System.Data.Common;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Octans.Tests.Downloads;
 
-public class DownloadStateServiceTests : IDisposable
+public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
 {
     private readonly DbConnection _connection;
     private readonly DbContextOptions<ServerDbContext> _contextOptions;
-    private readonly IDbContextFactory<ServerDbContext> _contextFactory;
-    private readonly ILogger<DownloadStateService> _logger;
     private readonly DownloadStateService _service;
-    private bool _disposedValue;
 
     public DownloadStateServiceTests()
     {
@@ -36,21 +34,18 @@ public class DownloadStateServiceTests : IDisposable
         }
 
         // Setup the mock context factory
-        _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
-        _contextFactory.CreateDbContextAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => Task.FromResult(new ServerDbContext(_contextOptions)));
+        var contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
+        
+        contextFactory
+            .CreateDbContextAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => new(_contextOptions));
 
-        // Setup logger
-        _logger = Substitute.For<ILogger<DownloadStateService>>();
-
-        // Create the service
-        _service = new DownloadStateService(_logger, _contextFactory);
+        _service = new(NullLogger<DownloadStateService>.Instance, contextFactory);
     }
 
     [Fact]
     public async Task InitializeFromDbAsync_LoadsActiveDownloads()
     {
-        // Arrange
         var activeDownload = new DownloadStatus
         {
             Id = Guid.NewGuid(),
@@ -76,7 +71,7 @@ public class DownloadStateServiceTests : IDisposable
             CompletedAt = DateTime.UtcNow
         };
 
-        using (var context = new ServerDbContext(_contextOptions))
+        await using (var context = new ServerDbContext(_contextOptions))
         {
             context.DownloadStatuses.Add(activeDownload);
             context.DownloadStatuses.Add(completedDownload);
@@ -96,7 +91,6 @@ public class DownloadStateServiceTests : IDisposable
     [Fact]
     public void GetDownloadById_ReturnsCorrectDownload()
     {
-        // Arrange
         var download = new DownloadStatus
         {
             Id = Guid.NewGuid(),
@@ -111,10 +105,8 @@ public class DownloadStateServiceTests : IDisposable
 
         _service.AddOrUpdateDownload(download);
 
-        // Act
         var result = _service.GetDownloadById(download.Id);
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal(download.Id, result.Id);
         Assert.Equal(download.Url, result.Url);
@@ -123,10 +115,8 @@ public class DownloadStateServiceTests : IDisposable
     [Fact]
     public void GetDownloadById_ReturnsNull_WhenIdNotFound()
     {
-        // Act
         var result = _service.GetDownloadById(Guid.NewGuid());
 
-        // Assert
         Assert.Null(result);
     }
 
@@ -151,8 +141,8 @@ public class DownloadStateServiceTests : IDisposable
 
         _service.AddOrUpdateDownload(download);
 
-        bool eventRaised = false;
-        _service.OnDownloadProgressChanged += (sender, args) => 
+        var eventRaised = false;
+        _service.OnDownloadProgressChanged += (_, args) => 
         {
             eventRaised = true;
             Assert.Equal(500, args.Status.BytesDownloaded);
@@ -190,16 +180,16 @@ public class DownloadStateServiceTests : IDisposable
 
         _service.AddOrUpdateDownload(download);
 
-        bool progressEventRaised = false;
-        bool downloadsChangedEventRaised = false;
+        var progressEventRaised = false;
+        var downloadsChangedEventRaised = false;
 
-        _service.OnDownloadProgressChanged += (sender, args) => 
+        _service.OnDownloadProgressChanged += (_, args) => 
         {
             progressEventRaised = true;
             Assert.Equal(DownloadState.InProgress, args.Status.State);
         };
 
-        _service.OnDownloadsChanged += (sender, args) => 
+        _service.OnDownloadsChanged += (_, _) => 
         {
             downloadsChangedEventRaised = true;
         };
@@ -289,8 +279,8 @@ public class DownloadStateServiceTests : IDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        bool eventRaised = false;
-        _service.OnDownloadsChanged += (sender, args) => eventRaised = true;
+        var eventRaised = false;
+        _service.OnDownloadsChanged += (_, _) => eventRaised = true;
 
         // Act
         _service.AddOrUpdateDownload(download);
@@ -302,12 +292,10 @@ public class DownloadStateServiceTests : IDisposable
         Assert.True(eventRaised);
 
         // Verify it was added to the database
-        using (var context = new ServerDbContext(_contextOptions))
-        {
-            var dbDownload = await context.DownloadStatuses.FindAsync(download.Id);
-            Assert.NotNull(dbDownload);
-            Assert.Equal(download.Url, dbDownload.Url);
-        }
+        await using var context = new ServerDbContext(_contextOptions);
+        var dbDownload = await context.DownloadStatuses.FindAsync(download.Id);
+        Assert.NotNull(dbDownload);
+        Assert.Equal(download.Url, dbDownload.Url);
     }
 
     [Fact]
@@ -326,7 +314,7 @@ public class DownloadStateServiceTests : IDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        using (var context = new ServerDbContext(_contextOptions))
+        await using (var context = new ServerDbContext(_contextOptions))
         {
             context.DownloadStatuses.Add(download);
             await context.SaveChangesAsync();
@@ -354,7 +342,7 @@ public class DownloadStateServiceTests : IDisposable
         Assert.Equal(DownloadState.InProgress, result.State);
 
         // Verify it was updated in the database
-        using (var context = new ServerDbContext(_contextOptions))
+        await using (var context = new ServerDbContext(_contextOptions))
         {
             var dbDownload = await context.DownloadStatuses.FindAsync(download.Id);
             Assert.NotNull(dbDownload);
@@ -378,7 +366,7 @@ public class DownloadStateServiceTests : IDisposable
             LastUpdated = DateTime.UtcNow
         };
 
-        using (var context = new ServerDbContext(_contextOptions))
+        await using (var context = new ServerDbContext(_contextOptions))
         {
             context.DownloadStatuses.Add(download);
             await context.SaveChangesAsync();
@@ -386,8 +374,8 @@ public class DownloadStateServiceTests : IDisposable
 
         _service.AddOrUpdateDownload(download);
 
-        bool eventRaised = false;
-        _service.OnDownloadsChanged += (sender, args) => eventRaised = true;
+        var eventRaised = false;
+        _service.OnDownloadsChanged += (_, _) => eventRaised = true;
 
         // Act
         _service.RemoveDownload(download.Id);
@@ -398,28 +386,14 @@ public class DownloadStateServiceTests : IDisposable
         Assert.True(eventRaised);
 
         // Verify it was removed from the database
-        using (var context = new ServerDbContext(_contextOptions))
+        await using (var context = new ServerDbContext(_contextOptions))
         {
             var dbDownload = await context.DownloadStatuses.FindAsync(download.Id);
             Assert.Null(dbDownload);
         }
     }
 
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                _connection.Dispose();
-            }
-            _disposedValue = true;
-        }
-    }
+    public void Dispose() => _connection.Dispose();
 
-    public void Dispose()
-    {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
+    public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
 }
