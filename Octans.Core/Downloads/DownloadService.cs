@@ -1,4 +1,5 @@
 using Octans.Core.Downloaders;
+using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Downloads;
 
@@ -12,7 +13,10 @@ public interface IDownloadService
     CancellationToken GetDownloadToken(Guid downloadId);
 }
 
-public sealed class DownloadService(IDownloadQueue queue, DownloadStateService stateService) : IDownloadService, IDisposable
+public sealed class DownloadService(
+    IDownloadQueue queue, 
+    DownloadStateService stateService,
+    ILogger<DownloadService> logger) : IDownloadService, IDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();
     private readonly Dictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
@@ -22,8 +26,16 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
     {
         var id = Guid.NewGuid();
         var filename = Path.GetFileName(request.DestinationPath);
-
         var domain = request.Url.Host;
+
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = id,
+            ["Url"] = request.Url,
+            ["Domain"] = domain
+        });
+        
+        logger.LogInformation("Queueing download for {Filename}", filename);
 
         var status = new DownloadStatus
         {
@@ -51,11 +63,15 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
             Domain = domain
         });
 
+        logger.LogDebug("Download queued successfully");
         return id;
     }
 
     public async Task CancelDownloadAsync(Guid id)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
+        logger.LogInformation("Canceling download");
+        
         // First, try to remove from queue if it's still queued
         await queue.RemoveAsync(id);
 
@@ -64,19 +80,28 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
 
         // Update state
         stateService.UpdateState(id, DownloadState.Canceled);
+        
+        logger.LogDebug("Download canceled");
     }
 
     public Task PauseDownloadAsync(Guid id)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
+        logger.LogInformation("Pausing download");
+        
         // For now, we'll implement pause as cancel since we don't support resuming partial downloads
         CancelDownloadToken(id);
         stateService.UpdateState(id, DownloadState.Paused);
-
+        
+        logger.LogDebug("Download paused");
         return Task.CompletedTask;
     }
 
     public async Task ResumeDownloadAsync(Guid id)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
+        logger.LogInformation("Resuming download");
+        
         var status = stateService.GetDownloadById(id);
 
         if (status is { State: DownloadState.Paused })
@@ -92,11 +117,19 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
             });
 
             stateService.UpdateState(id, DownloadState.Queued);
+            logger.LogDebug("Download resumed and re-queued");
+        }
+        else
+        {
+            logger.LogWarning("Cannot resume download - not in paused state. Current state: {State}", status?.State);
         }
     }
 
     public async Task RetryDownloadAsync(Guid id)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
+        logger.LogInformation("Retrying download");
+        
         var status = stateService.GetDownloadById(id);
         if (status is { State: DownloadState.Failed or DownloadState.Canceled })
         {
@@ -118,6 +151,11 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
             });
 
             stateService.UpdateState(id, DownloadState.Queued);
+            logger.LogDebug("Download reset and re-queued");
+        }
+        else
+        {
+            logger.LogWarning("Cannot retry download - not in failed or canceled state. Current state: {State}", status?.State);
         }
     }
 
@@ -125,8 +163,13 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
     {
         lock (_cancellationLock)
         {
-            if (!_downloadCancellations.TryGetValue(id, out var cts)) return;
+            if (!_downloadCancellations.TryGetValue(id, out var cts))
+            {
+                logger.LogDebug("No active cancellation token found for download {DownloadId}", id);
+                return;
+            }
 
+            logger.LogDebug("Canceling download token for {DownloadId}", id);
             cts.Cancel();
             _downloadCancellations.Remove(id);
         }
@@ -138,9 +181,11 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
         {
             if (_downloadCancellations.TryGetValue(downloadId, out var cts))
             {
+                logger.LogDebug("Reusing existing cancellation token for download {DownloadId}", downloadId);
                 return cts.Token;
             }
 
+            logger.LogDebug("Creating new cancellation token for download {DownloadId}", downloadId);
             cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
             _downloadCancellations[downloadId] = cts;
 
@@ -150,6 +195,7 @@ public sealed class DownloadService(IDownloadQueue queue, DownloadStateService s
 
     public void Dispose()
     {
+        logger.LogInformation("Disposing DownloadService and canceling all downloads");
         _globalCancellation.Dispose();
     }
 }
