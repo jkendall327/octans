@@ -16,7 +16,7 @@ public interface IDownloadService
 public sealed class DownloadService(
     IDownloadQueue queue,
     IDownloadStateService stateService,
-    ILogger<DownloadService> logger) : IDownloadService, IDisposable
+    ILogger<DownloadService> logger) : IDownloadService, IDisposable, IAsyncDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();
     private readonly Dictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
@@ -196,6 +196,14 @@ public sealed class DownloadService(
     public void Dispose()
     {
         logger.LogInformation("Disposing DownloadService and canceling all downloads");
+
+        _globalCancellation.Cancel();
+        _globalCancellation.Dispose();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _globalCancellation.CancelAsync();
         _globalCancellation.Dispose();
     }
 }
