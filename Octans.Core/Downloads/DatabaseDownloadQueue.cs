@@ -28,9 +28,9 @@ public class DatabaseDownloadQueue(
             ["DownloadId"] = download.Id,
             ["Url"] = download.Url
         });
-    
+
         logger.LogInformation("Enqueuing download with priority {Priority}", download.Priority);
-    
+
         if (string.IsNullOrEmpty(download.Domain))
         {
             var uri = new Uri(download.Url);
@@ -42,7 +42,7 @@ public class DatabaseDownloadQueue(
 
         db.QueuedDownloads.Add(download);
         await db.SaveChangesAsync();
-    
+
         logger.LogDebug("Download successfully added to queue");
         return download.Id;
     }
@@ -50,7 +50,7 @@ public class DatabaseDownloadQueue(
     public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)
     {
         logger.LogDebug("Attempting to dequeue next eligible download");
-    
+
         await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         // Get all queued downloads
@@ -60,7 +60,7 @@ public class DatabaseDownloadQueue(
             .ToListAsync(cancellationToken);
 
         logger.LogDebug("Found {Count} downloads in queue", queuedDownloads.Count);
-    
+
         foreach (var download in queuedDownloads)
         {
             using var scope = logger.BeginScope(new Dictionary<string, object?>
@@ -68,7 +68,7 @@ public class DatabaseDownloadQueue(
                 ["DownloadId"] = download.Id,
                 ["Domain"] = download.Domain
             });
-        
+
             // Check if bandwidth is available for this domain
             if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
             {
@@ -77,7 +77,7 @@ public class DatabaseDownloadQueue(
             }
 
             logger.LogInformation("Dequeuing download from {Domain}", download.Domain);
-        
+
             // Remove from queue
             db.QueuedDownloads.Remove(download);
             await db.SaveChangesAsync(cancellationToken);
@@ -92,10 +92,10 @@ public class DatabaseDownloadQueue(
     public async Task<int> GetQueuedCountAsync()
     {
         logger.LogDebug("Getting queued download count");
-    
+
         await using var db = await contextFactory.CreateDbContextAsync();
         var count = await db.QueuedDownloads.CountAsync();
-    
+
         logger.LogDebug("Current queue size: {Count} downloads", count);
         return count;
     }
@@ -104,7 +104,7 @@ public class DatabaseDownloadQueue(
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Removing download from queue");
-    
+
         await using var db = await contextFactory.CreateDbContextAsync();
 
         var download = await db.QueuedDownloads.FindAsync(id);
