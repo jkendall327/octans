@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Octans.Core.Downloaders;
 
+[SuppressMessage("Design", "CA1056:URI-like properties should not be strings")]
 public class QueuedDownload
 {
     [Key]

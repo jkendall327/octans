@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
@@ -5,6 +6,7 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Downloads;
 
+[SuppressMessage("Design", "CA1003:Use generic event handler instances")]
 public class DownloadStateService(
     ILogger<DownloadStateService> logger,
     IDbContextFactory<ServerDbContext> contextFactory)

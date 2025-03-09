@@ -23,13 +23,12 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
         var id = Guid.NewGuid();
         var filename = Path.GetFileName(request.DestinationPath);
 
-        var uri = new Uri(request.Url);
-        var domain = uri.Host;
+        var domain = request.Url.Host;
 
         var status = new DownloadStatus
         {
             Id = id,
-            Url = request.Url,
+            Url = request.Url.ToString(),
             Filename = filename,
             DestinationPath = request.DestinationPath,
             State = DownloadState.Queued,
@@ -45,7 +44,7 @@ public class DownloadService(IDownloadQueue queue, DownloadStateService stateSer
         await queue.EnqueueAsync(new()
         {
             Id = id,
-            Url = request.Url,
+            Url = request.Url.ToString(),
             DestinationPath = request.DestinationPath,
             QueuedAt = DateTime.UtcNow,
             Priority = request.Priority,
