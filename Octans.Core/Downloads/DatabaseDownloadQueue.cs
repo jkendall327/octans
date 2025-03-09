@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
@@ -5,6 +6,7 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Downloads;
 
+[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public interface IDownloadQueue
 {
     Task<Guid> EnqueueAsync(QueuedDownload download);
@@ -13,6 +15,7 @@ public interface IDownloadQueue
     Task RemoveAsync(Guid id);
 }
 
+[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
     IBandwidthLimiter bandwidthLimiter,
