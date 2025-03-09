@@ -120,25 +120,24 @@ public sealed class DownloadManager : BackgroundService
             var lastReportBytes = 0L;
             
             int bytesRead;
-            while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, combinedToken)) > 0)
+            while ((bytesRead = await contentStream.ReadAsync(buffer, combinedToken)) > 0)
             {
-                await fileStream.WriteAsync(buffer, 0, bytesRead, combinedToken);
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), combinedToken);
                 
                 bytesDownloaded += bytesRead;
                 
                 // Report progress every 100ms
-                if (sw.ElapsedMilliseconds - lastReportTime > 100)
-                {
-                    // Calculate speed based on bytes downloaded since last report
-                    var timeDelta = sw.ElapsedMilliseconds - lastReportTime;
-                    var bytesDelta = bytesDownloaded - lastReportBytes;
-                    var speed = bytesDelta / (timeDelta / 1000.0);
+                if (sw.ElapsedMilliseconds - lastReportTime <= 100) continue;
+                
+                // Calculate speed based on bytes downloaded since last report
+                var timeDelta = sw.ElapsedMilliseconds - lastReportTime;
+                var bytesDelta = bytesDownloaded - lastReportBytes;
+                var speed = bytesDelta / (timeDelta / 1000.0);
                     
-                    _stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
+                _stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
                     
-                    lastReportTime = sw.ElapsedMilliseconds;
-                    lastReportBytes = bytesDownloaded;
-                }
+                lastReportTime = sw.ElapsedMilliseconds;
+                lastReportBytes = bytesDownloaded;
             }
             
             // Final progress update and state change

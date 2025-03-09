@@ -8,6 +8,10 @@
         <PackageReference Include="Dapper"  />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi"  />
         <PackageReference Include="Microsoft.Data.Sqlite"  />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"  />
         <PackageReference Include="Swashbuckle.AspNetCore"  />
     </ItemGroup>
@@ -20,6 +24,12 @@
       <Content Update="appsettings.Development.json">
         <DependentUpon>appsettings.json</DependentUpon>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="fake.db">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

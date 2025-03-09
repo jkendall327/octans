@@ -62,8 +62,10 @@ var s = serviceScope.ServiceProvider.GetRequiredService<IDownloadService>();
 
 await s.QueueDownloadAsync(new() {
     Url = "https://upload.wikimedia.org/wikipedia/commons/d/de/Nokota_Horses_cropped.jpg",
-    DestinationPath = "/home/jackkendall/Downloads"
+    DestinationPath = "/home/jackkendall/Downloads/horse.jpg"
 });
+
+await app.RunAsync();
 
 return;
 

@@ -36,7 +36,7 @@ internal static class ServiceCollectionExtensions
 
             var db = path.Join(dbFolder, "octans.db");
 
-            opt.UseSqlite($"Data Source={db};");
+            opt.UseSqlite($"Data Source=fake.db;");
         });
 
         builder.Services
