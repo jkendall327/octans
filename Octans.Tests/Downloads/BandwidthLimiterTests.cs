@@ -175,13 +175,9 @@ public class BandwidthLimiterTests
 
         // Act 2 - Advance time past the tracking window
         _timeProvider.Advance(_options.TrackingWindow + TimeSpan.FromMinutes(1));
-
-        // This should trigger the cleanup timer
-        // We need to manually trigger it for testing since we're using a fake timer
-        // In real usage, the timer would fire automatically
-        typeof(BandwidthLimiter)
-            .GetMethod("CleanupOldRecords", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.Invoke(_sut, new object?[] { null });
+        
+        // Trigger the timer by advancing time and firing all pending timers
+        _timeProvider.FireAllTimers();
 
         // Act 3 - Download just under the limit again
         _sut.RecordDownload(domain, (long)totalBytesAllowed - 1);
