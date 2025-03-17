@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<ImportsViewmodel>();
+        services.AddScoped<Config.ConfigViewModel>();
         return services;
     }
 
