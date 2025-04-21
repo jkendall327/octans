@@ -31,7 +31,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageVersion>
     <PackageVersion Include="Refit" Version="8.0.0" />
-    <PackageVersion Include="System.IO.Abstractions.TestingHelpers" Version="22.0.11" />
+    <PackageVersion Include="System.IO.Abstractions.TestingHelpers" Version="22.0.14" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
