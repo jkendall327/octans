@@ -2,5 +2,5 @@ namespace Octans.Core.Communication;
 
 public static class CommunicationConstants
 {
-    public const int OCTANS_SERVER_PORT = 6345;
+    public const int OctansServerPort = 6345;
 }
