@@ -2,29 +2,18 @@ using System.Threading.Channels;
 
 namespace Octans.Server;
 
-internal sealed class ThumbnailCreationBackgroundService : BackgroundService
+internal sealed class ThumbnailCreationBackgroundService(
+    ThumbnailCreator creator,
+    ChannelReader<ThumbnailCreationRequest> channel,
+    ILogger<ThumbnailCreationBackgroundService> logger) : BackgroundService
 {
-    private readonly ChannelReader<ThumbnailCreationRequest> _channel;
-    private readonly ILogger<ThumbnailCreationBackgroundService> _logger;
-    private readonly ThumbnailCreator _thumbnailCreator;
-
-    public ThumbnailCreationBackgroundService(
-        ThumbnailCreator creator,
-        ChannelReader<ThumbnailCreationRequest> channel,
-        ILogger<ThumbnailCreationBackgroundService> logger)
-    {
-        _thumbnailCreator = creator;
-        _channel = channel;
-        _logger = logger;
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var request in _channel.ReadAllAsync(stoppingToken))
+        await foreach (var request in channel.ReadAllAsync(stoppingToken))
         {
             try
             {
-                await _thumbnailCreator.ProcessThumbnailRequestAsync(request, stoppingToken);
+                await creator.ProcessThumbnailRequestAsync(request, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -32,7 +21,7 @@ internal sealed class ThumbnailCreationBackgroundService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing thumbnail request");
+                logger.LogError(ex, "Error processing thumbnail request");
             }
         }
     }

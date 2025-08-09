@@ -4,30 +4,14 @@ using Octans.Server;
 
 namespace Octans.Core.Importing;
 
-public abstract class Importer
+public abstract class Importer(
+    ImportFilterService filterService,
+    ReimportChecker reimportChecker,
+    DatabaseWriter databaseWriter,
+    FilesystemWriter filesystemWriter,
+    ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
+    ILogger<Importer> logger)
 {
-    private readonly ImportFilterService _filterService;
-    private readonly ReimportChecker _reimportChecker;
-    private readonly DatabaseWriter _databaseWriter;
-    private readonly FilesystemWriter _filesystemWriter;
-    private readonly ChannelWriter<ThumbnailCreationRequest> _thumbnailChannel;
-    private readonly ILogger<Importer> _logger;
-
-    protected Importer(ImportFilterService filterService,
-        ReimportChecker reimportChecker,
-        DatabaseWriter databaseWriter,
-        FilesystemWriter filesystemWriter,
-        ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
-        ILogger<Importer> logger)
-    {
-        _filterService = filterService;
-        _reimportChecker = reimportChecker;
-        _databaseWriter = databaseWriter;
-        _filesystemWriter = filesystemWriter;
-        _thumbnailChannel = thumbnailChannel;
-        _logger = logger;
-    }
-
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
     {
         var results = new List<ImportItemResult>();
@@ -43,7 +27,7 @@ public abstract class Importer
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Exception during file import");
+                logger.LogError(e, "Exception during file import");
 
                 results.Add(new()
                 {
@@ -58,16 +42,16 @@ public abstract class Importer
 
     private async Task<ImportItemResult> ImportIndividualItem(ImportRequest request, ImportItem item)
     {
-        using var scope = _logger.BeginScope(new Dictionary<string, object>
+        using var scope = logger.BeginScope(new Dictionary<string, object>
         {
             ["ItemImportId"] = Guid.NewGuid(),
         });
 
         var bytes = await GetRawBytes(item);
 
-        _logger.LogDebug("Total size: {SizeInBytes}", bytes.Length);
+        logger.LogDebug("Total size: {SizeInBytes}", bytes.Length);
 
-        var filterResult = await _filterService.ApplyFilters(request, bytes);
+        var filterResult = await filterService.ApplyFilters(request, bytes);
 
         if (filterResult is not null)
         {
@@ -76,7 +60,7 @@ public abstract class Importer
 
         var hashed = HashedBytes.FromUnhashed(bytes);
 
-        _logger.LogDebug("Created hash: {@HashDetails}",
+        logger.LogDebug("Created hash: {@HashDetails}",
             new
             {
                 hashed.Hexadecimal,
@@ -84,23 +68,23 @@ public abstract class Importer
                 hashed.MimeType
             });
 
-        var existing = await _reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
+        var existing = await reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
 
         if (existing is not null)
         {
-            _logger.LogInformation("File already exists; exiting");
+            logger.LogInformation("File already exists; exiting");
             return existing;
         }
 
-        await _filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
+        await filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
 
-        await _databaseWriter.AddItemToDatabase(item, hashed);
+        await databaseWriter.AddItemToDatabase(item, hashed);
 
-        _logger.LogInformation("Sending thumbnail creation request");
+        logger.LogInformation("Sending thumbnail creation request");
 
-        await _thumbnailChannel.WriteAsync(new(bytes, hashed));
+        await thumbnailChannel.WriteAsync(new(bytes, hashed));
 
-        _logger.LogInformation("Import successful");
+        logger.LogInformation("Import successful");
 
         await OnImportComplete(request, item);
 

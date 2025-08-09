@@ -1,29 +1,12 @@
-using System.IO.Abstractions;
-using Microsoft.Extensions.Logging;
-
 namespace Octans.Core.Downloaders;
 
-public class DownloaderService
+public class DownloaderService(
+    IHttpClientFactory clientFactory,
+    DownloaderFactory downloaderFactory)
 {
-    private readonly IFileSystem _fileSystem;
-    private readonly IHttpClientFactory _clientFactory;
-    private readonly DownloaderFactory _downloaderFactory;
-    private readonly ILogger<DownloaderService> _logger;
-
-    public DownloaderService(IFileSystem fileSystem,
-        IHttpClientFactory clientFactory,
-        DownloaderFactory downloaderFactory,
-        ILogger<DownloaderService> logger)
-    {
-        _fileSystem = fileSystem;
-        _clientFactory = clientFactory;
-        _downloaderFactory = downloaderFactory;
-        _logger = logger;
-    }
-
     public async Task<byte[]> Download(Uri uri)
     {
-        var downloaders = await _downloaderFactory.GetDownloaders();
+        var downloaders = await downloaderFactory.GetDownloaders();
 
         var matching = downloaders.FirstOrDefault(d => d.MatchesUrl(uri));
 
@@ -33,7 +16,7 @@ public class DownloaderService
         }
 
 #pragma warning disable CA2000
-        var client = _clientFactory.CreateClient();
+        var client = clientFactory.CreateClient();
 #pragma warning restore CA2000
 
         var raw = await client.GetStringAsync(uri);

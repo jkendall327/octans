@@ -7,24 +7,17 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Executes a query plan against the database and returns the relevant hashes.
 /// </summary>
-public class HashSearcher
+public class HashSearcher(ServerDbContext context)
 {
-    private readonly ServerDbContext _context;
-
-    public HashSearcher(ServerDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
         if (request.IsEmpty())
         {
-            var allHashes = await _context.Hashes.ToListAsync(cancellationToken);
+            var allHashes = await context.Hashes.ToListAsync(cancellationToken);
             return allHashes.ToHashSet();
         }
 
-        var tags = _context.Tags
+        var tags = context.Tags
             .Include(tag => tag.Namespace)
             .Include(tag => tag.Subtag);
 
@@ -42,7 +35,7 @@ public class HashSearcher
 
         if (request.WildcardNamespacesToInclude.Any())
         {
-            var spaces = await _context.Namespaces.Join(request.WildcardNamespacesToInclude,
+            var spaces = await context.Namespaces.Join(request.WildcardNamespacesToInclude,
                     s => s.Value,
                     t => t,
                     (s, t) => s)
@@ -57,7 +50,7 @@ public class HashSearcher
 
         matching = matching.Except(toExclude).ToList();
 
-        var allMappings = await _context.Mappings
+        var allMappings = await context.Mappings
             .Include(m => m.Hash)
             .Include(mapping => mapping.Tag)
             .ToListAsync(cancellationToken);

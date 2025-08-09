@@ -4,13 +4,8 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Models;
 
-public class ServerDbContext : DbContext
+public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbContext(context)
 {
-    public ServerDbContext(DbContextOptions<ServerDbContext> context) : base(context)
-    {
-
-    }
-
     public virtual DbSet<FileRecord> FileRecords { get; set; }
     public virtual DbSet<HashItem> Hashes { get; set; }
     public virtual DbSet<Tag> Tags { get; set; }
