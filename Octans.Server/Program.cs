@@ -56,7 +56,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.AddEndpoints();
 
 // Ensure subfolders are initialised.
 var manager = app.Services.GetRequiredService<SubfolderManager>();

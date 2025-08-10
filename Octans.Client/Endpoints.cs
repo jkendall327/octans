@@ -8,7 +8,7 @@ using Octans.Server.Services;
 
 namespace Octans.Server;
 
-internal static class ServerEndpoints
+internal static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
@@ -120,10 +120,7 @@ internal static class ServerEndpoints
             }
         });
 
-        app.MapGet("/stats", async (StatsService statsService) =>
-            {
-                return await statsService.GetHomeStats();
-            })
+        app.MapGet("/stats", async (StatsService statsService) => await statsService.GetHomeStats())
             .WithName("GetHomeStats")
             .WithDescription("Returns statistics for the homepage")
             .WithOpenApi();

@@ -1,5 +1,6 @@
 using Octans.Client;
 using Octans.Client.Components;
+using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,12 +44,12 @@ app.MapHealthChecks("/health", new()
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
+app.AddEndpoints();
+
 app.Run();
 
 namespace Octans.Client
 {
-    public partial class Program
-    {
-    }
+    public partial class Program;
 }
 
