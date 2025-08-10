@@ -1,6 +1,7 @@
 @page "/Imports"
 @using Octans.Core.Infrastructure
 @using Octans.Core.Importing
+@using MudBlazor
 @inject ImportsViewmodel Viewmodel
 @inject StorageService StorageService
 
@@ -8,80 +9,74 @@
     <h3>Import Content</h3>
 
     <div class="import-tabs">
-        <div class="tab @(_activeTab == ImportType.File ? "active" : "")" @onclick="() => SetActiveTab(ImportType.File)">
-            Files
-        </div>
-        <div class="tab @(_activeTab == ImportType.RawUrl ? "active" : "")" @onclick="() => SetActiveTab(ImportType.RawUrl)">
-            URLs
-        </div>
-        <div class="tab @(_activeTab == ImportType.Post ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Post)">
-            Post
-        </div>
-        <div class="tab @(_activeTab == ImportType.Gallery ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Gallery)">
-            Gallery
-        </div>
-        <div class="tab @(_activeTab == ImportType.Watchable ? "active" : "")" @onclick="() => SetActiveTab(ImportType.Watchable)">
-            Watchable
-        </div>
-    </div>
+        <MudTabs>
+            <MudTabPanel Text="Files">
+                <div class="upload-section">
+                    <div class="file-input-wrapper">
+                        <label class="custom-file-upload">
+                            <InputFile OnChange="@LoadFiles" multiple />
+                            Choose Files
+                        </label>
+                    </div>
 
-    @if (_activeTab == ImportType.File)
-    {
-        <div class="upload-section">
-            <div class="file-input-wrapper">
-                <label class="custom-file-upload">
-                    <InputFile OnChange="@LoadFiles" multiple />
-                    Choose Files
-                </label>
-            </div>
+                    <div class="upload-info">
+                        Select files to upload
+                    </div>
 
-            <div class="upload-info">
-                Select files to upload
-            </div>
-
-            @if (_localFiles.Count > 0)
-            {
-                <div class="file-list">
-                    <h5>Selected Files (@_localFiles.Count):</h5>
-                    @foreach (var file in _localFiles)
+                    @if (_localFiles.Count > 0)
                     {
-                        <div class="file-item">
-                            <span>@file.Name</span>
-                            <span>@FormatFileSize(file.Size)</span>
+                        <div class="file-list">
+                            <h5>Selected Files (@_localFiles.Count):</h5>
+                            @foreach (var file in _localFiles)
+                            {
+                                <div class="file-item">
+                                    <span>@file.Name</span>
+                                    <span>@FormatFileSize(file.Size)</span>
+                                </div>
+                            }
                         </div>
                     }
-                </div>
-            }
 
-            <button class="send-button" @onclick="@SendFiles" disabled="@(_localFiles.Count == 0)">
-                Upload Files
-            </button>
-        </div>
-    }
-    else
-    {
-        <div class="url-section">
-            <div class="input-group">
-                <textarea 
+                    <button class="send-button" @onclick="@SendFiles" disabled="@(_localFiles.Count == 0)">
+                        Upload Files
+                    </button>
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="URL">
+                <div class="url-section">
+                    <div class="input-group">
+                        <textarea 
                     @bind="_urlInput" 
                     placeholder="Enter URLs (one per line)" 
                     rows="5" 
                     class="url-input">
                 </textarea>
-            </div>
+                    </div>
             
-            <div class="import-options">
-                <label class="option">
-                    <input type="checkbox" @bind="_allowReimportDeleted" />
-                    Allow reimport of deleted items
-                </label>
-            </div>
+                    <div class="import-options">
+                        <label class="option">
+                            <input type="checkbox" @bind="_allowReimportDeleted" />
+                            Allow reimport of deleted items
+                        </label>
+                    </div>
 
-            <button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(_urlInput))">
-                Import @_activeTab
-            </button>
-        </div>
-    }
+                    <button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(_urlInput))">
+                        Import @_activeTab
+                    </button>
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="Post">
+                <p>foo</p>
+            </MudTabPanel>
+            <MudTabPanel Text="Gallery">
+                <p>foo</p>
+            </MudTabPanel>
+            <MudTabPanel Text="Watchable">
+                <p>foo</p>
+            </MudTabPanel>
+
+        </MudTabs>
+    </div>
 </div>
 
 @code {

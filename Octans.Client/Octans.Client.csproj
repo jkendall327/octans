@@ -17,6 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="MudBlazor" />
         <PackageReference Include="Refit.HttpClientFactory"/>
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"/>
         <PackageReference Include="Swashbuckle.AspNetCore"/>

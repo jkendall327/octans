@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MudBlazor.Services;
 using Octans.Client;
 using Octans.Client.Components;
 using Octans.Core;
@@ -15,6 +16,8 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+
+builder.Services.AddMudServices();
 
 builder.Services.AddInfrastructure();
 builder.Services.AddHttpClients();
