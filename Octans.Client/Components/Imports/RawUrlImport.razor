@@ -1,44 +1,25 @@
-@using Octans.Core.Importing
+@using MudBlazor
 @inject IRawUrlImportViewmodel Viewmodel
 
 <div class="input-group">
     <textarea
-        @bind="Viewmodel.UrlInput"
+        @bind="Viewmodel.RawInputs"
         placeholder="Enter URLs (one per line)"
         rows="5"
         class="url-input">
-                </textarea>
+    </textarea>
 </div>
 
 <div class="import-options">
-    <label class="option">
-        <input type="checkbox" @bind="Viewmodel.AllowReimportDeleted"/>
+    <MudCheckBox
+        @bind-Value="Viewmodel.AllowReimportDeleted">
         Allow reimport of deleted items
-    </label>
+    </MudCheckBox>
 </div>
 
-<button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(Viewmodel.UrlInput))">
+<MudButton
+    Class="send-button"
+    OnClick="@Viewmodel.SendUrlsToServer"
+    Disabled="@(string.IsNullOrWhiteSpace(Viewmodel.RawInputs))">
     Import
-</button>
-
-@code {
-
-    private async Task SendUrls()
-    {
-        if (string.IsNullOrWhiteSpace(Viewmodel.UrlInput))
-            return;
-
-        var urls = Viewmodel.UrlInput
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(url => url.Trim())
-            .Where(url => !string.IsNullOrWhiteSpace(url))
-            .ToList();
-
-        if (urls.Count > 0)
-        {
-            await Viewmodel.SendUrlsToServer(urls, ImportType.RawUrl, Viewmodel.AllowReimportDeleted);
-            Viewmodel.UrlInput = string.Empty;
-        }
-    }
-
-}
+</MudButton>

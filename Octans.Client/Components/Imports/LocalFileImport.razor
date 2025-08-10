@@ -6,9 +6,10 @@
 <div class="file-input-wrapper">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="Viewmodel.LocalFiles">
         <ActivatorContent>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.CloudUpload">
+            <MudButton
+                Variant="Variant.Filled"
+                Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.CloudUpload">
                 Choose files
             </MudButton>
         </ActivatorContent>
@@ -23,25 +24,15 @@
         {
             <div class="file-item">
                 <span>@file.Name</span>
-                <span>@FormatFileSize(file.Size)</span>
+                <span>@StorageService.FormatFileSize(file.Size)</span>
             </div>
         }
     </div>
 }
 
-<MudButton Class="send-button" OnClick="@SendFiles" Disabled="@(Viewmodel.LocalFiles.Count == 0)">
+<MudButton
+    Class="send-button"
+    OnClick="@Viewmodel.SendLocalFilesToServer"
+    Disabled="@(Viewmodel.LocalFiles.Count == 0)">
     Import
 </MudButton>
-
-@code {
-    private async Task SendFiles()
-    {
-        await Viewmodel.SendLocalFilesToServer(Viewmodel.LocalFiles);
-        Viewmodel.LocalFiles = new List<IBrowserFile>();
-    }
-
-    private string FormatFileSize(long bytes)
-    {
-        return StorageService.FormatFileSize(bytes);
-    }
-}

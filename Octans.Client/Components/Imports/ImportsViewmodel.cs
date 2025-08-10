@@ -7,14 +7,14 @@ namespace Octans.Client;
 
 public interface IRawUrlImportViewmodel
 {
-    Task SendUrlsToServer(List<string> urls, ImportType importType, bool allowReimportDeleted);
-    string UrlInput { get; set; }
+    Task SendUrlsToServer();
+    string RawInputs { get; set; }
     bool AllowReimportDeleted { get; set; }
 }
 
 public interface ILocalFileImportViewmodel
 {
-    Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files);
+    Task SendLocalFilesToServer();
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
 }
 
@@ -24,23 +24,22 @@ public class ImportsViewmodel(
     IOctansApi client,
     ILogger<ImportsViewmodel> logger) : IRawUrlImportViewmodel, ILocalFileImportViewmodel
 {
-    public string UrlInput { get; set; } = string.Empty;
+    public string RawInputs { get; set; } = string.Empty;
     public bool AllowReimportDeleted { get; set; }
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
 
-    
-    public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
+    public async Task SendLocalFilesToServer()
     {
-        if (!files.Any()) return;
+        if (!LocalFiles.Any()) return;
 
-        logger.LogInformation("Sending {Count} files to server", files.Count);
+        logger.LogInformation("Sending {Count} files to server", LocalFiles.Count);
 
         var uploadPath = fileSystem.Path.Combine(environment.WebRootPath, "uploads");
         fileSystem.Directory.CreateDirectory(uploadPath);
 
         var items = new List<ImportItem>();
 
-        foreach (var file in files)
+        foreach (var file in LocalFiles)
         {
             if (file.Size <= 0) continue;
 
@@ -61,26 +60,40 @@ public class ImportsViewmodel(
         };
 
         await client.ProcessImport(request);
+
+        LocalFiles = [];
     }
 
-    public async Task SendUrlsToServer(List<string> urls, ImportType importType, bool allowReimportDeleted)
+    public async Task SendUrlsToServer()
     {
-        if (!urls.Any()) return;
+        if (string.IsNullOrWhiteSpace(RawInputs))
+            return;
 
-        logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, importType);
-
-        var importItems = urls
-            .Select(url => new ImportItem { Source = new Uri(url) })
+        var urls = RawInputs
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(url => url.Trim())
+            .Where(url => !string.IsNullOrWhiteSpace(url))
             .ToList();
 
-        var request = new ImportRequest
+        if (urls.Count > 0)
         {
-            ImportType = importType,
-            Items = importItems,
-            DeleteAfterImport = false,
-            AllowReimportDeleted = allowReimportDeleted
-        };
+            logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, ImportType.RawUrl);
 
-        await client.ProcessImport(request);
+            var importItems = urls
+                .Select(url => new ImportItem { Source = new Uri(url) })
+                .ToList();
+
+            var request = new ImportRequest
+            {
+                ImportType = ImportType.RawUrl,
+                Items = importItems,
+                DeleteAfterImport = false,
+                AllowReimportDeleted = AllowReimportDeleted
+            };
+
+            await client.ProcessImport(request);
+
+            RawInputs = string.Empty;
+        }
     }
 }
