@@ -1,6 +1,9 @@
 @page "/gallery"
+@using Microsoft.Extensions.Options
 @using Octans.Client.Components.Pages
+@using Octans.Client.Options
 @inject GalleryViewmodel Viewmodel
+@inject IOptions<ThumbnailOptions> Options
 @implements IAsyncDisposable
 
 <h3>Gallery</h3>

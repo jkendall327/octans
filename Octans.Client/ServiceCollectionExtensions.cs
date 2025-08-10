@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Octans.Client.Components.Pages;
+using Octans.Client.Options;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Downloaders;
@@ -152,6 +153,10 @@ public static class ServiceCollectionExtensions
 
         builder.Services.Configure<SubscriptionOptions>(
             builder.Configuration.GetSection(SubscriptionOptions.SectionName));
+
+        builder.Services.AddOptions<ThumbnailOptions>()
+            .BindConfiguration(ThumbnailOptions.ConfigurationSectionName)
+            .ValidateDataAnnotations();
     }
 
     public static IEndpointRouteBuilder MapStaticAssets(this IEndpointRouteBuilder app)

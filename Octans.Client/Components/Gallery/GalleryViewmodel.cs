@@ -33,7 +33,7 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
             await foreach (var result in service.Query(raw, _cts.Token))
             {
                 var info = manager.GetFilepath(HashedBytes.FromUnhashed(result.Hash));
-                
+
                 if (info is null)
                 {
                     continue;
