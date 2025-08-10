@@ -6,12 +6,10 @@ namespace Octans.Client.Components.Pages;
 
 public sealed class GalleryViewmodel(QueryService service, SubfolderManager manager) : IAsyncDisposable
 {
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource _cts = new();
+    
     public List<string> ImagePaths { get; private set; } = [];
-    public const int ThumbnailWidth = 300;
-    public const int ThumbnailHeight = 200;
-
-    public bool Searching { get; set; }
+    public bool Searching { get; private set; }
 
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
@@ -29,7 +27,7 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
                 .Select(x => x.FullName)
                 .ToList();
 
-            ImagePaths = paths.ToList();
+            ImagePaths = paths;
         }
         catch (Exception e)
         {
@@ -41,6 +39,12 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
         {
             Searching = false;
         }
+    }
+    
+    public async Task OnCancel()
+    {
+        await _cts.CancelAsync();
+        _cts = new();
     }
 
     public async ValueTask DisposeAsync()
