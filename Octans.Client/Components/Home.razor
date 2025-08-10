@@ -1,6 +1,6 @@
 ﻿@page "/"
-@using Octans.Core.Communication
-@inject IOctansApi OctansApi
+@using Octans.Server.Services
+@inject StatsService Stats
 @inject ILogger<Home> Logger
 
 <PageTitle>Octans - Home</PageTitle>
@@ -17,9 +17,6 @@
         {
             <p class="subtitle">(Loading stats...)</p>
         }
-        <div class="server-status @(_serverOnline ? "online" : "offline")">
-            Server Status: @(_serverOnline ? "Online" : "Offline")
-        </div>
     </div>
 
     <div class="stats-container">
@@ -67,27 +64,12 @@
     private int _tagCount;
     private string _storageUsed = "0 B";
     private bool _statsLoaded;
-    private bool _serverOnline;
 
     protected override async Task OnInitializedAsync()
     {
         if (RendererInfo.IsInteractive)
         {
-            await CheckServerHealth();
             await LoadStats();
-        }
-    }
-    
-    private async Task CheckServerHealth()
-    {
-        try
-        {
-            var response = await OctansApi.HealthCheck();
-            _serverOnline = response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            _serverOnline = false;
         }
     }
 
@@ -95,24 +77,12 @@
     {
         try
         {
-            var response = await OctansApi.GetHomeStats();
+            var response = await Stats.GetHomeStats();
             
-            if (response is {IsSuccessStatusCode: true, Content: not null})
-            {
-                _totalImages = response.Content.TotalImages;
-                _inboxCount = response.Content.InboxCount;
-                _tagCount = response.Content.TagCount;
-                _storageUsed = response.Content.StorageUsed;
-            }
-            else
-            {
-                // Use fallback values
-                _totalImages = 0;
-                _inboxCount = 0;
-                _tagCount = 0;
-                _storageUsed = "0 GB";
-                _statsLoaded = true;
-            }
+            _totalImages = response.TotalImages;
+            _inboxCount = response.InboxCount;
+            _tagCount = response.TagCount;
+            _storageUsed = response.StorageUsed;
 
             _statsLoaded = true;
         }
