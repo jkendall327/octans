@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddRefitClient<IOctansApi>().ConfigureHttpClient(client =>
         {
-            var port = CommunicationConstants.OCTANS_SERVER_PORT;
+            var port = CommunicationConstants.OctansServerPort;
             client.BaseAddress = new($"http://localhost:{port}/");
         });
 

@@ -8,7 +8,7 @@ using Octans.Server;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.ConfigureKestrel(s
-    => s.ListenLocalhost(CommunicationConstants.OCTANS_SERVER_PORT));
+    => s.ListenLocalhost(CommunicationConstants.OctansServerPort));
 
 builder.Services
     .AddOptions<ServiceProviderOptions>()

@@ -4,20 +4,13 @@ using Refit;
 
 namespace Octans.Client.HealthChecks;
 
-public class OctansApiHealthCheck : IHealthCheck
+public class OctansApiHealthCheck(IOctansApi octansApi) : IHealthCheck
 {
-    private readonly IOctansApi _octansApi;
-
-    public OctansApiHealthCheck(IOctansApi octansApi)
-    {
-        _octansApi = octansApi;
-    }
-
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _octansApi.HealthCheck();
+            var response = await octansApi.HealthCheck();
 
             if (response.IsSuccessStatusCode)
             {

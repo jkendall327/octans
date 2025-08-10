@@ -4,28 +4,19 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Importing;
 
-public class DatabaseWriter
+public class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
 {
-    private readonly ServerDbContext _context;
-    private readonly ILogger<DatabaseWriter> _logger;
-
-    public DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     public async Task AddItemToDatabase(ImportItem item, HashedBytes hashed)
     {
         var hashItem = new HashItem { Hash = hashed.Bytes };
 
-        _context.Hashes.Add(hashItem);
+        context.Hashes.Add(hashItem);
 
         AddTags(item, hashItem);
 
-        _logger.LogInformation("Persisting item to database");
+        logger.LogInformation("Persisting item to database");
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     private void AddTags(ImportItem request, HashItem hashItem)
@@ -48,8 +39,8 @@ public class DatabaseWriter
                 Subtag = new() { Value = tag.Subtag }
             };
 
-            _context.Tags.Add(tagDto);
-            _context.Mappings.Add(new() { Tag = tagDto, Hash = hashItem });
+            context.Tags.Add(tagDto);
+            context.Mappings.Add(new() { Tag = tagDto, Hash = hashItem });
         }
     }
 }

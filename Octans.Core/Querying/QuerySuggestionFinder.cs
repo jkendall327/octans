@@ -7,15 +7,8 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Provides suggestions on relevant tags given text, e.g. for autocomplete dropdowns.
 /// </summary>
-public class QuerySuggestionFinder
+public class QuerySuggestionFinder(ServerDbContext context)
 {
-    private readonly ServerDbContext _context;
-
-    public QuerySuggestionFinder(ServerDbContext context)
-    {
-        _context = context;
-    }
-
     private async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
     {
         if (string.IsNullOrWhiteSpace(search))
@@ -43,7 +36,7 @@ public class QuerySuggestionFinder
         }
         else
         {
-            var found = await _context.Namespaces.FirstOrDefaultAsync(n => n.Value == space, token);
+            var found = await context.Namespaces.FirstOrDefaultAsync(n => n.Value == space, token);
 
             // User asked for a specific namespace, but it doesn't exist. Nothing we can do.
             if (found is null)
@@ -54,7 +47,7 @@ public class QuerySuggestionFinder
             namespaces = [found];
         }
 
-        var tagsForFoundNamespaces = from t in _context.Tags
+        var tagsForFoundNamespaces = from t in context.Tags
                                      join ns in namespaces on t.Namespace.Id equals ns.Id
                                      select t;
 
@@ -65,7 +58,7 @@ public class QuerySuggestionFinder
             // Just get every tag, since the user explicitly searched for '*'.
             if (!namespaces.Any())
             {
-                tags = await _context.Tags.ToListAsync(token);
+                tags = await context.Tags.ToListAsync(token);
             }
             // Get all tags for all the wildcard-expanded namespaces.
             else
@@ -81,7 +74,7 @@ public class QuerySuggestionFinder
 
         // If the user specified 1+ namespaces, only consider tags in those spaces.
         // Otherwise, search everything.
-        var source = namespaces.Any() ? tagsForFoundNamespaces : _context.Tags;
+        var source = namespaces.Any() ? tagsForFoundNamespaces : context.Tags;
 
         var clean = subtag.Replace(PredicateConstants.Wildcard.ToString(), string.Empty);
 
@@ -96,12 +89,12 @@ public class QuerySuggestionFinder
     {
         if (wildcard == PredicateConstants.Wildcard.ToString())
         {
-            return await _context.Namespaces.ToListAsync(token);
+            return await context.Namespaces.ToListAsync(token);
         }
 
         var clean = wildcard.Replace(PredicateConstants.Wildcard.ToString(), string.Empty);
 
-        return await _context.Namespaces.Where(n => n.Value.Contains(clean)).ToListAsync(token);
+        return await context.Namespaces.Where(n => n.Value.Contains(clean)).ToListAsync(token);
     }
 
     private (string space, string subtag) SplitTag(string tag)

@@ -5,18 +5,12 @@ using NLua;
 
 namespace Octans.Core.Downloaders;
 
-public class DownloaderFactory
+public class DownloaderFactory(
+    IFileSystem fileSystem,
+    IOptions<GlobalSettings> globalSettings,
+    ILogger<DownloaderFactory> logger)
 {
-    private readonly IFileSystem _fileSystem;
-    private readonly GlobalSettings _globalSettings;
-    private readonly ILogger<DownloaderFactory> _logger;
-
-    public DownloaderFactory(IFileSystem fileSystem, IOptions<GlobalSettings> globalSettings, ILogger<DownloaderFactory> logger)
-    {
-        _fileSystem = fileSystem;
-        _globalSettings = globalSettings.Value;
-        _logger = logger;
-    }
+    private readonly GlobalSettings _globalSettings = globalSettings.Value;
 
     private readonly List<Downloader> _downloaders = new();
 
@@ -27,18 +21,18 @@ public class DownloaderFactory
             return _downloaders;
         }
 
-        var path = _fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
-        var downloaders = _fileSystem.DirectoryInfo.New(path);
+        var path = fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
+        var downloaders = fileSystem.DirectoryInfo.New(path);
 
         if (!downloaders.Exists)
         {
-            _logger.LogError("Downloader folder doesn't exist");
+            logger.LogError("Downloader folder doesn't exist");
             throw new InvalidOperationException("Downloader folder doesn't exist");
         }
 
         foreach (var subdir in downloaders.EnumerateDirectories())
         {
-            _logger.LogInformation("Creating downloader from {DownloaderDirectory}", subdir.Name);
+            logger.LogInformation("Creating downloader from {DownloaderDirectory}", subdir.Name);
 
             var files = subdir.EnumerateFiles("*.lua", SearchOption.TopDirectoryOnly).ToList();
 
@@ -53,7 +47,7 @@ public class DownloaderFactory
             _downloaders.Add(downloader);
         }
 
-        _logger.LogInformation("Created {DownloaderCount} downloaders", _downloaders.Count);
+        logger.LogInformation("Created {DownloaderCount} downloaders", _downloaders.Count);
 
         return _downloaders;
     }
@@ -70,15 +64,15 @@ public class DownloaderFactory
         {
             var file = sources.SingleOrDefault(s =>
             {
-                var clean = _fileSystem.Path.GetFileNameWithoutExtension(s.Name).ToLower();
+                var clean = fileSystem.Path.GetFileNameWithoutExtension(s.Name).ToLower();
                 return string.Equals(clean, name, StringComparison.InvariantCultureIgnoreCase);
             });
 
             if (file is null) continue;
 
-            _logger.LogInformation("Read file content for {LuaFile}", file.Name);
+            logger.LogInformation("Read file content for {LuaFile}", file.Name);
 
-            var raw = await _fileSystem.File.ReadAllTextAsync(file.FullName);
+            var raw = await fileSystem.File.ReadAllTextAsync(file.FullName);
 
             if (name is "metadata")
             {
@@ -97,11 +91,11 @@ public class DownloaderFactory
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error loading raw Lua string");
+                logger.LogError(e, "Error loading raw Lua string");
                 return null;
             }
 
-            _logger.LogInformation("Instantiated Lua from {LuaFile}", file.Name);
+            logger.LogInformation("Instantiated Lua from {LuaFile}", file.Name);
             functions.Add(name, lua);
         }
 
@@ -118,7 +112,7 @@ public class DownloaderFactory
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error extracting metadata");
+            logger.LogError(e, "Error extracting metadata");
             return null;
         }
 

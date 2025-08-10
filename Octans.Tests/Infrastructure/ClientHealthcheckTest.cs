@@ -13,21 +13,13 @@ namespace Octans.Tests;
 /// <summary>
 /// The actual value of these tests is checking if DI is set up correctly for the client project.
 /// </summary>
-public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.Client.Program>>, IAsyncLifetime
+public class ClientHealthcheckTest(WebApplicationFactory<Octans.Client.Program> factory, ITestOutputHelper helper)
+    : IClassFixture<WebApplicationFactory<Octans.Client.Program>>, IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Octans.Client.Program> _factory;
-    private readonly ITestOutputHelper _helper;
-
-    public ClientHealthcheckTest(WebApplicationFactory<Octans.Client.Program> factory, ITestOutputHelper helper)
-    {
-        _factory = factory;
-        _helper = helper;
-    }
-
     [Fact]
     public async Task HealthcheckEndpointServesResponse()
     {
-        var client = _factory.CreateClient();
+        var client = factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health"));
 
@@ -35,7 +27,7 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
         // depending on the state of the API, but the endpoint itself should work
         var result = await response.Content.ReadAsStringAsync();
 
-        _helper.WriteLine($"Health check result: {result}");
+        helper.WriteLine($"Health check result: {result}");
 
         result.Should().NotBeNullOrEmpty();
     }
@@ -92,7 +84,7 @@ public class ClientHealthcheckTest : IClassFixture<WebApplicationFactory<Octans.
 
         mockApi.HealthCheck().Returns(Task.FromResult(apiResponse));
 
-        var client = _factory
+        var client = factory
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureServices(services =>

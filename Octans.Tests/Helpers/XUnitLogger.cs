@@ -4,17 +4,8 @@ using Xunit.Abstractions;
 namespace Octans.Tests;
 
 
-public class XUnitLogger : ILogger
+public class XUnitLogger(ITestOutputHelper testOutputHelper, string categoryName) : ILogger
 {
-    private readonly ITestOutputHelper _testOutputHelper;
-    private readonly string _categoryName;
-
-    public XUnitLogger(ITestOutputHelper testOutputHelper, string categoryName)
-    {
-        _testOutputHelper = testOutputHelper;
-        _categoryName = categoryName;
-    }
-
     public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
     public bool IsEnabled(LogLevel logLevel) => true;
@@ -23,27 +14,20 @@ public class XUnitLogger : ILogger
     {
         if (exception is not null)
         {
-            _testOutputHelper.WriteLine(exception.Message);
-            _testOutputHelper.WriteLine(exception.StackTrace);
+            testOutputHelper.WriteLine(exception.Message);
+            testOutputHelper.WriteLine(exception.StackTrace);
         }
 
         var message = formatter(state, exception);
-        _testOutputHelper.WriteLine($"{DateTime.UtcNow:o} {logLevel} {_categoryName} - {message}");
+        testOutputHelper.WriteLine($"{DateTime.UtcNow:o} {logLevel} {categoryName} - {message}");
     }
 }
 
-public sealed class XUnitLoggerProvider : ILoggerProvider
+public sealed class XUnitLoggerProvider(ITestOutputHelper testOutputHelper) : ILoggerProvider
 {
-    private readonly ITestOutputHelper _testOutputHelper;
-
-    public XUnitLoggerProvider(ITestOutputHelper testOutputHelper)
-    {
-        _testOutputHelper = testOutputHelper;
-    }
-
     public ILogger CreateLogger(string categoryName)
     {
-        return new XUnitLogger(_testOutputHelper, categoryName);
+        return new XUnitLogger(testOutputHelper, categoryName);
     }
 
     public void Dispose()

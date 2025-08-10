@@ -5,26 +5,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Octans.Server;
 
-public class FileFinder
+public class FileFinder(SubfolderManager subfolderManager, ServerDbContext context)
 {
-    private readonly SubfolderManager _subfolderManager;
-    private readonly ServerDbContext _context;
-
-    public FileFinder(SubfolderManager subfolderManager, ServerDbContext context)
-    {
-        _subfolderManager = subfolderManager;
-        _context = context;
-    }
-
-
     public async Task<List<HashItem>> GetAll()
     {
-        return await _context.Hashes.ToListAsync();
+        return await context.Hashes.ToListAsync();
     }
 
     public async Task<string?> GetFile(int id)
     {
-        var hashItem = await _context.FindAsync<HashItem>(id);
+        var hashItem = await context.FindAsync<HashItem>(id);
 
         if (hashItem is null)
         {
@@ -33,7 +23,7 @@ public class FileFinder
 
         var hashed = HashedBytes.FromHashed(hashItem.Hash);
 
-        var subfolder = _subfolderManager.GetSubfolder(hashed);
+        var subfolder = subfolderManager.GetSubfolder(hashed);
 
         return Directory
             .EnumerateFiles(subfolder.AbsolutePath)
@@ -42,13 +32,13 @@ public class FileFinder
 
     public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)
     {
-        var found = _context.Tags
+        var found = context.Tags
             .Where(t =>
                 tags.Any(tag =>
                 tag.Namespace.Value == t.Namespace.Value && tag.Subtag.Value == t.Namespace.Value));
 
         var query =
-            from mapping in _context.Mappings
+            from mapping in context.Mappings
             join tag in found on mapping.Tag equals tag
             select mapping.Hash;
 

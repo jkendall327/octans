@@ -7,17 +7,8 @@ public record DeleteResult(int Id, bool Success, string? Error);
 public record DeleteRequest(IEnumerable<int> Ids);
 public record DeleteResponse(List<DeleteResult> Results);
 
-public class FileDeleter
+public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext context)
 {
-    private readonly SubfolderManager _subfolderManager;
-    private readonly ServerDbContext _context;
-
-    public FileDeleter(SubfolderManager subfolderManager, ServerDbContext context)
-    {
-        _subfolderManager = subfolderManager;
-        _context = context;
-    }
-
     public async Task<List<DeleteResult>> ProcessDeletion(IEnumerable<int> request)
     {
         var results = new List<DeleteResult>();
@@ -28,14 +19,14 @@ public class FileDeleter
             results.Add(result);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return results;
     }
 
     private async Task<DeleteResult> DeleteFile(int id)
     {
-        var entry = await _context.Hashes.FindAsync(id);
+        var entry = await context.Hashes.FindAsync(id);
 
         if (entry is null)
         {
@@ -44,14 +35,14 @@ public class FileDeleter
 
         var hashed = HashedBytes.FromHashed(entry.Hash);
 
-        var file = _subfolderManager.GetFilepath(hashed);
+        var file = subfolderManager.GetFilepath(hashed);
 
         if (file?.Exists == true)
         {
             file.Delete();
         }
 
-        var thumbnail = _subfolderManager.GetThumbnail(hashed);
+        var thumbnail = subfolderManager.GetThumbnail(hashed);
 
         if (thumbnail?.Exists == true)
         {
