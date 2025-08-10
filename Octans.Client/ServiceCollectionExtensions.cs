@@ -1,4 +1,6 @@
 using System.IO.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Octans.Client.Components.Pages;
@@ -6,6 +8,8 @@ using Octans.Client.HealthChecks;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Infrastructure;
+using Octans.Core.Models;
+using Octans.Server.Services;
 using Refit;
 
 namespace Octans.Client;
@@ -20,11 +24,37 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SubfolderManager>();
         services.AddTransient<OctansApiHealthCheck>();
         services.AddSingleton<StorageService>();
+        services.AddScoped<StatsService>();
 
         services.AddHealthChecks()
             .AddCheck<OctansApiHealthCheck>("octans-api");
 
         return services;
+    }
+    
+    public static void AddDatabase(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddDbContextFactory<ServerDbContext>(BuildDatabase);
+        builder.Services.AddDbContext<ServerDbContext>(BuildDatabase, optionsLifetime: ServiceLifetime.Singleton);
+
+        builder.Services
+            .AddHealthChecks()
+            .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
+    }
+
+    private static void BuildDatabase(IServiceProvider s, DbContextOptionsBuilder opt)
+    {
+        var config = s.GetRequiredService<IOptions<GlobalSettings>>();
+
+        var root = config.Value.AppRoot;
+
+        var path = s.GetRequiredService<IFileSystem>().Path;
+
+        var dbFolder = path.Join(root, "db");
+
+        var db = path.Join(dbFolder, "octans.db");
+
+        opt.UseSqlite($"Data Source={db};");
     }
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)

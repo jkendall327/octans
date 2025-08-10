@@ -11,6 +11,7 @@ builder.Services
 builder.Services.AddInfrastructure();
 builder.Services.AddHttpClients();
 builder.Services.AddOctansServices();
+builder.AddDatabase();
 builder.Services.AddViewmodels();
 
 builder.SetupConfiguration();
