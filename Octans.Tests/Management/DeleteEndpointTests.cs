@@ -6,7 +6,7 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class DeleteEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class DeleteEndpointTests(WebApplicationFactory<Client.Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task Delete_ExistingFile_ReturnsSuccessAndRemovesFile()

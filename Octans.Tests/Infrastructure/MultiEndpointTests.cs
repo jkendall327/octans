@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class MultiEndpointIntegrationTests(WebApplicationFactory<Client.Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
