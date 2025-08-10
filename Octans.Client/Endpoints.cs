@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
@@ -23,11 +24,14 @@ internal static class Endpoints
 
     private static void MapTagEndpoints(WebApplication app)
     {
-        app.MapPost("/tags", async (UpdateTagsRequest request, TagUpdater updater) =>
-            {
-                var success = await updater.UpdateTags(request);
-                return success ? Results.Ok() : Results.BadRequest();
-            })
+        app
+            .MapPost("/tags",
+                async ([FromBody] UpdateTagsRequest request, [FromServices] TagUpdater updater) =>
+                {
+                    var success = await updater.UpdateTags(request);
+
+                    return success ? Results.Ok() : Results.BadRequest();
+                })
             .WithName("UpdateTags")
             .WithDescription("Add and remove tags for a specific image")
             .WithOpenApi();
@@ -35,69 +39,80 @@ internal static class Endpoints
 
     private static void MapDownloaderEndpoints(WebApplication app)
     {
-        app.MapGet("/downloaders", async (DownloaderFactory ds) =>
-        {
-            var downloaders = await ds.GetDownloaders();
-            return downloaders.Select(d => d.Metadata);
-        });
+        app.MapGet("/downloaders",
+            async ([FromServices] DownloaderFactory ds) =>
+            {
+                var downloaders = await ds.GetDownloaders();
 
-        app.MapGet("/downloaders/{name}", async (string name, DownloaderFactory ds) =>
-        {
-            var downloaders = await ds.GetDownloaders();
+                return downloaders.Select(d => d.Metadata);
+            });
 
-            var downloader = downloaders.SingleOrDefault(s => s.Metadata.Name == name);
+        app.MapGet("/downloaders/{name}",
+            async (string name, [FromServices] DownloaderFactory ds) =>
+            {
+                var downloaders = await ds.GetDownloaders();
 
-            return downloader;
-        });
+                var downloader = downloaders.SingleOrDefault(s => s.Metadata.Name == name);
+
+                return downloader;
+            });
     }
 
     private static void MapFileEndpoints(WebApplication app)
     {
-        app.MapGet("/files", async (FileFinder service) => await service.GetAll());
+        app.MapGet("/files", async ([FromServices] FileFinder service) => await service.GetAll());
 
-        app.MapGet("/files/{id:int}", async (int id, FileFinder service) =>
-            {
-                var file = await service.GetFile(id);
+        app
+            .MapGet("/files/{id:int}",
+                async (int id, [FromServices] FileFinder service) =>
+                {
+                    var file = await service.GetFile(id);
 
-                return file is null ? Results.NotFound() : Results.Ok(file);
-            })
+                    return file is null ? Results.NotFound() : Results.Ok(file);
+                })
             .WithDescription("Get a single file by its ID")
             .WithOpenApi();
 
-        app.MapPost("/files/query",
-                async (IEnumerable<string> queries, QueryService service) => await service.Query(queries))
+        app
+            .MapPost("/files/query",
+                async ([FromBody] IEnumerable<string> queries, [FromServices] QueryService service) =>
+                await service.Query(queries))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();
 
-        app.MapPost("/files",
-                async (ImportRequest request, ImportRouter service, CancellationToken token) => await service.ProcessImport(request, token))
+        app
+            .MapPost("/files",
+                async ([FromBody] ImportRequest request,
+                    [FromServices] ImportRouter service,
+                    CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
             .WithDescription("Processes an import request")
             .WithOpenApi();
 
-        app.MapPost("/files/deletion", async (DeleteRequest request, FileDeleter deleter) =>
-            {
-                var results = await deleter.ProcessDeletion(request.Ids);
+        app
+            .MapPost("/files/deletion",
+                async ([FromBody] DeleteRequest request, [FromServices] FileDeleter deleter) =>
+                {
+                    var results = await deleter.ProcessDeletion(request.Ids);
 
-                return new DeleteResponse(results);
-            })
+                    return new DeleteResponse(results);
+                })
             .WithDescription("Delete one or more files and their associated data")
             .WithOpenApi();
     }
 
     private static void MapInfrastructureEndpoints(WebApplication app)
     {
-        app.MapPost("/subscriptions", () =>
-            {
-                throw new NotImplementedException("Subscription endpoint not yet implemented");
-            })
+        app
+            .MapPost("/subscriptions",
+                () => { throw new NotImplementedException("Subscription endpoint not yet implemented"); })
             .WithName("SubmitSubscription")
             .WithDescription("Submits a subscription request for automated queries")
             .WithOpenApi();
 
         app.MapPost("/clearAllData",
-            async (ServerDbContext db) =>
+            async ([FromServices] ServerDbContext db) =>
             {
                 db.Hashes.RemoveRange(db.Hashes);
                 db.Mappings.RemoveRange(db.Mappings);
@@ -111,27 +126,35 @@ internal static class Endpoints
                 await db.SaveChangesAsync();
             });
 
-        app.MapHealthChecks("/health", new()
-        {
-            ResponseWriter = async (context, report) =>
+        app.MapHealthChecks("/health",
+            new()
             {
-                context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(report.Status.ToString());
-            }
-        });
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "text/plain";
+                    await context.Response.WriteAsync(report.Status.ToString());
+                }
+            });
 
-        app.MapGet("/stats", async (StatsService statsService) => await statsService.GetHomeStats())
+        app
+            .MapGet("/stats", async ([FromServices] StatsService statsService) => await statsService.GetHomeStats())
             .WithName("GetHomeStats")
             .WithDescription("Returns statistics for the homepage")
             .WithOpenApi();
 
-        app.MapGet("/version", () => new { Version = "1.0.0" })
+        app
+            .MapGet("/version",
+                () => new
+                {
+                    Version = "1.0.0"
+                })
             .WithName("GetVersion")
             .WithDescription("Returns the current API version")
             .WithOpenApi();
 
-        app.MapGet("/config", (IConfiguration config) =>
-                new
+        app
+            .MapGet("/config",
+                ([FromServices] IConfiguration config) => new
                 {
                     DatabaseRoot = config["DatabaseRoot"],
                     Environment = config["ASPNETCORE_ENVIRONMENT"],
