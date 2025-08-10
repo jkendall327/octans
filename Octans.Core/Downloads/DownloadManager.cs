@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads;
 
 namespace Octans.Server;
