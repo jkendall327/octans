@@ -8,7 +8,7 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
 {
     private CancellationTokenSource _cts = new();
 
-    public List<string> ImagePaths { get; private set; } = [];
+    public List<string> ImageUrls { get; private set; } = [];
     public bool Searching { get; private set; }
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
@@ -22,7 +22,7 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
 
         LastError = null;
         Searching = true;
-        ImagePaths = [];
+        ImageUrls = [];
 
         await NotifyStateChanged();
 
@@ -32,16 +32,14 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
 
             await foreach (var result in service.Query(raw, _cts.Token))
             {
-                var info = manager.GetFilepath(HashedBytes.FromUnhashed(result.Hash));
+                // Build a stable, lower-case hex string for the route
+                var hex = Convert.ToHexString(result.Hash).ToLowerInvariant();
 
-                if (info is null)
-                {
-                    continue;
-                }
+                var url = $"/media/{hex}";
 
-                ImagePaths.Add(info.FullName);
+                ImageUrls.Add(url);
 
-                if (ImagePaths.Count % 5 == 0)
+                if (ImageUrls.Count % 8 == 0)
                 {
                     await NotifyStateChanged();
                 }

@@ -17,13 +17,17 @@
 </section>
 
 <div class="gallery-container">
-    @if (Viewmodel.ImagePaths.Any())
+    @if (Viewmodel.ImageUrls.Any())
     {
         <div class="image-grid">
-            @foreach (var imagePath in Viewmodel.ImagePaths)
+            @foreach (var url in Viewmodel.ImageUrls)
             {
                 <div class="image-card">
-                    <img src="@imagePath" alt="Gallery image"/>
+                    <img src="@url"
+                         alt="Gallery image"
+                         loading="lazy"
+                         decoding="async"
+                         referrerpolicy="no-referrer" />
                 </div>
             }
         </div>

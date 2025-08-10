@@ -168,60 +168,50 @@ internal static class Endpoints
 
     public static void MapImageEndpoints(this WebApplication app)
     {
-        // for fallback MIME guessing
-        var provider = new FileExtensionContentTypeProvider();
-
         app.MapGet("/media/{hash}",
-            (string hash, SubfolderManager manager) =>
+            (HttpContext http, string hash, [FromServices] SubfolderManager manager) =>
             {
-                // Basic input hygiene
-                if (string.IsNullOrWhiteSpace(hash) || hash.Length < 6 || hash.Length > 128)
+                if (string.IsNullOrWhiteSpace(hash))
                 {
                     return Results.BadRequest("Invalid hash.");
                 }
 
-                // Try parse hex
-                byte[] bytes;
+                byte[] unhashedBytes;
 
                 try
                 {
-                    bytes = Convert.FromHexString(hash);
+                    unhashedBytes = Convert.FromHexString(hash);
                 }
                 catch
                 {
                     return Results.BadRequest("Hash must be hex.");
                 }
 
-                var info = manager.GetFilepath(HashedBytes.FromUnhashed(bytes));
+                var info = manager.GetFilepath(HashedBytes.FromUnhashed(unhashedBytes));
 
                 if (info is null || !info.Exists)
                 {
                     return Results.NotFound();
                 }
 
-                // Detect content type (fallback to application/octet-stream)
+                var provider = new FileExtensionContentTypeProvider();
+
                 if (!provider.TryGetContentType(info.FullName, out var contentType))
                 {
                     contentType = "application/octet-stream";
                 }
 
-                // ETag + Last-Modified for caching
-                var lastWriteUtc = info.LastWriteTimeUtc;
+                // ETag derived from the content hash you're already using.
+                // (Quotes are required around the tag string.)
+                var etag = new EntityTagHeaderValue($"\"{hash.ToLowerInvariant()}\"");
 
-                // var length = info.Length;
-                // var etagValue = $"\"{length:x}-{lastWriteUtc.Ticks:x}\""; // weak-ish but stable per file version
-                // var etag = new EntityTagHeaderValue(etagValue);
+                http.Response.Headers[HeaderNames.CacheControl] = "public, max-age=31536000, immutable";
 
-                // Stream the physical file with range support — WITHOUT exposing the path in the URL
                 return Results.File(path: info.FullName,
                     contentType: contentType,
-                    lastModified: lastWriteUtc,
-
-                    //entityTag: etag,
+                    lastModified: info.LastWriteTimeUtc,
+                    entityTag: etag,
                     enableRangeProcessing: true);
-
-                // Strong caching (tune as you like)
-                //.WithHeader(HeaderNames.CacheControl, "public, max-age=31536000, immutable");
             });
     }
 }
