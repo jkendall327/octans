@@ -1,15 +1,16 @@
 @page "/gallery"
 @using Octans.Client.Components.Pages
 @inject GalleryViewmodel Viewmodel
+@implements IAsyncDisposable
 
 <h3>Gallery</h3>
 
 <section class="querying">
-    <QueryBuilder 
+    <QueryBuilder
         OnQueryChanged="@Viewmodel.OnQueryChanged"
         OnCancellationRequested="@Viewmodel.OnCancel"
         CanCancel="@Viewmodel.Searching"
-        />
+    />
 </section>
 
 <div class="gallery-container">
@@ -24,6 +25,10 @@
             }
         </div>
     }
+    else if (!string.IsNullOrWhiteSpace(Viewmodel.LastError))
+    {
+        <p>@Viewmodel.LastError</p>
+    }
     else if (Viewmodel.Searching)
     {
         <p>Searching...</p>
@@ -33,3 +38,22 @@
         <p>No images found.</p>
     }
 </div>
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        Viewmodel.StateChanged += OnViewmodelOnStateChanged;
+    }
+
+    private async Task OnViewmodelOnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Viewmodel.StateChanged -= OnViewmodelOnStateChanged;
+        await Viewmodel.DisposeAsync();
+    }
+}
