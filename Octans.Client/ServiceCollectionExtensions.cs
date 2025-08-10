@@ -33,7 +33,7 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
-    
+
     public static void AddInfrastructure(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<IFileSystem>(new FileSystem());
@@ -155,7 +155,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddOptions<ThumbnailOptions>()
             .BindConfiguration(ThumbnailOptions.ConfigurationSectionName)
             .ValidateDataAnnotations();
-        
+
         builder.Services.AddOptions<ImportFolderOptions>()
             .BindConfiguration(ImportFolderOptions.ConfigurationSectionName)
             .ValidateDataAnnotations();

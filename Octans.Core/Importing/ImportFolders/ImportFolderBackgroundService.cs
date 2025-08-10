@@ -1,19 +1,19 @@
 using System.IO.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Octans.Core.Communication;
 
 namespace Octans.Core.Importing;
 
 public sealed class ImportFolderBackgroundService(
     IOptions<ImportFolderOptions> options,
-    IOctansApi client,
+    IServiceScopeFactory scopeFactory,
     IFileSystem fileSystem,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
     private readonly string[] _importFolders = options.Value.Directories.ToArray();
-    private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
+    private static readonly HashSet<string> ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -21,7 +21,7 @@ public sealed class ImportFolderBackgroundService(
         {
             return;
         }
-        
+
         using var timer = new PeriodicTimer(options.Value.Period);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -38,10 +38,10 @@ public sealed class ImportFolderBackgroundService(
         {
             Items = new(),
             ImportType = ImportType.File,
-            DeleteAfterImport = true,
+            DeleteAfterImport = options.Value.DeleteAfterImport,
             FilterData = new()
             {
-                AllowedFileTypes = [".jpg", ".jpeg", ".png", ".gif"]
+                AllowedFileTypes = ImageExtensions
             }
         };
 
@@ -50,16 +50,19 @@ public sealed class ImportFolderBackgroundService(
             if (!fileSystem.Directory.Exists(folder))
             {
                 logger.LogWarning("Import folder does not exist: {Folder}", folder);
+
                 continue;
             }
 
-            var imports = fileSystem.Directory
+            var imports = fileSystem
+                .Directory
                 .GetFiles(folder, "*.*", SearchOption.AllDirectories)
                 .Where(IsImageFile)
                 .Select(file => new ImportItem
                 {
                     Source = new(file)
-                }).ToList();
+                })
+                .ToList();
 
             request.Items.AddRange(imports);
         }
@@ -71,7 +74,11 @@ public sealed class ImportFolderBackgroundService(
     {
         try
         {
-            var response = await client.ProcessImport(importRequest);
+            await using var scope = scopeFactory.CreateAsyncScope();
+
+            var router = scope.ServiceProvider.GetRequiredService<ImportRouter>();
+
+            var response = await router.ProcessImport(importRequest, stoppingToken);
 
             logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
         }
@@ -83,7 +90,11 @@ public sealed class ImportFolderBackgroundService(
 
     private bool IsImageFile(string filePath)
     {
-        var extension = fileSystem.Path.GetExtension(filePath).ToLowerInvariant();
+        var extension = fileSystem
+            .Path
+            .GetExtension(filePath)
+            .ToLowerInvariant();
+
         return ImageExtensions.Contains(extension);
     }
 }
