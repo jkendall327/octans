@@ -15,6 +15,11 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
 
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
+        // Cancel previous run
+        await _cts.CancelAsync();
+        _cts.Dispose();
+        _cts = new();
+
         LastError = null;
         Searching = true;
         ImagePaths = [];
@@ -25,14 +30,10 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
         {
             var raw = arg.Select(s => s.Raw);
 
-            var results = service.Query(raw, _cts.Token);
-
-            var i = 0;
-
-            await foreach (var result in results)
+            await foreach (var result in service.Query(raw, _cts.Token))
             {
                 var info = manager.GetFilepath(HashedBytes.FromUnhashed(result.Hash));
-
+                
                 if (info is null)
                 {
                     continue;
@@ -40,14 +41,15 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
 
                 ImagePaths.Add(info.FullName);
 
-                i++;
-
-                if (i >= 5)
+                if (ImagePaths.Count % 5 == 0)
                 {
                     await NotifyStateChanged();
-                    i = 0;
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // Swallow.
         }
         catch (Exception e)
         {
@@ -72,7 +74,6 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
     public async Task OnCancel()
     {
         await _cts.CancelAsync();
-        _cts = new();
     }
 
     public async ValueTask DisposeAsync()

@@ -75,8 +75,7 @@ internal static class Endpoints
 
         app
             .MapPost("/files/query",
-                async ([FromBody] IEnumerable<string> queries, [FromServices] QueryService service) =>
-                await service.Query(queries))
+                ([FromBody] IEnumerable<string> queries, [FromServices] QueryService service) => service.Query(queries))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search")
             .WithOpenApi();
