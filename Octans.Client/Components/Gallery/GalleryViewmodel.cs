@@ -1,38 +1,51 @@
 using System.IO.Abstractions;
 using Octans.Core;
-using Octans.Core.Communication;
+using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Pages;
 
-public class GalleryViewmodel(IOctansApi client, SubfolderManager manager)
+public sealed class GalleryViewmodel(QueryService service, SubfolderManager manager) : IAsyncDisposable
 {
-    public string SearchTerm { get; set; } = string.Empty;
-    
-    public List<string> ImagePaths { get; private set; } = new();
-    public const int MaxImages = 10;
+    private readonly CancellationTokenSource _cts = new();
+    public List<string> ImagePaths { get; private set; } = [];
     public const int ThumbnailWidth = 300;
     public const int ThumbnailHeight = 200;
 
-    public async Task GetAllImages()
+    public bool Searching { get; set; }
+
+    public async Task OnQueryChanged(List<QueryParameter> arg)
     {
-        var response = await client.GetAllFiles();
+        Searching = true;
 
-        var items = response.Content ?? throw new ArgumentNullException(nameof(response.Content));
+        try
+        {
 
-        var hashed = items.Select(x => HashedBytes.FromHashed(x.Hash));
+            var results = await service.Query(arg.Select(s => s.Raw));
 
-        var paths = hashed
-            .Select(manager.GetFilepath)
-            .OfType<IFileSystemInfo>()
-            .Select(x => x.FullName)
-            .ToList();
+            var paths = results
+                .Select(s => HashedBytes.FromUnhashed(s.Hash))
+                .Select(manager.GetFilepath)
+                .OfType<IFileSystemInfo>()
+                .Select(x => x.FullName)
+                .ToList();
 
-        ImagePaths = paths.Take(MaxImages).ToList();
+            ImagePaths = paths.ToList();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+
+            throw;
+        }
+        finally
+        {
+            Searching = false;
+        }
     }
 
-    public Task SearchAsync()
+    public async ValueTask DisposeAsync()
     {
-        ImagePaths = [];
-        return Task.CompletedTask;
+        await _cts.CancelAsync();
+        _cts.Dispose();
     }
 }

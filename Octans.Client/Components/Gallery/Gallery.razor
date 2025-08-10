@@ -5,8 +5,7 @@
 <h3>Gallery</h3>
 
 <section class="querying">
-    <input @bind="Viewmodel.SearchTerm" placeholder="Provide a query..."/>
-    <button @onclick="OnSearch">Search</button>
+    <QueryBuilder OnParametersChanged="@Viewmodel.OnQueryChanged"/>
 </section>
 
 <div class="gallery-container">
@@ -16,27 +15,17 @@
             @foreach (var imagePath in Viewmodel.ImagePaths)
             {
                 <div class="image-card">
-                    <img src="@imagePath" alt="Gallery image" />
+                    <img src="@imagePath" alt="Gallery image"/>
                 </div>
             }
         </div>
+    }
+    else if (Viewmodel.Searching)
+    {
+        <p>Searching...</p>
     }
     else
     {
         <p>No images found.</p>
     }
 </div>
-
-@code {
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Viewmodel.GetAllImages();
-        await base.OnInitializedAsync();
-    }
-
-    private async Task OnSearch()
-    {
-        await Viewmodel.SearchAsync();
-    }
-}

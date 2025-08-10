@@ -1,0 +1,184 @@
+@using Octans.Client.Components.Pages
+
+<div class="qb-root">
+  <div class="qb-parameters" role="list" aria-label="Active query parameters">
+    @if (_parameters.Count == 0)
+    {
+      <div class="qb-empty">No parameters yet.</div>
+    }
+    else
+    {
+      @foreach (var item in _parameters.Select((val, idx) => new
+                  {
+                    val,
+                    idx
+                  }))
+      {
+        var colorClass = item.val.Kind == QueryKind.System ? "qb-param-system" : "qb-param-normal";
+        <div class="qb-param @colorClass" role="listitem" title="Double‑click to remove"
+             ondblclick="@(() => RemoveAt(item.idx))">
+          @item.val.Raw
+        </div>
+      }
+    }
+  </div>
+
+  <div class="qb-inputbar">
+    <input 
+      class="qb-input" 
+      placeholder="Type a parameter and press Enter" 
+      @bind="_current" 
+      @bind:event="oninput"
+      @onkeydown="HandleKeyDown"/>
+    
+    <!-- Placeholder buttons -->
+    <button class="qb-btn" title="Reserved"><span aria-hidden="true">📄</span></button>
+    <button class="qb-btn" title="Reserved"><span aria-hidden="true">⭐</span></button>
+    <button class="qb-btn" title="Reserved"><span aria-hidden="true">🔒</span></button>
+  </div>
+</div>
+
+@code {
+
+  [Parameter] public EventCallback<List<QueryParameter>> OnParametersChanged { get; set; }
+
+  [Parameter] public IEnumerable<QueryParameter>? InitialParameters { get; set; }
+
+  private readonly List<QueryParameter> _parameters = new();
+  private string _current = string.Empty;
+  private bool _initialized;
+
+  protected override void OnParametersSet()
+  {
+    if (_initialized || InitialParameters is null) return;
+
+    _parameters.Clear();
+    _parameters.AddRange(InitialParameters);
+    _initialized = true;
+  }
+
+  private async Task HandleKeyDown(KeyboardEventArgs e)
+  {
+    if (e.Key == "Enter")
+    {
+      await AddCurrentAsync();
+    }
+  }
+
+  private async Task AddCurrentAsync()
+  {
+    var trimmed = _current.Trim();
+
+    if (!string.IsNullOrWhiteSpace(trimmed))
+    {
+      var kind = trimmed.StartsWith("system:", StringComparison.OrdinalIgnoreCase) ? QueryKind.System : QueryKind.Normal;
+      _parameters.Add(new(trimmed, kind));
+      _current = string.Empty;
+      await NotifyChangedAsync();
+    }
+  }
+
+  private async Task RemoveAt(int index)
+  {
+    if (index >= 0 && index < _parameters.Count)
+    {
+      _parameters.RemoveAt(index);
+      await NotifyChangedAsync();
+    }
+  }
+
+  private Task NotifyChangedAsync()
+  {
+    return OnParametersChanged.HasDelegate ? OnParametersChanged.InvokeAsync(_parameters.ToList()) : Task.CompletedTask;
+  }
+
+}
+
+<style>
+  .qb-root {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: .5rem;
+    background: #1f1f1f;
+    color: #dcdcdc;
+    border-radius: .5rem;
+    padding: .5rem;
+    border: 1px solid #2a2a2a;
+    max-width: 720px;
+  }
+
+  .qb-parameters {
+    background: #121212;
+    border: 1px solid #2a2a2a;
+    border-radius: .25rem;
+    padding: .5rem;
+    min-height: 4rem;
+    overflow-y: auto;
+  }
+
+  .qb-empty {
+    opacity: .6;
+    font-style: italic;
+  }
+
+  .qb-param {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    margin: .2rem 0;
+    padding: .35rem .5rem;
+    border-radius: .25rem;
+    background: #0d0d0d;
+    border: 1px solid #3d2a00;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .qb-param-normal {
+    color: #d39b2d;
+  }
+
+  .qb-param-system {
+    color: #4da3ff;
+  }
+
+  .qb-param:hover {
+    filter: brightness(1.1);
+  }
+
+  .qb-inputbar {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: .25rem;
+    align-items: center;
+    background: #121212;
+    border: 1px solid #2a2a2a;
+    border-radius: .25rem;
+    padding: .25rem;
+  }
+
+  .qb-input {
+    background: #0b0b0b;
+    border: 1px solid #2a2a2a;
+    color: #e8e8e8;
+    outline: none;
+    border-radius: .25rem;
+    padding: .4rem .5rem;
+  }
+
+  .qb-input:focus {
+    border-color: #4d4d4d;
+  }
+
+  .qb-btn {
+    height: 2rem;
+    width: 2rem;
+    border-radius: .25rem;
+    border: 1px solid #2a2a2a;
+    background: #0b0b0b;
+    color: #cfcfcf;
+    cursor: default;
+  }
+
+  .qb-btn:active {
+    transform: translateY(1px);
+  }
+</style>
