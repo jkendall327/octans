@@ -4,7 +4,7 @@
 @inject StorageService StorageService
 
 <div class="file-input-wrapper">
-    <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="LocalFiles">
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="Viewmodel.LocalFiles">
         <ActivatorContent>
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
@@ -15,11 +15,11 @@
     </MudFileUpload>
 </div>
 
-@if (LocalFiles.Count > 0)
+@if (Viewmodel.LocalFiles.Count > 0)
 {
     <div class="file-list">
-        <h5>Selected Files (@LocalFiles.Count):</h5>
-        @foreach (var file in LocalFiles)
+        <h5>Selected Files (@Viewmodel.LocalFiles.Count):</h5>
+        @foreach (var file in Viewmodel.LocalFiles)
         {
             <div class="file-item">
                 <span>@file.Name</span>
@@ -29,17 +29,15 @@
     </div>
 }
 
-<MudButton Class="send-button" OnClick="@SendFiles" Disabled="@(LocalFiles.Count == 0)">
+<MudButton Class="send-button" OnClick="@SendFiles" Disabled="@(Viewmodel.LocalFiles.Count == 0)">
     Import
 </MudButton>
 
 @code {
-    private IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
-
     private async Task SendFiles()
     {
-        await Viewmodel.SendLocalFilesToServer(LocalFiles);
-        LocalFiles = new List<IBrowserFile>();
+        await Viewmodel.SendLocalFilesToServer(Viewmodel.LocalFiles);
+        Viewmodel.LocalFiles = new List<IBrowserFile>();
     }
 
     private string FormatFileSize(long bytes)

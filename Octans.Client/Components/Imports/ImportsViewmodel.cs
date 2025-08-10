@@ -8,11 +8,14 @@ namespace Octans.Client;
 public interface IRawUrlImportViewmodel
 {
     Task SendUrlsToServer(List<string> urls, ImportType importType, bool allowReimportDeleted);
+    string UrlInput { get; set; }
+    bool AllowReimportDeleted { get; set; }
 }
 
 public interface ILocalFileImportViewmodel
 {
     Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files);
+    IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
 }
 
 public class ImportsViewmodel(
@@ -21,6 +24,11 @@ public class ImportsViewmodel(
     IOctansApi client,
     ILogger<ImportsViewmodel> logger) : IRawUrlImportViewmodel, ILocalFileImportViewmodel
 {
+    public string UrlInput { get; set; } = string.Empty;
+    public bool AllowReimportDeleted { get; set; }
+    public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
+
+    
     public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
     {
         if (!files.Any()) return;

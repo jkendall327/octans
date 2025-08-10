@@ -3,7 +3,7 @@
 
 <div class="input-group">
     <textarea
-        @bind="_urlInput"
+        @bind="Viewmodel.UrlInput"
         placeholder="Enter URLs (one per line)"
         rows="5"
         class="url-input">
@@ -12,25 +12,23 @@
 
 <div class="import-options">
     <label class="option">
-        <input type="checkbox" @bind="_allowReimportDeleted"/>
+        <input type="checkbox" @bind="Viewmodel.AllowReimportDeleted"/>
         Allow reimport of deleted items
     </label>
 </div>
 
-<button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(_urlInput))">
+<button class="send-button" @onclick="@SendUrls" disabled="@(string.IsNullOrWhiteSpace(Viewmodel.UrlInput))">
     Import
 </button>
 
 @code {
-    private string _urlInput = string.Empty;
-    private bool _allowReimportDeleted;
 
     private async Task SendUrls()
     {
-        if (string.IsNullOrWhiteSpace(_urlInput))
+        if (string.IsNullOrWhiteSpace(Viewmodel.UrlInput))
             return;
 
-        var urls = _urlInput
+        var urls = Viewmodel.UrlInput
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(url => url.Trim())
             .Where(url => !string.IsNullOrWhiteSpace(url))
@@ -38,8 +36,8 @@
 
         if (urls.Count > 0)
         {
-            await Viewmodel.SendUrlsToServer(urls, ImportType.RawUrl, _allowReimportDeleted);
-            _urlInput = string.Empty;
+            await Viewmodel.SendUrlsToServer(urls, ImportType.RawUrl, Viewmodel.AllowReimportDeleted);
+            Viewmodel.UrlInput = string.Empty;
         }
     }
 
