@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Octans.Client;
 using Octans.Client.Components;
 using Octans.Server;
@@ -7,6 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddInfrastructure();
 builder.Services.AddHttpClients();
