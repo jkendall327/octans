@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Net.Http.Headers;
 using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Importing;
@@ -162,5 +164,64 @@ internal static class Endpoints
             .WithName("GetConfig")
             .WithDescription("Returns non-sensitive configuration settings")
             .WithOpenApi();
+    }
+
+    public static void MapImageEndpoints(this WebApplication app)
+    {
+        // for fallback MIME guessing
+        var provider = new FileExtensionContentTypeProvider();
+
+        app.MapGet("/media/{hash}",
+            (string hash, SubfolderManager manager) =>
+            {
+                // Basic input hygiene
+                if (string.IsNullOrWhiteSpace(hash) || hash.Length < 6 || hash.Length > 128)
+                {
+                    return Results.BadRequest("Invalid hash.");
+                }
+
+                // Try parse hex
+                byte[] bytes;
+
+                try
+                {
+                    bytes = Convert.FromHexString(hash);
+                }
+                catch
+                {
+                    return Results.BadRequest("Hash must be hex.");
+                }
+
+                var info = manager.GetFilepath(HashedBytes.FromUnhashed(bytes));
+
+                if (info is null || !info.Exists)
+                {
+                    return Results.NotFound();
+                }
+
+                // Detect content type (fallback to application/octet-stream)
+                if (!provider.TryGetContentType(info.FullName, out var contentType))
+                {
+                    contentType = "application/octet-stream";
+                }
+
+                // ETag + Last-Modified for caching
+                var lastWriteUtc = info.LastWriteTimeUtc;
+
+                // var length = info.Length;
+                // var etagValue = $"\"{length:x}-{lastWriteUtc.Ticks:x}\""; // weak-ish but stable per file version
+                // var etag = new EntityTagHeaderValue(etagValue);
+
+                // Stream the physical file with range support — WITHOUT exposing the path in the URL
+                return Results.File(path: info.FullName,
+                    contentType: contentType,
+                    lastModified: lastWriteUtc,
+
+                    //entityTag: etag,
+                    enableRangeProcessing: true);
+
+                // Strong caching (tune as you like)
+                //.WithHeader(HeaderNames.CacheControl, "public, max-age=31536000, immutable");
+            });
     }
 }

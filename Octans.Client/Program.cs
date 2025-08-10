@@ -49,6 +49,7 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.AddEndpoints();
+app.MapImageEndpoints();
 
 // Ensure subfolders are initialised.
 var manager = app.Services.GetRequiredService<SubfolderManager>();
