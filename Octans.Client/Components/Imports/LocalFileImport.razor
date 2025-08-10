@@ -1,0 +1,49 @@
+@using MudBlazor
+@using Octans.Core.Infrastructure
+@inject ILocalFileImportViewmodel Viewmodel
+@inject StorageService StorageService
+
+<div class="file-input-wrapper">
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="LocalFiles">
+        <ActivatorContent>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                Choose files
+            </MudButton>
+        </ActivatorContent>
+    </MudFileUpload>
+</div>
+
+@if (LocalFiles.Count > 0)
+{
+    <div class="file-list">
+        <h5>Selected Files (@LocalFiles.Count):</h5>
+        @foreach (var file in LocalFiles)
+        {
+            <div class="file-item">
+                <span>@file.Name</span>
+                <span>@FormatFileSize(file.Size)</span>
+            </div>
+        }
+    </div>
+}
+
+<MudButton Class="send-button" OnClick="@SendFiles" Disabled="@(LocalFiles.Count == 0)">
+    Import
+</MudButton>
+
+@code {
+    private IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
+
+    private async Task SendFiles()
+    {
+        await Viewmodel.SendLocalFilesToServer(LocalFiles);
+        LocalFiles = new List<IBrowserFile>();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        return StorageService.FormatFileSize(bytes);
+    }
+}

@@ -5,11 +5,21 @@ using Octans.Core.Importing;
 
 namespace Octans.Client;
 
+public interface IRawUrlImportViewmodel
+{
+    Task SendUrlsToServer(List<string> urls, ImportType importType, bool allowReimportDeleted);
+}
+
+public interface ILocalFileImportViewmodel
+{
+    Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files);
+}
+
 public class ImportsViewmodel(
     IFileSystem fileSystem,
     IWebHostEnvironment environment,
     IOctansApi client,
-    ILogger<ImportsViewmodel> logger)
+    ILogger<ImportsViewmodel> logger) : IRawUrlImportViewmodel, ILocalFileImportViewmodel
 {
     public async Task SendLocalFilesToServer(IReadOnlyList<IBrowserFile> files)
     {

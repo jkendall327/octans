@@ -140,9 +140,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddViewmodels(this IServiceCollection services)
     {
+        // Imports
+        services.AddScoped<IRawUrlImportViewmodel, ImportsViewmodel>();
+        services.AddScoped<ILocalFileImportViewmodel, ImportsViewmodel>();
+        
         services.AddScoped<GalleryViewmodel>();
-        services.AddScoped<ImportsViewmodel>();
         services.AddScoped<Config.ConfigViewModel>();
+        
         return services;
     }
 
