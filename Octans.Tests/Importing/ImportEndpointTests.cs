@@ -8,7 +8,7 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class ImportEndpointTests(WebApplicationFactory<Client.Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()

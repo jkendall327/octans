@@ -4,7 +4,7 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class HealthcheckTest(WebApplicationFactory<Client.Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class HealthcheckTest(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task AppIsHealthyOnStartup()

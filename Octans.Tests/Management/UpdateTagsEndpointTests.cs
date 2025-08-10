@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class UpdateTagsEndpointTests(WebApplicationFactory<Client.Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class UpdateTagsEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()

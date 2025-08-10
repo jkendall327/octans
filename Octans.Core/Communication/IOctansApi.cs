@@ -10,10 +10,10 @@ public interface IOctansApi
 {
     [Post("/tags")]
     Task<IApiResponse> UpdateTags([Body] UpdateTagsRequest request);
-    
+
     [Get("/files")]
     Task<IApiResponse<List<HashItem>>> GetAllFiles();
-    
+
     [Post("/files")]
     Task<IApiResponse<ImportResult>> ProcessImport([Body] ImportRequest request);
 

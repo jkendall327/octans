@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Octans.Client;
 using Octans.Client.Components;
+using Octans.Core;
+using Octans.Core.Models;
 using Octans.Server;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,10 +50,16 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.AddEndpoints();
 
-app.Run();
+// Ensure subfolders are initialised.
+var manager = app.Services.GetRequiredService<SubfolderManager>();
+manager.MakeSubfolders();
 
-namespace Octans.Client
-{
-    public partial class Program;
-}
+// Ensure database is initialised.
+var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+await db.Database.EnsureCreatedAsync();
+scope.Dispose();
 
+await app.RunAsync();
+
+public partial class Program;

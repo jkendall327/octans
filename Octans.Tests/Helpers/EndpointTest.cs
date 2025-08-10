@@ -17,9 +17,9 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class EndpointTest : IClassFixture<WebApplicationFactory<Client.Program>>, IAsyncLifetime
+public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
 {
-    protected WebApplicationFactory<Client.Program> Factory { get; }
+    protected WebApplicationFactory<Program> Factory { get; }
 
     // Database
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
@@ -33,7 +33,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Client.Program>>
     protected SpyChannelWriter<ThumbnailCreationRequest> SpyChannel { get; } = new();
     protected IOctansApi Api { get; }
 
-    protected EndpointTest(WebApplicationFactory<Client.Program> factory, ITestOutputHelper testOutputHelper)
+    protected EndpointTest(WebApplicationFactory<Program> factory, ITestOutputHelper testOutputHelper)
     {
         Factory = factory.WithWebHostBuilder(builder =>
         {

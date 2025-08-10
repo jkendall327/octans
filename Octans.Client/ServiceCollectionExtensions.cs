@@ -32,13 +32,13 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
-    
+
     public static void AddOptions(this WebApplicationBuilder builder)
     {
         var configuration = builder.Configuration.GetSection("GlobalSettings");
         builder.Services.Configure<GlobalSettings>(configuration);
     }
-    
+
     public static void AddInfrastructure(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<IFileSystem>(new FileSystem());
@@ -92,7 +92,7 @@ public static class ServiceCollectionExtensions
 
         builder.Services.AddMemoryCache();
     }
-    
+
     public static void AddDatabase(this WebApplicationBuilder builder)
     {
         builder.Services.AddDbContextFactory<ServerDbContext>(BuildDatabase);
