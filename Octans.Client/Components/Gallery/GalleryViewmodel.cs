@@ -6,6 +6,8 @@ namespace Octans.Client.Components.Pages;
 
 public class GalleryViewmodel(IOctansApi client, SubfolderManager manager)
 {
+    public string SearchTerm { get; set; } = string.Empty;
+    
     public List<string> ImagePaths { get; private set; } = new();
     public const int MaxImages = 10;
     public const int ThumbnailWidth = 300;
@@ -26,5 +28,11 @@ public class GalleryViewmodel(IOctansApi client, SubfolderManager manager)
             .ToList();
 
         ImagePaths = paths.Take(MaxImages).ToList();
+    }
+
+    public Task SearchAsync()
+    {
+        ImagePaths = [];
+        return Task.CompletedTask;
     }
 }

@@ -4,6 +4,11 @@
 
 <h3>Gallery</h3>
 
+<section class="querying">
+    <input @bind="Viewmodel.SearchTerm" placeholder="Provide a query..."/>
+    <button @onclick="OnSearch">Search</button>
+</section>
+
 <div class="gallery-container">
     @if (Viewmodel.ImagePaths.Any())
     {
@@ -23,9 +28,15 @@
 </div>
 
 @code {
+
     protected override async Task OnInitializedAsync()
     {
         await Viewmodel.GetAllImages();
         await base.OnInitializedAsync();
+    }
+
+    private async Task OnSearch()
+    {
+        await Viewmodel.SearchAsync();
     }
 }
