@@ -1,0 +1,44 @@
+@using MudBlazor
+@using Octans.Client.Components.Pages
+<div class="container">
+    <section class="display-options">
+        
+    </section>
+    <section class="search-panel">
+        <QueryBuilder
+            OnQueryChanged="@OnQueryChanged"
+            OnCancellationRequested="@OnCancellationRequested"
+            CanCancel="@CanCancel"
+            />
+    </section>
+    <section class="selection-tags">
+        <div class="selection-tag-buttons">
+            <MudButton>sort by tag</MudButton>
+            <MudButton>a-z</MudButton>
+            <MudButton>no grouping</MudButton>
+        </div>
+    </section>
+    <section class="selected-image">
+        <img alt="Selected image"/>
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EventCallback<List<QueryParameter>> OnQueryChanged { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnCancellationRequested { get; set; }
+    [Parameter, EditorRequired] public bool CanCancel { get; set; }
+    [Parameter] public IEnumerable<QueryParameter>? InitialParameters { get; set; }
+
+}
+
+<style>
+    .container {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .selection-tag-buttons {
+        display: flex;
+        flex-direction: row;
+    }
+</style>
