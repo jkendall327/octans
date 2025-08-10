@@ -1,10 +1,12 @@
 using System.IO.Abstractions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Octans.Core.Communication;
-using Octans.Core.Importing;
 
-namespace Octans.Client;
+namespace Octans.Core.Importing;
 
-internal sealed class ImportFolderBackgroundService(
+public sealed class ImportFolderBackgroundService(
     IConfiguration configuration,
     IOctansApi client,
     IFileSystem fileSystem,
