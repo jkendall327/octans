@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -7,12 +6,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
 namespace Octans.Server;
-
-[SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "DTO")]
-public record ThumbnailCreationRequest(byte[] Bytes, HashedBytes Hashed)
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-}
 
 public class ThumbnailCreator(
     IFileSystem fileSystem,

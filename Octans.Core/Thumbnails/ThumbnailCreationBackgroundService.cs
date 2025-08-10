@@ -1,8 +1,10 @@
 using System.Threading.Channels;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Octans.Server;
 
-internal sealed class ThumbnailCreationBackgroundService(
+public sealed class ThumbnailCreationBackgroundService(
     ThumbnailCreator creator,
     ChannelReader<ThumbnailCreationRequest> channel,
     ILogger<ThumbnailCreationBackgroundService> logger) : BackgroundService
