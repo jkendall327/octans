@@ -34,14 +34,6 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.UseStaticFiles();
 app.MapStaticAssets();
-app.MapHealthChecks("/health", new()
-{
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "text/plain";
-        await context.Response.WriteAsync(report.Status.ToString());
-    }
-});
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

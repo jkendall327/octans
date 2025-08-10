@@ -4,7 +4,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Octans.Client.Components.Pages;
-using Octans.Client.HealthChecks;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Infrastructure;
@@ -22,12 +21,8 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<SubscriptionBackgroundService>();
 
         services.AddScoped<SubfolderManager>();
-        services.AddTransient<OctansApiHealthCheck>();
         services.AddSingleton<StorageService>();
         services.AddScoped<StatsService>();
-
-        services.AddHealthChecks()
-            .AddCheck<OctansApiHealthCheck>("octans-api");
 
         return services;
     }
