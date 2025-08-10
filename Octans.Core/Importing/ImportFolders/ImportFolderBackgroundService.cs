@@ -1,23 +1,28 @@
 using System.IO.Abstractions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Octans.Core.Communication;
 
 namespace Octans.Core.Importing;
 
 public sealed class ImportFolderBackgroundService(
-    IConfiguration configuration,
+    IOptions<ImportFolderOptions> options,
     IOctansApi client,
     IFileSystem fileSystem,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
-    private readonly string[] _importFolders = configuration.GetValue<string[]>("importFolders") ?? [];
+    private readonly string[] _importFolders = options.Value.Directories.ToArray();
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        if (!options.Value.Enabled)
+        {
+            return;
+        }
+        
+        using var timer = new PeriodicTimer(options.Value.Period);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {

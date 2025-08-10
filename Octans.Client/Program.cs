@@ -24,7 +24,6 @@ builder.Services.AddHttpClients();
 builder.Services.AddOctansServices();
 builder.Services.AddViewmodels();
 builder.AddBusinessServices();
-builder.AddOptions();
 builder.AddChannels();
 builder.AddDatabase();
 
