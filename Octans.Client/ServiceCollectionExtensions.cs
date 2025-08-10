@@ -1,4 +1,5 @@
 using System.IO.Abstractions;
+using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
@@ -6,8 +7,13 @@ using Microsoft.Extensions.Options;
 using Octans.Client.Components.Pages;
 using Octans.Core;
 using Octans.Core.Communication;
+using Octans.Core.Downloaders;
+using Octans.Core.Importing;
 using Octans.Core.Infrastructure;
 using Octans.Core.Models;
+using Octans.Core.Querying;
+using Octans.Core.Tags;
+using Octans.Server;
 using Octans.Server.Services;
 using Refit;
 
@@ -25,6 +31,66 @@ public static class ServiceCollectionExtensions
         services.AddScoped<StatsService>();
 
         return services;
+    }
+    
+    public static void AddOptions(this WebApplicationBuilder builder)
+    {
+        var configuration = builder.Configuration.GetSection("GlobalSettings");
+        builder.Services.Configure<GlobalSettings>(configuration);
+    }
+    
+    public static void AddInfrastructure(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddSingleton<IFileSystem>(new FileSystem());
+        builder.Services.AddSingleton(TimeProvider.System);
+    }
+
+    public static void AddChannels(this WebApplicationBuilder builder)
+    {
+        var channel = Channel.CreateBounded<ThumbnailCreationRequest>(new BoundedChannelOptions(100)
+        {
+            FullMode = BoundedChannelFullMode.Wait
+        });
+
+        builder.Services.AddSingleton(channel.Reader);
+        builder.Services.AddSingleton(channel.Writer);
+    }
+
+    public static void AddBusinessServices(this WebApplicationBuilder builder)
+    {
+        // Imports
+        builder.Services.AddScoped<ImportRouter>();
+        builder.Services.AddScoped<SimpleImporter>();
+        builder.Services.AddScoped<FileImporter>();
+        builder.Services.AddScoped<PostImporter>();
+
+        // Import services
+        builder.Services.AddScoped<ReimportChecker>();
+        builder.Services.AddScoped<DatabaseWriter>();
+        builder.Services.AddScoped<FilesystemWriter>();
+        builder.Services.AddScoped<ImportFilterService>();
+        builder.Services.AddSingleton<ThumbnailCreator>();
+        builder.Services.AddScoped<DownloaderFactory>();
+        builder.Services.AddScoped<DownloaderService>();
+
+        // Files
+        builder.Services.AddSingleton<SubfolderManager>();
+        builder.Services.AddScoped<FileFinder>();
+        builder.Services.AddScoped<FileDeleter>();
+        builder.Services.AddScoped<TagUpdater>();
+
+        // Queries
+        builder.Services.AddScoped<QueryService>();
+        builder.Services.AddScoped<QueryParser>();
+        builder.Services.AddScoped<QueryPlanner>();
+        builder.Services.AddScoped<QueryTagConverter>();
+        builder.Services.AddScoped<HashSearcher>();
+
+        // Stats
+        builder.Services.AddScoped<StatsService>();
+        builder.Services.AddScoped<StorageService>();
+
+        builder.Services.AddMemoryCache();
     }
     
     public static void AddDatabase(this WebApplicationBuilder builder)
