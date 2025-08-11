@@ -3,7 +3,10 @@
 @inject GalleryViewmodel Viewmodel
 @implements IAsyncDisposable
 
-<SplitContainer @bind-FirstPaneSize="_PaneSize" Orientation="SplitterOrientation.Vertical">
+<SplitContainer 
+    UnitOfPaneSize="UnitOfPaneSize.Pixel"
+    @bind-FirstPaneSize="PaneSize" 
+    Orientation="SplitterOrientation.Vertical">
 
     <FirstPane>
         <section class="querying">
@@ -46,7 +49,7 @@
 
 @code
 {
-    private int _PaneSize = 200;
+    public int PaneSize { get; private set; } = 30;
 
     protected override void OnInitialized()
     {
