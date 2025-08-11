@@ -1,6 +1,6 @@
-using System.Threading.Channels;
 using Octans.Core.Importing;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Importing.RawByteProviders;
 
 namespace Octans.Server;
 
@@ -8,20 +8,10 @@ namespace Octans.Server;
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
 public sealed class SimpleImporter(
-    ImportFilterService filterService,
     IHttpClientFactory clientFactory,
-    ReimportChecker reimportChecker,
-    DatabaseWriter databaseWriter,
-    FilesystemWriter filesystemWriter,
-    ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
-    ILogger<SimpleImporter> logger) : Importer(filterService,
-    reimportChecker,
-    databaseWriter,
-    filesystemWriter,
-    thumbnailChannel,
-    logger)
+    ILogger<SimpleImporter> logger) : IRawByteProvider
 {
-    protected override async Task<byte[]> GetRawBytes(ImportItem item)
+    public async Task<byte[]> GetRawBytes(ImportItem item)
     {
         var url = item.Source.AbsoluteUri;
 

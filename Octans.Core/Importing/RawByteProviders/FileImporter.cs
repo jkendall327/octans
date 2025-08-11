@@ -1,25 +1,14 @@
 using System.IO.Abstractions;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Importing.RawByteProviders;
 using Octans.Server;
 
 namespace Octans.Core.Importing;
 
-public class FileImporter(
-    ImportFilterService filterService,
-    ReimportChecker reimportChecker,
-    DatabaseWriter databaseWriter,
-    FilesystemWriter filesystemWriter,
-    ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
-    IFileSystem fileSystem,
-    ILogger<FileImporter> logger) : Importer(filterService,
-    reimportChecker,
-    databaseWriter,
-    filesystemWriter,
-    thumbnailChannel,
-    logger)
+public class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) : IRawByteProvider
 {
-    protected override async Task<byte[]> GetRawBytes(ImportItem item)
+    public async Task<byte[]> GetRawBytes(ImportItem item)
     {
         var filepath = item.Source;
 
@@ -30,7 +19,7 @@ public class FileImporter(
         return bytes;
     }
 
-    protected override Task OnImportComplete(ImportRequest request, ImportItem item)
+    public Task OnImportComplete(ImportRequest request, ImportItem item)
     {
         if (request.DeleteAfterImport)
         {

@@ -4,12 +4,15 @@ using Octans.Server;
 
 namespace Octans.Core.Importing;
 
-public abstract class Importer(
+public class Importer(
     ImportFilterService filterService,
     ReimportChecker reimportChecker,
     DatabaseWriter databaseWriter,
     FilesystemWriter filesystemWriter,
     ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
+    FileImporter file,
+    PostImporter post,
+    SimpleImporter simple,
     ILogger<Importer> logger)
 {
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
@@ -47,7 +50,17 @@ public abstract class Importer(
             ["ItemImportId"] = Guid.NewGuid(),
         });
 
-        var bytes = await GetRawBytes(item);
+        var task = request.ImportType switch
+        {
+            ImportType.File => file.GetRawBytes(item),
+            ImportType.RawUrl => simple.GetRawBytes(item),
+            ImportType.Post => post.GetRawBytes(item),
+            ImportType.Gallery => throw new NotImplementedException(),
+            ImportType.Watchable => throw new NotImplementedException(),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        var bytes = await task;
 
         logger.LogDebug("Total size: {SizeInBytes}", bytes.Length);
 
@@ -86,7 +99,10 @@ public abstract class Importer(
 
         logger.LogInformation("Import successful");
 
-        await OnImportComplete(request, item);
+        if (request.ImportType is ImportType.File)
+        {
+            await file.OnImportComplete(request, item);
+        }
 
         var result = new ImportItemResult
         {
@@ -95,8 +111,4 @@ public abstract class Importer(
 
         return result;
     }
-
-    protected abstract Task<byte[]> GetRawBytes(ImportItem item);
-
-    protected virtual Task OnImportComplete(ImportRequest request, ImportItem item) => Task.CompletedTask;
 }
