@@ -76,7 +76,7 @@ public sealed class ImportFolderBackgroundService(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
 
-            var router = scope.ServiceProvider.GetRequiredService<ImportRouter>();
+            var router = scope.ServiceProvider.GetRequiredService<Importer>();
 
             var response = await router.ProcessImport(importRequest, stoppingToken);
 

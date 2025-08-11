@@ -54,10 +54,10 @@ public static class ServiceCollectionExtensions
     public static void AddBusinessServices(this WebApplicationBuilder builder)
     {
         // Imports
-        builder.Services.AddScoped<ImportRouter>();
         builder.Services.AddScoped<SimpleImporter>();
         builder.Services.AddScoped<FileImporter>();
         builder.Services.AddScoped<PostImporter>();
+        builder.Services.AddScoped<Importer>();
 
         // Import services
         builder.Services.AddScoped<ReimportChecker>();
