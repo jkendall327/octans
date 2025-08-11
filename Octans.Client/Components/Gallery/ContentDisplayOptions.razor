@@ -1,0 +1,25 @@
+@using Octans.Client.Components.Pages
+<div class="display-options">
+    <section class="sorting">
+        <MudButton>sort by tags [...]</MudButton>
+        <MudButton>display tags</MudButton>
+        <MudButton>a-z</MudButton>
+        <MudButton>tags</MudButton>
+    </section>
+    <section class="collections">
+        <MudButton>no collections</MudButton>
+        <MudButton>collect unmatched</MudButton>
+        <MudButton>tags</MudButton>
+    </section>
+</div>
+
+@code {
+
+    [Parameter] public EventCallback<SortOptions> SortOptions { get; set; }
+
+    [Parameter] public EventCallback<SortOptions> SortOptionsChanged { get; set; }
+
+    [Parameter] public EventCallback<CollectionOptions> CollectionOptions { get; set; }
+
+    [Parameter] public EventCallback<CollectionOptions> CollectionOptionsChanged { get; set; }
+}
