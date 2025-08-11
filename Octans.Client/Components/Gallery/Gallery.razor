@@ -1,52 +1,58 @@
 @page "/gallery"
-@using Microsoft.Extensions.Options
 @using Octans.Client.Components.Pages
-@using Octans.Client.Options
 @inject GalleryViewmodel Viewmodel
-@inject IOptions<ThumbnailOptions> Options
 @implements IAsyncDisposable
 
 <h3>Gallery</h3>
 
-<section class="querying">
-    <QueryBuilder
-        OnQueryChanged="@Viewmodel.OnQueryChanged"
-        OnCancellationRequested="@Viewmodel.OnCancel"
-        CanCancel="@Viewmodel.Searching"/>
-</section>
+<SplitContainer @bind-FirstPaneSize="_PaneSize" Orientation="SplitterOrientation.Vertical">
 
-<div class="gallery-container">
-    @if (Viewmodel.ImageUrls.Any())
-    {
-        <div class="image-grid">
-            @foreach (var url in Viewmodel.ImageUrls)
+    <FirstPane>
+        <section class="querying">
+            <QueryBuilder
+                OnQueryChanged="@Viewmodel.OnQueryChanged"
+                OnCancellationRequested="@Viewmodel.OnCancel"
+                CanCancel="@Viewmodel.Searching"/>
+        </section>
+    </FirstPane>
+
+    <SecondPane>
+        <div class="gallery-container">
+            @if (Viewmodel.ImageUrls.Any())
             {
-                <div class="image-card">
-                    <img src="@url"
-                         alt="Gallery image"
-                         loading="lazy"
-                         decoding="async"
-                         referrerpolicy="no-referrer" />
+                <div class="image-grid">
+                    @foreach (var url in Viewmodel.ImageUrls)
+                    {
+                        <div class="image-card">
+                            <img src="@url"
+                                 alt="Gallery image"
+                                 loading="lazy"
+                                 decoding="async"
+                                 referrerpolicy="no-referrer"/>
+                        </div>
+                    }
                 </div>
             }
+            else if (!string.IsNullOrWhiteSpace(Viewmodel.LastError))
+            {
+                <p>@Viewmodel.LastError</p>
+            }
+            else if (Viewmodel.Searching)
+            {
+                <p>Searching...</p>
+            }
+            else
+            {
+                <p>No images found.</p>
+            }
         </div>
-    }
-    else if (!string.IsNullOrWhiteSpace(Viewmodel.LastError))
-    {
-        <p>@Viewmodel.LastError</p>
-    }
-    else if (Viewmodel.Searching)
-    {
-        <p>Searching...</p>
-    }
-    else
-    {
-        <p>No images found.</p>
-    }
-</div>
+    </SecondPane>
+</SplitContainer>
 
 @code
 {
+    private int _PaneSize = 200;
+
     protected override void OnInitialized()
     {
         Viewmodel.StateChanged += OnViewmodelOnStateChanged;
