@@ -5,13 +5,14 @@
     <section class="display-options">
         <ContentDisplayOptions/>
     </section>
+    <hr/>
     <section class="search-panel">
         <QueryBuilder
             OnQueryChanged="@Viewmodel.OnQueryChanged"
             OnCancellationRequested="@Viewmodel.OnCancel"
             CanCancel="@Viewmodel.Searching"/>
-            />
     </section>
+    <hr/>
     <section class="selection-tags">
         <div class="selection-tag-buttons">
             <MudButton>sort by tag</MudButton>
@@ -19,6 +20,7 @@
             <MudButton>no grouping</MudButton>
         </div>
     </section>
+    <hr/>
     <section class="selected-image">
         <img alt="Selected image"/>
     </section>

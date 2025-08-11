@@ -3,8 +3,6 @@
 @inject GalleryViewmodel Viewmodel
 @implements IAsyncDisposable
 
-<h3>Gallery</h3>
-
 <SplitContainer @bind-FirstPaneSize="_PaneSize" Orientation="SplitterOrientation.Vertical">
 
     <FirstPane>
@@ -52,7 +50,10 @@
 
     protected override void OnInitialized()
     {
-        Viewmodel.StateChanged += OnViewmodelOnStateChanged;
+        if (RendererInfo.IsInteractive)
+        {
+            Viewmodel.StateChanged += OnViewmodelOnStateChanged;
+        }
     }
 
     private async Task OnViewmodelOnStateChanged()
@@ -62,7 +63,10 @@
 
     public async ValueTask DisposeAsync()
     {
-        Viewmodel.StateChanged -= OnViewmodelOnStateChanged;
-        await Viewmodel.DisposeAsync();
+        if (RendererInfo.IsInteractive)
+        {
+            Viewmodel.StateChanged -= OnViewmodelOnStateChanged;
+            await Viewmodel.DisposeAsync();
+        }
     }
 }
