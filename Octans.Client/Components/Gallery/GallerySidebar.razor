@@ -1,13 +1,15 @@
 @using Octans.Client.Components.Pages
+@inject GalleryViewmodel Viewmodel
+
 <div class="container">
     <section class="display-options">
         <ContentDisplayOptions/>
     </section>
     <section class="search-panel">
         <QueryBuilder
-            OnQueryChanged="@OnQueryChanged"
-            OnCancellationRequested="@OnCancellationRequested"
-            CanCancel="@CanCancel"
+            OnQueryChanged="@Viewmodel.OnQueryChanged"
+            OnCancellationRequested="@Viewmodel.OnCancel"
+            CanCancel="@Viewmodel.Searching"/>
             />
     </section>
     <section class="selection-tags">
@@ -21,14 +23,6 @@
         <img alt="Selected image"/>
     </section>
 </div>
-
-@code {
-    [Parameter, EditorRequired] public EventCallback<List<QueryParameter>> OnQueryChanged { get; set; }
-    [Parameter, EditorRequired] public EventCallback OnCancellationRequested { get; set; }
-    [Parameter, EditorRequired] public bool CanCancel { get; set; }
-    [Parameter] public IEnumerable<QueryParameter>? InitialParameters { get; set; }
-
-}
 
 <style>
     .container {
