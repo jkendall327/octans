@@ -75,7 +75,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<TagUpdater>();
 
         // Queries
-        builder.Services.AddScoped<QueryService>();
+        builder.Services.AddScoped<IQueryService, QueryService>();
         builder.Services.AddScoped<QueryParser>();
         builder.Services.AddScoped<QueryPlanner>();
         builder.Services.AddScoped<QueryTagConverter>();

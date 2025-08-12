@@ -1,9 +1,8 @@
-using Octans.Core;
 using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Pages;
 
-public sealed class GalleryViewmodel(QueryService service, SubfolderManager manager, ILogger<GalleryViewmodel> logger)
+public sealed class GalleryViewmodel(IQueryService service, ILogger<GalleryViewmodel> logger)
     : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -12,6 +11,10 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
     public bool Searching { get; private set; }
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
+    
+    private int _total;
+    private int _processed;
+    public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
 
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
@@ -23,13 +26,17 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
         LastError = null;
         Searching = true;
         ImageUrls = [];
+        _total = 0;
+        _processed = 0;
 
         await NotifyStateChanged();
 
         try
         {
-            var raw = arg.Select(s => s.Raw);
+            var raw = arg.Select(s => s.Raw).ToList();
 
+            _total = await service.CountAsync(raw, _cts.Token);
+            
             await foreach (var result in service.Query(raw, _cts.Token))
             {
                 // Build a stable, lower-case hex string for the route
@@ -38,6 +45,8 @@ public sealed class GalleryViewmodel(QueryService service, SubfolderManager mana
                 var url = $"/media/{hex}";
 
                 ImageUrls.Add(url);
+                
+                _processed++;
 
                 if (ImageUrls.Count % 8 == 0)
                 {
