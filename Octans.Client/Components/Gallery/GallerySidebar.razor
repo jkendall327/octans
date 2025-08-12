@@ -14,15 +14,11 @@
     </section>
     <hr/>
     <section class="selection-tags">
-        <div class="selection-tag-buttons">
-            <MudButton>sort by tag</MudButton>
-            <MudButton>a-z</MudButton>
-            <MudButton>no grouping</MudButton>
-        </div>
+        <TagViewer Tags="@(new List<TagViewer.Tag>())"/>
     </section>
     <hr/>
     <section class="selected-image">
-        <img alt="Selected image"/>
+        <img src="images/octans-logo.svg" alt="Selected image"/>
     </section>
 </div>
 
@@ -30,10 +26,5 @@
     .container {
         display: flex;
         flex-direction: column;
-    }
-    
-    .selection-tag-buttons {
-        display: flex;
-        flex-direction: row;
     }
 </style>

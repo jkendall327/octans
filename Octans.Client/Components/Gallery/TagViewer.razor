@@ -1,0 +1,133 @@
+<div class="tag-viewer">
+    <h3>selection tags</h3>
+
+    <div class="selection-tag-buttons">
+        <MudSelect T="SortMode" Label="sort by" Dense="true" @bind-Value="Sort">
+            @foreach (var v in Enum.GetValues<SortMode>())
+            {
+                <MudSelectItem Value="v">@v.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="AlphabeticOrdering" Label="alphabetical" Dense="true" @bind-Value="Ordering">
+            @foreach (var v in Enum.GetValues<AlphabeticOrdering>())
+            {
+                <MudSelectItem Value="v">@v.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="GroupingMode" Disabled="true" Label="grouping" Dense="true" @bind-Value="Grouping">
+            @foreach (var v in Enum.GetValues<GroupingMode>())
+            {
+                <MudSelectItem Value="v">@v.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    <MudPaper Class="tag-list" Elevation="1" Outlined="true">
+        <MudList
+            T="string"
+            Dense="true"
+            SelectionMode="SelectionMode.MultiSelection"
+            SelectedValues="SelectedTags"
+            SelectedValuesChanged="SelectedTagsChanged"
+        >
+            @foreach (var tag in Ordered)
+            {
+                <MudListItem Value="@tag" Class="tag-list-item">
+                    <MudText Typo="Typo.body2">@tag</MudText>
+                </MudListItem>
+            }
+
+        </MudList>
+    </MudPaper>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<Tag> Tags { get; set; } = [];
+
+    [Parameter] public IReadOnlyCollection<string>? SelectedTags { get; set; }
+    [Parameter] public EventCallback<IReadOnlyCollection<string>?> SelectedTagsChanged { get; set; }
+
+    private List<Tag> Ordered { get; set; } = [];
+
+    protected override void OnParametersSet()
+    {
+        var tags = Tags.ToList();
+
+        tags = Sort switch
+        {
+            SortMode.ByTag => tags
+                .OrderBy(s => s.Namespace + s.Subtag)
+                .ToList(),
+            SortMode.BySubtag => tags
+                .OrderBy(s => s.Subtag)
+                .ToList(),
+            SortMode.ByCount => tags
+                .OrderBy(s => s.Count)
+                .ToList(),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        // TODO: implement the rest of this
+
+        Ordered = tags;
+    }
+
+    public SortMode Sort { get; set; }
+    public AlphabeticOrdering Ordering { get; set; }
+    public GroupingMode Grouping { get; set; }
+
+    public record Tag(string Namespace, string Subtag, int Count);
+
+    public enum SortMode
+    {
+        ByTag,
+        BySubtag,
+        ByCount
+    }
+
+    public enum AlphabeticOrdering
+    {
+        Normal,
+        Reversed
+    }
+
+    public enum GroupingMode
+    {
+        None,
+        NamespaceAlphabetic,
+        NamespaceUser
+    }
+
+}
+
+<style>
+    .tag-viewer {
+        display: flex;
+        flex-direction: column;
+        gap: 1em;
+        align-items: center;
+    }
+
+    .selection-tag-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: .5rem;
+    }
+
+    .tag-list {
+        width: 100%;
+        max-width: 640px;
+        max-height: 480px;
+        overflow-y: auto;
+    }
+
+    /* make each item take the full row and left-align text */
+    .tag-list-item {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+        padding-left: .5rem;
+    }
+</style>
