@@ -18,14 +18,12 @@ public interface ILocalFileImportViewmodel
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
 }
 
-public class ImportsViewmodel(
+public class LocalFileImportViewmodel(
     IFileSystem fileSystem,
     IWebHostEnvironment environment,
     IOctansApi client,
-    ILogger<ImportsViewmodel> logger) : IRawUrlImportViewmodel, ILocalFileImportViewmodel
+    ILogger<LocalFileImportViewmodel> logger) : ILocalFileImportViewmodel
 {
-    public string RawInputs { get; set; } = string.Empty;
-    public bool AllowReimportDeleted { get; set; }
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
 
     public async Task SendLocalFilesToServer()
@@ -63,6 +61,14 @@ public class ImportsViewmodel(
 
         LocalFiles = [];
     }
+}
+
+public class RawUrlImportViewmodel(
+    IOctansApi client,
+    ILogger<RawUrlImportViewmodel> logger) : IRawUrlImportViewmodel
+{
+    public string RawInputs { get; set; } = string.Empty;
+    public bool AllowReimportDeleted { get; set; }
 
     public async Task SendUrlsToServer()
     {
