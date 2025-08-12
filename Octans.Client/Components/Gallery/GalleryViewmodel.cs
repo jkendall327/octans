@@ -11,7 +11,7 @@ public sealed class GalleryViewmodel(IQueryService service, ILogger<GalleryViewm
     public bool Searching { get; private set; }
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
-    
+
     private int _total;
     private int _processed;
     public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
@@ -36,7 +36,7 @@ public sealed class GalleryViewmodel(IQueryService service, ILogger<GalleryViewm
             var raw = arg.Select(s => s.Raw).ToList();
 
             _total = await service.CountAsync(raw, _cts.Token);
-            
+
             await foreach (var result in service.Query(raw, _cts.Token))
             {
                 // Build a stable, lower-case hex string for the route
@@ -45,7 +45,7 @@ public sealed class GalleryViewmodel(IQueryService service, ILogger<GalleryViewm
                 var url = $"/media/{hex}";
 
                 ImageUrls.Add(url);
-                
+
                 _processed++;
 
                 if (ImageUrls.Count % 8 == 0)

@@ -20,8 +20,8 @@ public class QueryService(QueryParser parser, QueryPlanner planner, QueryTagConv
 
         var query = converter.Reduce(plan);
 
-        var items = await searcher.Search(query, cancellationToken);    
-        
+        var items = await searcher.Search(query, cancellationToken);
+
         return items.Count;
     }
 
