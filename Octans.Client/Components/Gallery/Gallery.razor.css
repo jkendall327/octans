@@ -27,3 +27,7 @@
     object-fit: cover;
     display: block;
 }
+
+.querying {
+    height: 100vh;
+}

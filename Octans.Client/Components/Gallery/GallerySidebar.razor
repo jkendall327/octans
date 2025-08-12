@@ -2,29 +2,59 @@
 @inject GalleryViewmodel Viewmodel
 
 <div class="container">
-    <section class="display-options">
-        <ContentDisplayOptions/>
-    </section>
-    <hr/>
-    <section class="search-panel">
-        <QueryBuilder
-            OnQueryChanged="@Viewmodel.OnQueryChanged"
-            OnCancellationRequested="@Viewmodel.OnCancel"
-            CanCancel="@Viewmodel.Searching"/>
-    </section>
-    <hr/>
-    <section class="selection-tags">
-        <TagViewer Tags="@(new List<TagViewer.Tag>())"/>
-    </section>
-    <hr/>
-    <section class="selected-image">
-        <img src="images/octans-logo.svg" alt="Selected image"/>
-    </section>
+    <SplitContainer
+        UnitOfPaneSize="UnitOfPaneSize.Percent"
+        @bind-FirstPaneSize="PaneSize"
+        Class="split-container"
+        Orientation="SplitterOrientation.Horizontal">
+
+        <FirstPane>
+            <div class="main-pane">
+                <section class="display-options">
+                    <ContentDisplayOptions/>
+                </section>
+                <section class="search-panel">
+                    <QueryBuilder
+                        OnQueryChanged="@Viewmodel.OnQueryChanged"
+                        OnCancellationRequested="@Viewmodel.OnCancel"
+                        CanCancel="@Viewmodel.Searching"/>
+                </section>
+                <section class="selection-tags">
+                    <TagViewer Tags="@(new List<TagViewer.Tag>())"/>
+                </section>
+            </div>
+        </FirstPane>
+
+        <SecondPane>
+            <section class="selected-image">
+                <img src="images/octans-logo.svg" alt="Selected image"/>
+            </section>
+        </SecondPane>
+    </SplitContainer>
 </div>
 
 <style>
     .container {
+        border: 5px solid black;
+        height: 100%;
+    }
+
+    .split-container {
+        height: 100%;
+    }
+
+    .main-pane {
         display: flex;
         flex-direction: column;
+    }
+
+    .selection-tags {
+        flex: 1; /* expand to fill */
+        min-height: 0; /* prevents overflow issues in nested flex items */
+    }
+
+    .selected-image img {
+        width: 100%;
+        height: auto;
     }
 </style>
