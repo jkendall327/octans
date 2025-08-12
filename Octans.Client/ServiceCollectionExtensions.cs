@@ -75,7 +75,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<TagUpdater>();
 
         // Queries
-        builder.Services.AddScoped<QueryService>();
+        builder.Services.AddScoped<IQueryService, QueryService>();
         builder.Services.AddScoped<QueryParser>();
         builder.Services.AddScoped<QueryPlanner>();
         builder.Services.AddScoped<QueryTagConverter>();
@@ -135,8 +135,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddViewmodels(this IServiceCollection services)
     {
         // Imports
-        services.AddScoped<IRawUrlImportViewmodel, ImportsViewmodel>();
-        services.AddScoped<ILocalFileImportViewmodel, ImportsViewmodel>();
+        services.AddScoped<IRawUrlImportViewmodel, RawUrlImportViewmodel>();
+        services.AddScoped<ILocalFileImportViewmodel, LocalFileImportViewmodel>();
 
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<Config.ConfigViewModel>();

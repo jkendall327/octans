@@ -3,9 +3,9 @@
 @inject GalleryViewmodel Viewmodel
 @implements IAsyncDisposable
 
-<SplitContainer 
+<SplitContainer
     UnitOfPaneSize="UnitOfPaneSize.Pixel"
-    @bind-FirstPaneSize="PaneSize" 
+    @bind-FirstPaneSize="PaneSize"
     Orientation="SplitterOrientation.Vertical">
 
     <FirstPane>
@@ -37,7 +37,13 @@
             }
             else if (Viewmodel.Searching)
             {
-                <p>Searching...</p>
+                <!-- TODO: put in a status bar in a layout. -->
+
+                <MudProgressCircular Color="Color.Primary" Value="@Viewmodel.ProgressPercent" Size="Size.Large">
+                    <ChildContent>
+                        @Viewmodel.ProgressPercent %
+                    </ChildContent>
+                </MudProgressCircular>
             }
             else
             {
