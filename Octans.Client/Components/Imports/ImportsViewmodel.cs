@@ -14,6 +14,7 @@ public interface IRawUrlImportViewmodel
 
 public interface ILocalFileImportViewmodel
 {
+    ImportResult? Result { get; }
     Task SendLocalFilesToServer();
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
 }
@@ -21,10 +22,12 @@ public interface ILocalFileImportViewmodel
 public class LocalFileImportViewmodel(
     IFileSystem fileSystem,
     IWebHostEnvironment environment,
-    IOctansApi client,
+    IImporter importer,
     ILogger<LocalFileImportViewmodel> logger) : ILocalFileImportViewmodel
 {
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
+    
+    public ImportResult? Result { get; private set; }
 
     public async Task SendLocalFilesToServer()
     {
@@ -57,8 +60,8 @@ public class LocalFileImportViewmodel(
             DeleteAfterImport = false
         };
 
-        await client.ProcessImport(request);
-
+        Result = await importer.ProcessImport(request);
+        
         LocalFiles = [];
     }
 }

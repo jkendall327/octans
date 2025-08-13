@@ -73,7 +73,7 @@ public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOu
     {
         var mockFile = new MockFileData(TestingConstants.MinimalJpeg);
 
-        var filepath = "C:/image.jpg";
+        var filepath = FileSystem.Path.Join(AppRoot, "image.jpg");
 
         FileSystem.AddFile(filepath, mockFile);
 

@@ -26,7 +26,7 @@ public class EndpointTest : IClassFixture<WebApplicationFactory<Program>>, IAsyn
     protected ServerDbContext Context { get; private set; } = null!;
 
     // Filesystem
-    protected const string AppRoot = "C:/app";
+    protected const string AppRoot = "/app";
     protected MockFileSystem FileSystem { get; } = new();
 
     // Other

@@ -85,7 +85,7 @@ internal static class Endpoints
         app
             .MapPost("/files",
                 async ([FromBody] ImportRequest request,
-                    [FromServices] Importer service,
+                    [FromServices] IImporter service,
                     CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
             .WithDescription("Processes an import request")

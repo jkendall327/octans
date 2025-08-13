@@ -12,25 +12,19 @@ namespace Octans.Tests.Viewmodels;
 
 public class LocalFileImportViewmodelTests
 {
-    private readonly IOctansApi _api;
+    private readonly IImporter _importer;
     private readonly LocalFileImportViewmodel _sut;
 
     public LocalFileImportViewmodelTests()
     {
         MockFileSystem fs = new();
         var env = Substitute.For<IWebHostEnvironment>();
-        _api = Substitute.For<IOctansApi>();
+        _importer = Substitute.For<IImporter>();
 
         // This has to be a root path to avoid the URI ctor breaking.
         env.WebRootPath.Returns("/wwwroot");
-
-        var apiResponse = Substitute.For<IApiResponse<ImportResult>>();
-
-        _api
-            .ProcessImport(Arg.Any<ImportRequest>())
-            .Returns(Task.FromResult(apiResponse));
-
-        _sut = new(fs, env, _api, NullLogger<LocalFileImportViewmodel>.Instance);
+        
+        _sut = new(fs, env, _importer, NullLogger<LocalFileImportViewmodel>.Instance);
     }
 
     [Fact]
@@ -64,7 +58,7 @@ public class LocalFileImportViewmodelTests
 
         await _sut.SendLocalFilesToServer();
 
-        await _api
+        await _importer
             .Received(1)
             .ProcessImport(Arg.Is<ImportRequest>(r =>
                 r.ImportType == ImportType.File && r.DeleteAfterImport == false && r.Items.Count == 2));
@@ -79,7 +73,7 @@ public class LocalFileImportViewmodelTests
 
         await _sut.SendLocalFilesToServer();
 
-        await _api
+        await _importer
             .DidNotReceive()
             .ProcessImport(Arg.Any<ImportRequest>());
     }

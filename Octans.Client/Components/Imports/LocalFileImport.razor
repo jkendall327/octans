@@ -36,3 +36,15 @@
     Disabled="@(Viewmodel.LocalFiles.Count == 0)">
     Import
 </MudButton>
+
+@if (Viewmodel.Result is not null)
+{
+    <section class="results">
+        <p>@Viewmodel.Result.Results.Count(s => s.Ok) OK</p>
+
+        @foreach (var result in Viewmodel.Result.Results.Where(s => !s.Ok))
+        {
+            <p>@result.Message</p>
+        }
+    </section>
+}

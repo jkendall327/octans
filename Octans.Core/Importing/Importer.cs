@@ -4,6 +4,11 @@ using Octans.Server;
 
 namespace Octans.Core.Importing;
 
+public interface IImporter
+{
+    Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default);
+}
+
 public class Importer(
     ImportFilterService filterService,
     ReimportChecker reimportChecker,
@@ -13,7 +18,7 @@ public class Importer(
     FileImporter file,
     PostImporter post,
     SimpleImporter simple,
-    ILogger<Importer> logger)
+    ILogger<Importer> logger) : IImporter
 {
     public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
     {

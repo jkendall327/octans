@@ -57,7 +57,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddScoped<SimpleImporter>();
         builder.Services.AddScoped<FileImporter>();
         builder.Services.AddScoped<PostImporter>();
-        builder.Services.AddScoped<Importer>();
+        builder.Services.AddScoped<IImporter, Importer>();
 
         // Import services
         builder.Services.AddScoped<ReimportChecker>();
