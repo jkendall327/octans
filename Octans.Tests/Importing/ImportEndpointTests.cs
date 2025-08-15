@@ -15,13 +15,16 @@ using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public sealed class ImporterTests : IAsyncDisposable
+public sealed class ImporterTests : IAsyncLifetime
 {
+    private const string AppRoot = "/app";
+    
     private readonly IImporter _sut;
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
     private readonly MockFileSystem _fileSystem = new();
     private readonly SpyChannelWriter<ThumbnailCreationRequest> _spy = new();
+    private readonly IServiceProvider _provider;
 
     public ImporterTests(ITestOutputHelper testOutputHelper)
     {
@@ -34,6 +37,8 @@ public sealed class ImporterTests : IAsyncDisposable
         {
             options.UseSqlite(_connection);
         }, optionsLifetime: ServiceLifetime.Singleton);
+        
+        services.AddDbContextFactory<ServerDbContext>();
 
         services.AddSingleton<IFileSystem>(_fileSystem);
 
@@ -41,19 +46,75 @@ public sealed class ImporterTests : IAsyncDisposable
         services.AddSingleton(_spy.Channel.Reader);
 
         services.AddHttpClient();
+
+        services.Configure<GlobalSettings>(s => s.AppRoot = AppRoot);
         
-        var provider = services.BuildServiceProvider();
+        _provider = services.BuildServiceProvider();
         
-        _sut = provider.GetRequiredService<IImporter>();
+        _sut = _provider.GetRequiredService<IImporter>();
     }
 
     [Fact]
-    public async Task Foo()
+    public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
-        
+        (var request, var result) = await SendSimpleValidRequest();
+    
+        result.Should().NotBeNull();
+        result.ImportId.Should().Be(request.ImportId);
+        result.Results.Single().Ok.Should().BeTrue();
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task<(ImportRequest request, ImportResult Content)> SendSimpleValidRequest()
+    {
+        var mockFile = new MockFileData(TestingConstants.MinimalJpeg);
+    
+        var filepath = _fileSystem.Path.Join(AppRoot, "image.jpg");
+    
+        _fileSystem.AddFile(filepath, mockFile);
+    
+        var request = BuildRequest(filepath, "category", "example");
+    
+        var response = await _sut.ProcessImport(request);
+    
+        return (request, response);
+    }
+    
+    private static ImportRequest BuildRequest(string source, string @namespace, string subtag)
+    {
+        var tag = new TagModel(Namespace: @namespace, Subtag: subtag);
+    
+        var item = new ImportItem
+        {
+            Source = new(source),
+            Tags = [tag]
+        };
+    
+        var request = new ImportRequest
+        {
+            Items = [item],
+            ImportType = ImportType.File,
+            DeleteAfterImport = false
+        };
+    
+        return request;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _connection.OpenAsync();
+
+        await using var serviceScope = _provider.CreateAsyncScope();
+        
+        var db = serviceScope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        
+        await db.Database.EnsureCreatedAsync();
+
+        var folders = serviceScope.ServiceProvider.GetRequiredService<SubfolderManager>();
+        
+        folders.MakeSubfolders();
+    }
+
+    public async Task DisposeAsync()
     {
         await _connection.DisposeAsync();
     }
