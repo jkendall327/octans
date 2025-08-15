@@ -32,3 +32,10 @@
     --text-color: #e9ecef;
     /* ... other dark theme variables (repeat from media query) */
 }
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+}
