@@ -187,7 +187,7 @@ internal static class Endpoints
                     return Results.BadRequest("Hash must be hex.");
                 }
 
-                var info = manager.GetFilepath(HashedBytes.FromUnhashed(unhashedBytes));
+                var info = manager.GetFilepath(HashedBytes.FromHashed(unhashedBytes));
 
                 if (info is null || !info.Exists)
                 {
