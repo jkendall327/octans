@@ -32,7 +32,7 @@ internal static class Endpoints
                 {
                     var success = await updater.UpdateTags(request);
 
-                    return success ? Results.Ok() : Results.BadRequest();
+                    return success is TagUpdateResult.TagsUpdated ? Results.Ok() : Results.BadRequest();
                 })
             .WithName("UpdateTags")
             .WithDescription("Add and remove tags for a specific image")

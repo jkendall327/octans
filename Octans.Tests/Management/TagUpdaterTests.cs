@@ -59,7 +59,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
         response
             .Should()
-            .BeTrue();
+            .Be(TagUpdateResult.TagsUpdated);
 
         var updatedTags = await db.Mappings
             .Where(m => m.Hash.Id == hash.Id)
@@ -85,7 +85,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
         response
             .Should()
-            .BeFalse();
+            .Be(TagUpdateResult.HashNotFound);
     }
 
     private async Task<HashItem> SetupInitialData(ServerDbContext db)

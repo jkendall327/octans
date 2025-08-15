@@ -4,15 +4,21 @@ using Octans.Core.Models.Tagging;
 
 namespace Octans.Core.Tags;
 
+public enum TagUpdateResult
+{
+    HashNotFound,
+    TagsUpdated
+}
+
 public class TagUpdater(ServerDbContext context)
 {
-    public async Task<bool> UpdateTags(UpdateTagsRequest request)
+    public async Task<TagUpdateResult> UpdateTags(UpdateTagsRequest request)
     {
         var hash = await context.Hashes.FindAsync(request.HashId);
 
         if (hash == null)
         {
-            return false;
+            return TagUpdateResult.HashNotFound;
         }
 
         await RemoveTags(request.TagsToRemove, hash);
@@ -20,7 +26,7 @@ public class TagUpdater(ServerDbContext context)
 
         await context.SaveChangesAsync();
 
-        return true;
+        return TagUpdateResult.TagsUpdated;
     }
 
     private async Task RemoveTags(IEnumerable<TagModel> tagsToRemove, HashItem hash)
