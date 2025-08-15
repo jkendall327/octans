@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Core.Models;
 
@@ -13,6 +14,14 @@ public class DatabaseFixture : IAsyncLifetime
         await Connection.OpenAsync();
     }
 
+    public void RegisterDbContext(IServiceCollection services)
+    {
+        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(Connection); },
+            optionsLifetime: ServiceLifetime.Singleton);
+        
+        services.AddDbContextFactory<ServerDbContext>();
+    }
+    
     public async Task ResetAsync(IServiceProvider provider)
     {
         await using var scope = provider.CreateAsyncScope();

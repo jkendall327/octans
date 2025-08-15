@@ -25,14 +25,13 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
     public TagUpdaterTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
         _databaseFixture = databaseFixture;
+        
         var services = new ServiceCollection();
 
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
         services.AddBusinessServices();
 
-        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
-            optionsLifetime: ServiceLifetime.Singleton);
-        services.AddDbContextFactory<ServerDbContext>();
+        databaseFixture.RegisterDbContext(services);
 
         services.AddSingleton<IFileSystem>(_fileSystem);
 
