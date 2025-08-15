@@ -1,12 +1,63 @@
+using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Octans.Core.Importing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Octans.Client;
 using Octans.Core;
+using Octans.Core.Models;
+using Octans.Server;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
+
+public sealed class ImporterTests : IAsyncDisposable
+{
+    private readonly IImporter _sut;
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    private readonly MockFileSystem _fileSystem = new();
+    private readonly SpyChannelWriter<ThumbnailCreationRequest> _spy = new();
+
+    public ImporterTests(ITestOutputHelper testOutputHelper)
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
+        services.AddBusinessServices();
+
+        services.AddDbContext<ServerDbContext>(options =>
+        {
+            options.UseSqlite(_connection);
+        }, optionsLifetime: ServiceLifetime.Singleton);
+
+        services.AddSingleton<IFileSystem>(_fileSystem);
+
+        services.AddSingleton(_spy.Channel.Writer);
+        services.AddSingleton(_spy.Channel.Reader);
+
+        services.AddHttpClient();
+        
+        var provider = services.BuildServiceProvider();
+        
+        _sut = provider.GetRequiredService<IImporter>();
+    }
+
+    [Fact]
+    public async Task Foo()
+    {
+        
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _connection.DisposeAsync();
+    }
+}
 
 public class ImportEndpointTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {

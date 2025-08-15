@@ -8,18 +8,18 @@ namespace Octans.Tests;
 /// </summary>
 public sealed class SpyChannelWriter<T> : ChannelWriter<T>
 {
-    private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
+    public Channel<T> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<T>();
     public ICollection<T> WrittenItems { get; } = new Collection<T>();
 
     public override bool TryWrite(T item)
     {
         WrittenItems.Add(item);
 
-        return _channel.Writer.TryWrite(item);
+        return Channel.Writer.TryWrite(item);
     }
 
     public override ValueTask<bool> WaitToWriteAsync(CancellationToken cancellationToken = default)
     {
-        return _channel.Writer.WaitToWriteAsync(cancellationToken);
+        return Channel.Writer.WaitToWriteAsync(cancellationToken);
     }
 }
