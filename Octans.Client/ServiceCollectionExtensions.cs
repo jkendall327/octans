@@ -111,6 +111,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IFileSystem>(new FileSystem());
+        services.AddScoped<IBrowserStorage, BrowserStorage>();
 
         return services;
     }

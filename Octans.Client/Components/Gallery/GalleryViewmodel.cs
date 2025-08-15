@@ -1,11 +1,10 @@
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Pages;
 
 public sealed class GalleryViewmodel(
     IQueryService service,
-    ProtectedSessionStorage sessionStorage,
+    IBrowserStorage storage,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -15,30 +14,29 @@ public sealed class GalleryViewmodel(
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
     public string? CurrentImage { get; set; }
-    public List<QueryParameter> CurrentQuery { get; set; } = [];
+    public List<QueryParameter> CurrentQuery { get; private set; } = [];
 
     private int _total;
     private int _processed;
-    public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
+    public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
 
     public async Task OnInitialized()
     {
-        var z = await sessionStorage.GetAsync<List<string>>("gallery", "gallery-images");
+        var images = await storage.FromSessionAsync<List<string>>("gallery", "gallery-images");
 
-        if (z.Success)
+        if (images is not null)
         {
-            ImageUrls = z.Value;
-        }
-        
-        var t = await sessionStorage.GetAsync<List<QueryParameter>>("gallery", "gallery-query");
-
-        if (t.Success)
-        {
-            CurrentQuery = t.Value;
+            ImageUrls = images;
         }
 
+        var query = await storage.FromSessionAsync<List<QueryParameter>>("gallery", "gallery-query");
+
+        if (query is not null)
+        {
+            CurrentQuery = query;
+        }
     }
-    
+
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
         // Cancel previous run
@@ -81,8 +79,8 @@ public sealed class GalleryViewmodel(
                 }
             }
 
-            await sessionStorage.SetAsync("gallery", "gallery-images", ImageUrls);
-            await sessionStorage.SetAsync("gallery", "gallery-query", CurrentQuery);
+            await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
+            await storage.ToSessionAsync("gallery", "gallery-query", CurrentQuery);
         }
         catch (OperationCanceledException)
         {

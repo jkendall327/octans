@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Pages;
 using Octans.Core.Models;
 using Octans.Core.Querying;
@@ -11,6 +12,7 @@ public class GalleryViewmodelTests
 {
     private readonly IQueryService _service;
     private readonly GalleryViewmodel _sut;
+    private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
 
     private static readonly string[] Expected =
     [
@@ -20,7 +22,7 @@ public class GalleryViewmodelTests
     public GalleryViewmodelTests()
     {
         _service = Substitute.For<IQueryService>();
-        _sut = new(_service, NullLogger<GalleryViewmodel>.Instance);
+        _sut = new(_service, _storage, NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]
