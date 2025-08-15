@@ -1,0 +1,26 @@
+@inject ThemeService ThemeService
+
+<select id="theme-picker"
+        value="@ThemeService.CurrentTheme"
+        @onchange="OnThemeChangedAsync">
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+    <option value="sepia">Sepia</option>
+    <option value="red">Red</option>
+</select>
+
+@code {
+
+    private async Task OnThemeChangedAsync(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(value) || value == ThemeService.CurrentTheme)
+        {
+            return;
+        }
+
+        await ThemeService.SetTheme(value);
+    }
+
+}

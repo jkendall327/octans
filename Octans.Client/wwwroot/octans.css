@@ -33,6 +33,12 @@
     /* ... other dark theme variables (repeat from media query) */
 }
 
+[data-theme='red'] {
+    --primary-color: red;
+    --background-color: red;
+    --text-color: blue;
+}
+
 body {
     background-color: var(--background-color);
     color: var(--text-color);

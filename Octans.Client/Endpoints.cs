@@ -152,18 +152,6 @@ internal static class Endpoints
             .WithName("GetVersion")
             .WithDescription("Returns the current API version")
             .WithOpenApi();
-
-        app
-            .MapGet("/config",
-                ([FromServices] IConfiguration config) => new
-                {
-                    DatabaseRoot = config["DatabaseRoot"],
-                    Environment = config["ASPNETCORE_ENVIRONMENT"],
-                    LogLevel = config["Logging:LogLevel:Default"]
-                })
-            .WithName("GetConfig")
-            .WithDescription("Returns non-sensitive configuration settings")
-            .WithOpenApi();
     }
 
     public static void MapImageEndpoints(this WebApplication app)
