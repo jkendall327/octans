@@ -55,6 +55,11 @@ public class Importer(
             ["ItemImportId"] = Guid.NewGuid(),
         });
 
+        if (item.Url is not null && item.Filepath is not null)
+        {
+            throw new ArgumentException("Import item had both a URL and a filepath specified.", nameof(item));
+        }
+
         var task = request.ImportType switch
         {
             ImportType.File => file.GetRawBytes(item),

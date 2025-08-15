@@ -50,7 +50,7 @@ public class LocalFileImportViewmodel(
             await using var source = file.OpenReadStream();
             await source.CopyToAsync(stream);
 
-            items.Add(new() { Source = new(filePath) });
+            items.Add(new() { Filepath = filePath });
         }
 
         var request = new ImportRequest
@@ -89,7 +89,7 @@ public class RawUrlImportViewmodel(
             logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, ImportType.RawUrl);
 
             var importItems = urls
-                .Select(url => new ImportItem { Source = new Uri(url) })
+                .Select(url => new ImportItem { Url = new Uri(url) })
                 .ToList();
 
             var request = new ImportRequest

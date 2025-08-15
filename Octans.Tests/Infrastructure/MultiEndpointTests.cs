@@ -35,7 +35,7 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
     {
         var item = new ImportItem
         {
-            Source = new(imagePath),
+            Filepath = imagePath,
             Tags = [new("category", "test")]
         };
 

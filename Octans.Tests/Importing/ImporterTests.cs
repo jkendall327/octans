@@ -218,7 +218,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var item = new ImportItem
         {
-            Source = new("C:/myfile.jpeg"),
+            Filepath = "C:/myfile.jpeg",
             Tags = [new("test", "reimport")]
         };
 
@@ -254,7 +254,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var item = new ImportItem
         {
-            Source = new(source),
+            Filepath = source,
             Tags = [tag]
         };
 

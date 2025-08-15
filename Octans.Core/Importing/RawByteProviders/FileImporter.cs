@@ -10,11 +10,14 @@ public class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) 
 {
     public async Task<byte[]> GetRawBytes(ImportItem item)
     {
-        var filepath = item.Source;
+        var filepath = item.Filepath ??
+                       throw new ArgumentException(
+                           "Import item had a null filepath, despite having an Import Type of File.",
+                           nameof(item));
 
         logger.LogInformation("Importing local file from {LocalUri}", filepath);
 
-        var bytes = await fileSystem.File.ReadAllBytesAsync(filepath.AbsolutePath);
+        var bytes = await fileSystem.File.ReadAllBytesAsync(filepath);
 
         return bytes;
     }
@@ -23,8 +26,13 @@ public class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) 
     {
         if (request.DeleteAfterImport)
         {
+            var filepath = item.Filepath ??
+                           throw new ArgumentException(
+                               "Import item had a null filepath, despite having an Import Type of File.",
+                               nameof(item));
+
             logger.LogInformation("Deleting original local file");
-            fileSystem.File.Delete(item.Source.AbsolutePath);
+            fileSystem.File.Delete(filepath);
         }
 
         return Task.CompletedTask;

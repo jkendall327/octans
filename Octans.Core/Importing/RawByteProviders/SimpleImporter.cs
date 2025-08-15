@@ -13,7 +13,7 @@ public sealed class SimpleImporter(
 {
     public async Task<byte[]> GetRawBytes(ImportItem item)
     {
-        var url = item.Source.AbsoluteUri;
+        var url = item.Url?.AbsoluteUri;
 
         logger.LogInformation("Downloading remote file from {RemoteUrl}", url);
 
@@ -21,7 +21,7 @@ public sealed class SimpleImporter(
         var client = clientFactory.CreateClient();
 #pragma warning restore CA2000
 
-        var bytes = await client.GetByteArrayAsync(item.Source);
+        var bytes = await client.GetByteArrayAsync(item.Url);
 
         return bytes;
     }

@@ -60,7 +60,7 @@ public sealed class ImportFolderBackgroundService(
                 .Where(IsImageFile)
                 .Select(file => new ImportItem
                 {
-                    Source = new(file)
+                    Url = new(file)
                 })
                 .ToList();
 

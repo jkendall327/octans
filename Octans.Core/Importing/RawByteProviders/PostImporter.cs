@@ -10,6 +10,6 @@ public class PostImporter(DownloaderService downloaderService) : IRawByteProvide
 {
     public async Task<byte[]> GetRawBytes(ImportItem item)
     {
-        return await downloaderService.Download(item.Source);
+        return await downloaderService.Download(item.Url ?? throw new ArgumentException("Item had a null URL.", nameof(item)));
     }
 }

@@ -38,7 +38,8 @@ public class ImportFilterData
 
 public class ImportItem
 {
-    public required Uri Source { get; init; }
+    public Uri? Url { get; init; }
+    public string? Filepath { get; init; }
     public ICollection<TagModel>? Tags { get; init; }
 }
 
