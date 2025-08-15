@@ -8,7 +8,7 @@ namespace Octans.Tests;
 public class DatabaseFixture : IAsyncLifetime
 {
     public SqliteConnection Connection { get; } = new("DataSource=:memory:");
-    
+
     public async Task InitializeAsync()
     {
         await Connection.OpenAsync();
@@ -18,10 +18,10 @@ public class DatabaseFixture : IAsyncLifetime
     {
         services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(Connection); },
             optionsLifetime: ServiceLifetime.Singleton);
-        
+
         services.AddDbContextFactory<ServerDbContext>();
     }
-    
+
     public async Task ResetAsync(IServiceProvider provider)
     {
         await using var scope = provider.CreateAsyncScope();

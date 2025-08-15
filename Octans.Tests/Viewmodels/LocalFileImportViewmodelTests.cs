@@ -23,7 +23,7 @@ public class LocalFileImportViewmodelTests
 
         // This has to be a root path to avoid the URI ctor breaking.
         env.WebRootPath.Returns("/wwwroot");
-        
+
         _sut = new(fs, env, _importer, NullLogger<LocalFileImportViewmodel>.Instance);
     }
 

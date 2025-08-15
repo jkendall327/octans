@@ -26,7 +26,7 @@ public class LocalFileImportViewmodel(
     ILogger<LocalFileImportViewmodel> logger) : ILocalFileImportViewmodel
 {
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
-    
+
     public ImportResult? Result { get; private set; }
 
     public async Task SendLocalFilesToServer()
@@ -61,7 +61,7 @@ public class LocalFileImportViewmodel(
         };
 
         Result = await importer.ProcessImport(request);
-        
+
         LocalFiles = [];
     }
 }

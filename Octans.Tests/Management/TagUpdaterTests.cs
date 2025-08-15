@@ -17,7 +17,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
     private const string AppRoot = "/app";
     private readonly TagUpdater _sut;
-    
+
     private readonly IServiceProvider _provider;
     private readonly DatabaseFixture _databaseFixture;
     private readonly MockFileSystem _fileSystem = new();
@@ -25,7 +25,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
     public TagUpdaterTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
         _databaseFixture = databaseFixture;
-        
+
         var services = new ServiceCollection();
 
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
@@ -41,13 +41,13 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
         _sut = _provider.GetRequiredService<TagUpdater>();
     }
-    
+
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()
     {
-        await using var scope =  _provider.CreateAsyncScope();
+        await using var scope = _provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        
+
         var hash = await SetupInitialData(db);
 
         var request = new UpdateTagsRequest(hash.Id,
@@ -111,7 +111,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
         return hash;
     }
-    
+
     public async Task InitializeAsync()
     {
         await _databaseFixture.ResetAsync(_provider);

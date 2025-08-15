@@ -16,7 +16,7 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
     private const string AppRoot = "/app";
     private readonly FileDeleter _sut;
-    
+
     private readonly IServiceProvider _provider;
     private readonly DatabaseFixture _databaseFixture;
     private readonly MockFileSystem _fileSystem = new();
@@ -41,13 +41,13 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
         _sut = _provider.GetRequiredService<FileDeleter>();
     }
-    
+
     [Fact]
     public async Task Delete_ExistingFile_ReturnsSuccessAndRemovesFile()
     {
-        await using var scope =  _provider.CreateAsyncScope();
+        await using var scope = _provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        
+
         var hashed = AddFileToFilesystem(out var filePath);
 
         var id = await AddFileToDatabase(hashed, db);
@@ -100,7 +100,7 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         result.Success.Should().BeFalse();
         result.Error.Should().NotBeNullOrEmpty();
     }
-    
+
     public async Task InitializeAsync()
     {
         await _databaseFixture.ResetAsync(_provider);

@@ -144,7 +144,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
             .Should()
             .BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
     }
-    
+
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
@@ -161,7 +161,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         result.Should().NotBeNull();
         result.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
-        
+
         var dbHash = await db.Hashes.FindAsync(hash.Id);
 
         dbHash.Should().NotBeNull("hashes for deleted files remain in the DB to prevent reimports");
