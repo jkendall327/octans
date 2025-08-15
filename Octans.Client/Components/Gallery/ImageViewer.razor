@@ -1,0 +1,109 @@
+<div class="image-viewer">
+    <div class="d-flex flex-column">
+        @if (CurrentImage is null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <img
+                src="@CurrentImage"
+                alt="Gallery image"
+                loading="lazy"
+                decoding="async"
+                referrerpolicy="no-referrer"/>
+        }
+
+        <div class="toolbar">
+            <MudButton
+                OnClick="@(OnClose)"
+                Class="ml-auto mr-n3 mb-1"
+                Color="Color.Error">
+                Close
+            </MudButton>
+            <MudButton
+                OnClick="@(PreviousAsync)"
+                Disabled="@(CurrentImage is null)"
+                Class="ml-auto mr-n3 mb-1"
+                Color="Color.Default">
+                Previous
+            </MudButton>
+            <MudButton
+                OnClick="@(NextAsync)"
+                Disabled="@(CurrentImage is null)"
+                Class="ml-auto mr-n3 mb-1"
+                Color="Color.Default">
+                Next
+            </MudButton>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter, EditorRequired] public List<string> ImageUrls { get; set; } = [];
+    [Parameter] public string? StartingImage { get; set; }
+    [Parameter] public EventCallback<string> CurrentImageChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string? CurrentImage { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        CurrentImage = StartingImage ?? ImageUrls.First();
+    }
+
+    private async Task PreviousAsync()
+    {
+        if (CurrentImage is null)
+        {
+            throw new InvalidOperationException("Current image was null after parameters being set");
+        }
+
+        var idx = ImageUrls.IndexOf(CurrentImage);
+
+        var prev = idx - 1;
+
+        CurrentImage = IsValidIndex(ImageUrls, prev) ? ImageUrls[prev] : ImageUrls.Last();
+
+        await CurrentImageChanged.InvokeAsync(CurrentImage);
+    }
+
+    private async Task NextAsync()
+    {
+        if (CurrentImage is null)
+        {
+            throw new InvalidOperationException("Current image was null after parameters being set");
+        }
+
+        var idx = ImageUrls.IndexOf(CurrentImage);
+
+        var next = idx + 1;
+
+        CurrentImage = IsValidIndex(ImageUrls, next) ? ImageUrls[next] : ImageUrls.First();
+
+        await CurrentImageChanged.InvokeAsync(CurrentImage);
+    }
+
+    private bool IsValidIndex<T>(List<T> list, int index) => index >= 0 && index < list.Count;
+
+}
+
+<style>
+    .image-viewer {
+        background: #0b5ed7;    
+    }
+    
+    img {
+        max-height: 80%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .toolbar {
+        display: flex;
+        flex-direction: row;
+        gap: 1em;
+        align-items: center;
+    }
+</style>

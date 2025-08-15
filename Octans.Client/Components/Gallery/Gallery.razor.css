@@ -33,12 +33,6 @@
 }
 
 .image-popover {
-    height: 90vh;
-    width: 90vw;
-}
-
-.image-popover img {
-    width: 100%;
-    object-fit: cover;
-    display: block;
+    min-height: 90vh;
+    min-width: 90vw;
 }
