@@ -1,0 +1,34 @@
+/* Octans theming */
+
+/* 1. Default Theme (Light) - This is the fallback */
+:root {
+    --primary-color: #0078d4;
+    --background-color: #ffffff;
+    --text-color: #212529;
+}
+
+/* 2. System Preference for Dark Mode */
+/* This automatically applies if the user's OS is in dark mode and no `data-theme` attribute is set. */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #4dabf7;
+        --background-color: #121212;
+        --text-color: #e9ecef;
+    }
+}
+
+/* 3. User Override - This has higher specificity and wins */
+/* These rules will override the media query if the attribute is present. */
+[data-theme='light'] {
+    --primary-color: #0078d4;
+    --background-color: #ffffff;
+    --text-color: #212529;
+    /* ... other light theme variables (repeat from :root) */
+}
+
+[data-theme='dark'] {
+    --primary-color: #4dabf7;
+    --background-color: #121212;
+    --text-color: #e9ecef;
+    /* ... other dark theme variables (repeat from media query) */
+}
