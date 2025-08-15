@@ -15,7 +15,8 @@
                 </section>
                 <section class="search-panel">
                     <QueryBuilder
-                        OnQueryChanged="@Viewmodel.OnQueryChanged"
+                        Query="@Viewmodel.CurrentQuery"
+                        QueryChanged="@Viewmodel.OnQueryChanged"
                         OnCancellationRequested="@Viewmodel.OnCancel"
                         CanCancel="@Viewmodel.Searching"/>
                 </section>

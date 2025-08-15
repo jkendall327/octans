@@ -40,10 +40,10 @@
 
 @code {
 
-  [Parameter, EditorRequired] public EventCallback<List<QueryParameter>> OnQueryChanged { get; set; }
+  [Parameter, EditorRequired] public EventCallback<List<QueryParameter>> QueryChanged { get; set; }
   [Parameter, EditorRequired] public EventCallback OnCancellationRequested { get; set; }
   [Parameter, EditorRequired] public bool CanCancel { get; set; }
-  [Parameter] public IEnumerable<QueryParameter>? InitialParameters { get; set; }
+  [Parameter] public IEnumerable<QueryParameter>? Query { get; set; }
 
   private readonly List<QueryParameter> _parameters = new();
   private string _current = string.Empty;
@@ -51,10 +51,10 @@
 
   protected override void OnParametersSet()
   {
-    if (_initialized || InitialParameters is null) return;
+    if (_initialized || Query is null) return;
 
     _parameters.Clear();
-    _parameters.AddRange(InitialParameters);
+    _parameters.AddRange(Query);
     _initialized = true;
   }
 
@@ -90,7 +90,7 @@
 
   private Task NotifyChangedAsync()
   {
-    return OnQueryChanged.HasDelegate ? OnQueryChanged.InvokeAsync(_parameters.ToList()) : Task.CompletedTask;
+    return QueryChanged.HasDelegate ? QueryChanged.InvokeAsync(_parameters.ToList()) : Task.CompletedTask;
   }
 
 }

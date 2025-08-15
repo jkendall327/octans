@@ -64,11 +64,12 @@
 {
     public int PaneSize { get; private set; } = 30;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (RendererInfo.IsInteractive)
         {
             Viewmodel.StateChanged += OnViewmodelOnStateChanged;
+            await Viewmodel.OnInitialized();
         }
     }
 
