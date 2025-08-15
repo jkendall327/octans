@@ -3,6 +3,18 @@
 @inject GalleryViewmodel Viewmodel
 @implements IAsyncDisposable
 
+<MudPopover Open="@(Viewmodel.CurrentImage is not null)" Fixed="true" Class="image-popover">
+    <div class="d-flex flex-column">
+        <img src="@Viewmodel.CurrentImage"
+             alt="Gallery image"
+             loading="lazy"
+             decoding="async"
+             referrerpolicy="no-referrer"/>
+        <MudButton OnClick="@(() => Viewmodel.CurrentImage = null)" Class="ml-auto mr-n3 mb-1" Color="Color.Error">Close</MudButton>
+    </div>
+</MudPopover>
+
+
 <SplitContainer
     UnitOfPaneSize="UnitOfPaneSize.Percent"
     @bind-FirstPaneSize="PaneSize"
@@ -21,7 +33,7 @@
                 <div class="image-grid">
                     @foreach (var url in Viewmodel.ImageUrls)
                     {
-                        <div class="image-card">
+                        <div class="image-card" @ondblclick="@(() => Viewmodel.CurrentImage = url)">
                             <img src="@url"
                                  alt="Gallery image"
                                  loading="lazy"

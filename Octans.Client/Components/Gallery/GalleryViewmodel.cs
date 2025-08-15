@@ -12,6 +12,8 @@ public sealed class GalleryViewmodel(IQueryService service, ILogger<GalleryViewm
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
 
+    public string? CurrentImage { get; set; }
+
     private int _total;
     private int _processed;
     public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
