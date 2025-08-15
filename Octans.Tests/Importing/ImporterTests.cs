@@ -2,7 +2,6 @@ using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Channels;
 using Octans.Core.Importing;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
