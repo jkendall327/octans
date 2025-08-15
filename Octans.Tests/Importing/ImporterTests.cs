@@ -144,6 +144,94 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
             .Should()
             .BeEquivalentTo(TestingConstants.MinimalJpeg, "thumbnails should be made for valid imports");
     }
+    
+    [Fact]
+    public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
+    {
+        await using var scope = _provider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var hash = await SetupDeletedImage(db);
+
+        var request = BuildReimportRequest();
+
+        request.AllowReimportDeleted = false;
+
+        var result = await _sut.ProcessImport(request);
+
+        result.Should().NotBeNull();
+        result.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
+        
+        var dbHash = await db.Hashes.FindAsync(hash.Id);
+
+        dbHash.Should().NotBeNull("hashes for deleted files remain in the DB to prevent reimports");
+
+        await db.Entry(dbHash).ReloadAsync();
+
+        dbHash!.DeletedAt.Should().NotBeNull("reimporting wasn't allowed, so it should still be marked as deleted");
+    }
+
+    [Fact]
+    public async Task Import_PreviouslyDeletedImage_ShouldReimportWhenAllowed()
+    {
+        await using var scope = _provider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var hash = await SetupDeletedImage(db);
+
+        var request = BuildReimportRequest();
+
+        request.AllowReimportDeleted = true;
+
+        var result = await _sut.ProcessImport(request);
+
+        result.Should().NotBeNull();
+        result.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
+
+        var dbHash = await db.Hashes.FindAsync(hash.Id);
+
+        dbHash.Should().NotBeNull();
+
+        // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
+        await db.Entry(dbHash).ReloadAsync();
+
+        dbHash.DeletedAt.Should().BeNull("reimporting was allowed, so its soft-deletion mark should be gone");
+    }
+
+    private async Task<HashItem> SetupDeletedImage(ServerDbContext db)
+    {
+        var hash = new HashItem
+        {
+            Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg).Bytes,
+            DeletedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        db.Hashes.Add(hash);
+        await db.SaveChangesAsync();
+
+        return hash;
+    }
+
+    private ImportRequest BuildReimportRequest()
+    {
+        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
+
+        var item = new ImportItem
+        {
+            Source = new("C:/myfile.jpeg"),
+            Tags = [new("test", "reimport")]
+        };
+
+        var request = new ImportRequest
+        {
+            Items = [item],
+            ImportType = ImportType.File,
+            DeleteAfterImport = false,
+            AllowReimportDeleted = false
+        };
+
+        return request;
+    }
 
     private async Task<(ImportRequest request, ImportResult Content)> SendSimpleValidRequest()
     {
