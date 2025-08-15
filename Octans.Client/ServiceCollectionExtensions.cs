@@ -34,66 +34,60 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static void AddInfrastructure(this WebApplicationBuilder builder)
-    {
-        builder.Services.AddSingleton<IFileSystem>(new FileSystem());
-        builder.Services.AddSingleton(TimeProvider.System);
-    }
-
-    public static void AddChannels(this WebApplicationBuilder builder)
+    public static void AddChannels(this IServiceCollection services)
     {
         var channel = Channel.CreateBounded<ThumbnailCreationRequest>(new BoundedChannelOptions(100)
         {
             FullMode = BoundedChannelFullMode.Wait
         });
 
-        builder.Services.AddSingleton(channel.Reader);
-        builder.Services.AddSingleton(channel.Writer);
+        services.AddSingleton(channel.Reader);
+        services.AddSingleton(channel.Writer);
     }
 
-    public static void AddBusinessServices(this WebApplicationBuilder builder)
+    public static void AddBusinessServices(this IServiceCollection services)
     {
         // Imports
-        builder.Services.AddScoped<SimpleImporter>();
-        builder.Services.AddScoped<FileImporter>();
-        builder.Services.AddScoped<PostImporter>();
-        builder.Services.AddScoped<IImporter, Importer>();
+        services.AddScoped<SimpleImporter>();
+        services.AddScoped<FileImporter>();
+        services.AddScoped<PostImporter>();
+        services.AddScoped<IImporter, Importer>();
 
         // Import services
-        builder.Services.AddScoped<ReimportChecker>();
-        builder.Services.AddScoped<DatabaseWriter>();
-        builder.Services.AddScoped<FilesystemWriter>();
-        builder.Services.AddScoped<ImportFilterService>();
-        builder.Services.AddSingleton<ThumbnailCreator>();
-        builder.Services.AddScoped<DownloaderFactory>();
-        builder.Services.AddScoped<DownloaderService>();
+        services.AddScoped<ReimportChecker>();
+        services.AddScoped<DatabaseWriter>();
+        services.AddScoped<FilesystemWriter>();
+        services.AddScoped<ImportFilterService>();
+        services.AddSingleton<ThumbnailCreator>();
+        services.AddScoped<DownloaderFactory>();
+        services.AddScoped<DownloaderService>();
 
         // Files
-        builder.Services.AddSingleton<SubfolderManager>();
-        builder.Services.AddScoped<FileFinder>();
-        builder.Services.AddScoped<FileDeleter>();
-        builder.Services.AddScoped<TagUpdater>();
+        services.AddSingleton<SubfolderManager>();
+        services.AddScoped<FileFinder>();
+        services.AddScoped<FileDeleter>();
+        services.AddScoped<TagUpdater>();
 
         // Queries
-        builder.Services.AddScoped<IQueryService, QueryService>();
-        builder.Services.AddScoped<QueryParser>();
-        builder.Services.AddScoped<QueryPlanner>();
-        builder.Services.AddScoped<QueryTagConverter>();
-        builder.Services.AddScoped<HashSearcher>();
+        services.AddScoped<IQueryService, QueryService>();
+        services.AddScoped<QueryParser>();
+        services.AddScoped<QueryPlanner>();
+        services.AddScoped<QueryTagConverter>();
+        services.AddScoped<HashSearcher>();
 
         // Stats
-        builder.Services.AddScoped<StatsService>();
-        builder.Services.AddScoped<StorageService>();
+        services.AddScoped<StatsService>();
+        services.AddScoped<StorageService>();
 
-        builder.Services.AddMemoryCache();
+        services.AddMemoryCache();
     }
 
-    public static void AddDatabase(this WebApplicationBuilder builder)
+    public static void AddDatabase(this IServiceCollection services)
     {
-        builder.Services.AddDbContextFactory<ServerDbContext>(BuildDatabase);
-        builder.Services.AddDbContext<ServerDbContext>(BuildDatabase, optionsLifetime: ServiceLifetime.Singleton);
+        services.AddDbContextFactory<ServerDbContext>(BuildDatabase);
+        services.AddDbContext<ServerDbContext>(BuildDatabase, optionsLifetime: ServiceLifetime.Singleton);
 
-        builder.Services
+        services
             .AddHealthChecks()
             .AddDbContextCheck<ServerDbContext>("database", HealthStatus.Unhealthy);
     }
