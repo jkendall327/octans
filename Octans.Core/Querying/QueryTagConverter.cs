@@ -33,14 +33,18 @@ public class QueryTagConverter
         {
             case TagPredicate tagPredicate:
                 ProcessTagPredicate(tagPredicate, includeTags, excludeTags);
+
                 break;
             case OrPredicate orPredicate:
                 ProcessOrPredicate(orPredicate, includeTags, excludeTags);
+
                 break;
         }
     }
 
-    private void ProcessTagPredicate(TagPredicate tagPredicate, HashSet<TagModel> includeTags, HashSet<TagModel> excludeTags)
+    private void ProcessTagPredicate(TagPredicate tagPredicate,
+        HashSet<TagModel> includeTags,
+        HashSet<TagModel> excludeTags)
     {
         if (tagPredicate.IsWildcard())
             return;
@@ -57,7 +61,9 @@ public class QueryTagConverter
         }
     }
 
-    private void ProcessOrPredicate(OrPredicate orPredicate, HashSet<TagModel> includeTags, HashSet<TagModel> excludeTags)
+    private void ProcessOrPredicate(OrPredicate orPredicate,
+        HashSet<TagModel> includeTags,
+        HashSet<TagModel> excludeTags)
     {
         var localIncludeTags = new HashSet<TagModel>();
         var localExcludeTags = new HashSet<TagModel>();
@@ -89,7 +95,7 @@ public class DecomposedQuery
     public bool IsEmpty()
     {
         var hasContent = TagsToInclude.Any() || WildcardNamespacesToInclude.Any() || WildcardSubtagsToInclude.Any() ||
-                         WildcardDoublesToInclude.Any();
+                         WildcardDoublesToInclude.Any() || SystemPredicates.Any();
 
         return !hasContent;
     }

@@ -17,6 +17,12 @@ public class HashSearcher(ServerDbContext context)
             return allHashes.ToHashSet();
         }
 
+        if (request.SystemPredicates.OfType<EverythingPredicate>().Any())
+        {
+            var allHashes = await context.Hashes.ToListAsync(cancellationToken);
+            return allHashes.ToHashSet();
+        }
+
         var tags = context.Tags
             .Include(tag => tag.Namespace)
             .Include(tag => tag.Subtag);
