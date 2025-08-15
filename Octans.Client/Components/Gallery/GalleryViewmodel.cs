@@ -39,17 +39,8 @@ public sealed class GalleryViewmodel(
 
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
-        // Cancel previous run
-        await _cts.CancelAsync();
-        _cts.Dispose();
-        _cts = new();
-
-        LastError = null;
-        Searching = true;
-        ImageUrls = [];
-        _total = 0;
-        _processed = 0;
-
+        await CancelPreviousRun();
+        ResetState();
         await NotifyStateChanged();
 
         try
@@ -96,6 +87,22 @@ public sealed class GalleryViewmodel(
             Searching = false;
             await NotifyStateChanged();
         }
+    }
+
+    private void ResetState()
+    {
+        LastError = null;
+        Searching = true;
+        ImageUrls = [];
+        _total = 0;
+        _processed = 0;
+    }
+
+    private async Task CancelPreviousRun()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+        _cts = new();
     }
 
     private async Task NotifyStateChanged()
