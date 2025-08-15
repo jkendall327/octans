@@ -1,7 +1,3 @@
-window.setTheme = (theme) => {
-    document.documentElement.setAttribute('data-theme', theme);
-};
-
 window.themeManager = {
     // This function applies the theme to the HTML document
     setTheme: (theme) => {
