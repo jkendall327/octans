@@ -1,4 +1,9 @@
-<div class="image-viewer" @onkeydown="@OnKeyDown">
+<div class="image-viewer"
+     tabindex="0"
+     @ref="_root"
+     @onkeydown="@OnKeyDown"
+     @ondblclick="@OnClose"
+>
     <section class="toolbar">
         <MudButton
             OnClick="@(OnClose)"
@@ -24,26 +29,42 @@
             Next
         </MudButton>
     </section>
-        
-    <section class="image-display">
-        @if (CurrentImage is null)
-        {
-            <p>Loading...</p>
-        }
-        else
-        {
-            <img
-                src="@CurrentImage"
-                alt="Gallery image"
-                loading="lazy"
-                decoding="async"
-                referrerpolicy="no-referrer"/>
-        }
+
+    <section class="media-plane">
+        <div class="tag-list">
+            <!-- TODO: get actual tags. -->
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+            <p>foo</p>
+        </div>
+        <div class="image-display">
+            @if (CurrentImage is null)
+            {
+                <p>Loading...</p>
+            }
+            else
+            {
+                <img
+                    src="@CurrentImage"
+                    alt="Gallery image"
+                    loading="lazy"
+                    decoding="async"
+                    referrerpolicy="no-referrer"/>
+            }
+        </div>
     </section>
 </div>
 
 
 @code {
+    private ElementReference _root;
+    private bool _shouldFocus;
+
     [Parameter, EditorRequired] public List<string> ImageUrls { get; set; } = [];
     [Parameter] public string? StartingImage { get; set; }
     [Parameter] public EventCallback<string> CurrentImageChanged { get; set; }
@@ -54,14 +75,25 @@
     protected override void OnParametersSet()
     {
         CurrentImage = StartingImage ?? ImageUrls.First();
+        _shouldFocus = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldFocus)
+        {
+            _shouldFocus = false;
+            await _root.FocusAsync();
+        }
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
         switch (e.Key)
         {
-            case "LeftArrow": await PreviousAsync(); break;
-            case "RightArrow": await NextAsync(); break;
+            case "ArrowLeft": await PreviousAsync(); break;
+            case "ArrowRight": await NextAsync(); break;
+            case "Escape": await OnClose.InvokeAsync(); break;
         }
     }
 
@@ -105,19 +137,35 @@
     .image-viewer {
         display: flex;
         flex-direction: column;
-        background: #36537f;    
+        background: var(--background-color);
         justify-items: center;
         height: 90vh;
         width: 90vw;
         overflow: hidden;
     }
-    
-    .image-display {
+
+    .media-plane {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+
         padding: 0.3rem;
         flex: 1 1 0;
         min-height: 0;
+
     }
     
+    .tag-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 10%;
+    }
+    
+    .image-display {
+        overflow-x: visible;
+    }
+
     img {
         object-fit: contain;
         display: block;
@@ -134,9 +182,5 @@
         gap: 1em;
         align-items: center;
         border-bottom: 1px solid;
-    }
-    
-    .minwidth {
-        width: min-content;
     }
 </style>
