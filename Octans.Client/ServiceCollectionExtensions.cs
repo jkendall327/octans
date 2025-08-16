@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Octans.Client.Components.Gallery;
 using Octans.Client.Components.MainToolbar;
 using Octans.Client.Components.Pages;
 using Octans.Client.Components.StatusBar;
@@ -139,6 +140,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocalFileImportViewmodel, LocalFileImportViewmodel>();
 
         services.AddScoped<GalleryViewmodel>();
+        services.AddScoped<QueryBuilderViewmodel>();
         services.AddScoped<Config.ConfigViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();

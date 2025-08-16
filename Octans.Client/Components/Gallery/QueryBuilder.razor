@@ -1,24 +1,28 @@
 @using Octans.Client.Components.Pages
-@using Octans.Core.Models.Tagging
-@using Octans.Core.Querying
+@inject QueryBuilderViewmodel ViewModel
+@implements IDisposable
 
 <div class="qb-root">
   <div class="qb-parameters" role="list" aria-label="Active query parameters">
-    @if (_parameters.Count == 0)
+    @if (ViewModel.Parameters.Count == 0)
     {
       <div class="qb-empty">No parameters yet.</div>
     }
     else
     {
-      @foreach (var item in _parameters.Select((val, idx) => new
+      @foreach (var item in ViewModel.Parameters.Select((val, idx) => new
                   {
                     val,
                     idx
                   }))
       {
         var colorClass = item.val.Kind == QueryKind.System ? "qb-param-system" : "qb-param-normal";
-        <div class="qb-param @colorClass" role="listitem" title="Double‑click to remove"
-             ondblclick="@(() => RemoveAt(item.idx))">
+        
+        <div 
+          class="qb-param @colorClass" 
+          role="listitem" 
+          title="Double-click to remove"
+          ondblclick="@(async () => await ViewModel.RemoveAtAsync(item.idx))">
           @item.val.Raw
         </div>
       }
@@ -29,9 +33,9 @@
     <input
       class="qb-input"
       placeholder="Type a parameter and press Enter"
-      value="@_current"
-      @oninput="OnInput"
-      @onkeydown="HandleKeyDown"/>
+      value="@ViewModel.Current"
+      @oninput="@(async e => await ViewModel.OnInputAsync(e.Value?.ToString()))"
+      @onkeydown="@(async e => await ViewModel.HandleKeyDownAsync(e.Key))"/>
 
     <!-- Placeholder buttons -->
     <button class="qb-btn" title="Reserved"><span aria-hidden="true">📄</span></button>
@@ -39,18 +43,17 @@
     <button class="qb-btn" title="Reserved"><span aria-hidden="true">🔒</span></button>
   </div>
 
-  @if (_suggestions.Count > 0)
+  @if (ViewModel.Suggestions.Count > 0)
   {
     <div class="qb-suggest">
-      @foreach (var s in _suggestions)
+      @foreach (var s in ViewModel.Suggestions)
       {
-        <div class="qb-suggest-item" @onclick="@(() => ApplySuggestion(s))">
+        <div class="qb-suggest-item" @onclick="@(async () => await ViewModel.ApplySuggestion(s))">
           @s.Namespace : @s.Subtag
         </div>
       }
     </div>
   }
-
 </div>
 
 @code {
@@ -60,248 +63,45 @@
   [Parameter, EditorRequired] public bool CanCancel { get; set; }
   [Parameter] public IEnumerable<QueryParameter>? Query { get; set; }
 
-  [Inject] private QuerySuggestionFinder SuggestionFinder { get; set; } = default!;
-
-  private readonly List<QueryParameter> _parameters = new();
-  private string _current = string.Empty;
-  private bool _initialized;
-
-  // Suggestions state
-  private readonly List<Tag> _suggestions = new();
-  private CancellationTokenSource? _debounceCts;
-  private CancellationTokenSource? _requestCts;
-
-  protected override void OnParametersSet()
+  protected override void OnInitialized()
   {
-    if (_initialized || Query is null) return;
-
-    _parameters.Clear();
-    _parameters.AddRange(Query);
-    _initialized = true;
-  }
-
-  private async Task HandleKeyDown(KeyboardEventArgs e)
-  {
-    if (e.Key == "Enter")
+    if (RendererInfo.IsInteractive)
     {
-      // committing → clear suggestions & add immediately
-      ClearSuggestions();
-      await AddCurrentAsync();
-    }
-    else if (e.Key == "Escape")
-    {
-      // optional: ESC clears suggestions
-      ClearSuggestions();
-      StateHasChanged();
+      ViewModel.StateHasChanged += OnStateChanged;
+      ViewModel.QueryChanged += OnViewModelOnQueryChanged;
     }
   }
 
-  private async Task RemoveAt(int index)
+  private async Task OnViewModelOnQueryChanged(List<QueryParameter> list)
   {
-    if (index >= 0 && index < _parameters.Count)
-    {
-      _parameters.RemoveAt(index);
-      await NotifyChangedAsync();
-    }
-  }
-  
-  private void ClearSuggestions()
-  {
-    _suggestions.Clear();
+    await QueryChanged.InvokeAsync(list);
   }
 
-  private async Task OnInput(ChangeEventArgs e)
+  private async Task OnStateChanged()
   {
-    _current = e.Value?.ToString() ?? string.Empty;
-    await DebouncedFetchAsync(_current, 200);
+    await InvokeAsync(StateHasChanged);
   }
 
-  private async Task DebouncedFetchAsync(string term, int delayMs)
+  protected override async Task OnParametersSetAsync()
   {
-    // cancel any pending debounce
-    if (_debounceCts is not null)
-    {
-      await _debounceCts.CancelAsync();
-      _debounceCts.Dispose();
-    }
-
-    _debounceCts = new();
-
-    try
-    {
-      await Task.Delay(delayMs, _debounceCts.Token);
-    }
-    catch (TaskCanceledException)
-    {
-      return; // another keystroke arrived
-    }
-
-    await FetchSuggestionsAsync(term);
+    await ViewModel.Initialize(Query);
   }
 
-  private async Task FetchSuggestionsAsync(string term)
+  public void Dispose()
   {
-    // optional guard: don't query for empty/very short terms
-    if (string.IsNullOrWhiteSpace(term))
+    if (ViewModel is null)
     {
-      ClearSuggestions();
-      await InvokeAsync(StateHasChanged);
-
       return;
     }
 
-    // cancel any in-flight request
-    if (_requestCts is not null)
+    if (RendererInfo.IsInteractive)
     {
-      await _requestCts.CancelAsync();
-      _requestCts.Dispose();
+      return;
     }
 
-    _requestCts = new();
-
-    try
-    {
-      var results = await SuggestionFinder.GetAutocompleteTagIds(term, false, _requestCts.Token);
-      _suggestions.Clear();
-
-      _suggestions.AddRange(results
-        .OrderBy(t => t.Namespace)
-        .ThenBy(s => s.Subtag)); // or your preferred sort
-
-      await InvokeAsync(StateHasChanged);
-    }
-    catch (OperationCanceledException)
-    {
-      // ignore; a newer request superseded this one
-    }
-    catch (Exception)
-    {
-      // swallow/log as needed; for UI just clear suggestions on error
-      ClearSuggestions();
-      await InvokeAsync(StateHasChanged);
-    }
-  }
-
-  private async Task AddCurrentAsync()
-  {
-    var trimmed = _current.Trim();
-
-    if (!string.IsNullOrWhiteSpace(trimmed))
-    {
-      var kind = trimmed.StartsWith("system:", StringComparison.OrdinalIgnoreCase) ? QueryKind.System : QueryKind.Normal;
-
-      _parameters.Add(new(trimmed, kind));
-      _current = string.Empty;
-      ClearSuggestions();
-      await NotifyChangedAsync();
-    }
-  }
-
-  private void ApplySuggestion(Tag tag)
-  {
-    // Choose how you “apply” the tag. Options:
-    // 1) Replace input text with the tag text (keeps editing)
-    _current = tag.Namespace + ":" + tag.Subtag;
-
-    // 2) Or immediately add as a committed parameter:
-    // _current = tag.Name;
-    // _ = AddCurrentAsync();
-
-    ClearSuggestions();
-  }
-
-  private Task NotifyChangedAsync()
-  {
-    return QueryChanged.HasDelegate ? QueryChanged.InvokeAsync(_parameters.ToList()) : Task.CompletedTask;
+    ViewModel.StateHasChanged -= OnStateChanged;
+    ViewModel.QueryChanged -= OnViewModelOnQueryChanged;
+    ViewModel.Dispose();
   }
 
 }
-
-<style>
-  .qb-root {
-    display: grid;
-    grid-template-rows: 1fr auto;
-    gap: .5rem;
-    background: #1f1f1f;
-    color: #dcdcdc;
-    border-radius: .5rem;
-    padding: .5rem;
-    border: 1px solid #2a2a2a;
-    max-width: 720px;
-  }
-
-  .qb-parameters {
-    background: #121212;
-    border: 1px solid #2a2a2a;
-    border-radius: .25rem;
-    padding: .5rem;
-    min-height: 4rem;
-    overflow-y: auto;
-  }
-
-  .qb-empty {
-    opacity: .6;
-    font-style: italic;
-  }
-
-  .qb-param {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    margin: .2rem 0;
-    padding: .35rem .5rem;
-    border-radius: .25rem;
-    background: #0d0d0d;
-    border: 1px solid #3d2a00;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .qb-param-normal {
-    color: #d39b2d;
-  }
-
-  .qb-param-system {
-    color: #4da3ff;
-  }
-
-  .qb-param:hover {
-    filter: brightness(1.1);
-  }
-
-  .qb-inputbar {
-    display: grid;
-    grid-template-columns: 1fr auto auto auto;
-    gap: .25rem;
-    align-items: center;
-    background: #121212;
-    border: 1px solid #2a2a2a;
-    border-radius: .25rem;
-    padding: .25rem;
-  }
-
-  .qb-input {
-    background: #0b0b0b;
-    border: 1px solid #2a2a2a;
-    color: #e8e8e8;
-    outline: none;
-    border-radius: .25rem;
-    padding: .4rem .5rem;
-  }
-
-  .qb-input:focus {
-    border-color: #4d4d4d;
-  }
-
-  .qb-btn {
-    height: 2rem;
-    width: 2rem;
-    border-radius: .25rem;
-    border: 1px solid #2a2a2a;
-    background: #0b0b0b;
-    color: #cfcfcf;
-    cursor: default;
-  }
-
-  .qb-btn:active {
-    transform: translateY(1px);
-  }
-</style>
