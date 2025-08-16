@@ -1,3 +1,12 @@
+html, body, #app {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+}
+
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -12,9 +21,33 @@
     z-index: 1000;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.octans {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    overflow: auto;
+}
+
+.main-toolbar {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 1rem;
+}
+
+.status-bar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}

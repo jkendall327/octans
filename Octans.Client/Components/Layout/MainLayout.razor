@@ -1,6 +1,21 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="octans">
+    <div class="main-toolbar">
+        <MudToolBar>
+            <MudButton Color="Color.Inherit" Class="mr-5">files</MudButton>
+            <MudButton Color="Color.Inherit" Class="mr-5">downloads</MudButton>
+            <MudButton Color="Color.Inherit" Class="mr-5">database</MudButton>
+        </MudToolBar>
+    </div>
+    <article class="main-content">
+        @Body
+    </article>
+    <div class="status-bar">
+        <p>status: ...</p>
+        <p>other info</p>
+    </div>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
@@ -9,11 +24,11 @@
 </div>
 
 @* Required *@
-<MudThemeProvider />
-<MudPopoverProvider />
+<MudThemeProvider/>
+<MudPopoverProvider/>
 
 @* Needed for dialogs *@
-<MudDialogProvider />
+<MudDialogProvider/>
 
 @* Needed for snackbars *@
-<MudSnackbarProvider />
+<MudSnackbarProvider/>
