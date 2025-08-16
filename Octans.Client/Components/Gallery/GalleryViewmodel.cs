@@ -42,11 +42,11 @@ public sealed class GalleryViewmodel(
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
         await CancelPreviousRun();
-        
+
         ResetState();
 
         status.WorkingText = "loading...";
-        
+
         await NotifyStateChanged();
 
         try
@@ -77,7 +77,7 @@ public sealed class GalleryViewmodel(
             }
 
             status.MediaInfo = $"{ImageUrls.Count} files";
-            
+
             await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
             await storage.ToSessionAsync("gallery", "gallery-query", CurrentQuery);
         }

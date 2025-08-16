@@ -79,7 +79,7 @@ public class MainToolbarViewmodel(NavigationManager nav)
     public Task Navigate(Page page)
     {
         var url = _pages[page];
-        
+
         nav.NavigateTo(url);
 
         return Task.CompletedTask;
