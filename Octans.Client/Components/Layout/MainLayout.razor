@@ -1,19 +1,14 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="octans">
-    <div class="main-toolbar">
-        <MudToolBar>
-            <MudButton Color="Color.Inherit" Class="mr-5">files</MudButton>
-            <MudButton Color="Color.Inherit" Class="mr-5">downloads</MudButton>
-            <MudButton Color="Color.Inherit" Class="mr-5">database</MudButton>
-        </MudToolBar>
+    <div>
+        <MainToolbar/>
     </div>
     <article class="main-content">
         @Body
     </article>
-    <div class="status-bar">
-        <p>status: ...</p>
-        <p>other info</p>
+    <div>
+        <StatusBar/>
     </div>
 </div>
 

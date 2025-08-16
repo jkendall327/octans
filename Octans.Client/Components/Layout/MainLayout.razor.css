@@ -38,16 +38,3 @@ body {
     flex: 1;
     overflow: auto;
 }
-
-.main-toolbar {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 1rem;
-}
-
-.status-bar {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
