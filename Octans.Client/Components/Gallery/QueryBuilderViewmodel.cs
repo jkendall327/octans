@@ -10,7 +10,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     private CancellationTokenSource? _requestCts;
 
     private bool _initialized;
-    
+
     private readonly List<QueryParameter> _parameters = [];
     private readonly List<Tag> _suggestions = [];
 
@@ -57,9 +57,9 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     public async Task OnInputAsync(string? value, int debounceMs = 200)
     {
         Current = value ?? string.Empty;
-        
+
         await InvokeStateHasChanged();
-        
+
         await DebouncedFetchAsync(Current, debounceMs);
     }
 
@@ -168,7 +168,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     public async Task ApplySuggestion(Tag tag)
     {
         Current = $"{tag.Namespace}:{tag.Subtag}";
-        
+
         await InvokeStateHasChanged();
         await AddCurrentAsync();
     }

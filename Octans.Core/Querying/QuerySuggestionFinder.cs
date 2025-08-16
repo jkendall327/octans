@@ -13,7 +13,7 @@ public class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter
     public async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
     {
         return await context.Tags.ToHashSetAsync(cancellationToken: token);
-        
+
         if (string.IsNullOrWhiteSpace(search))
         {
             return [];
