@@ -76,6 +76,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<QueryPlanner>();
         services.AddScoped<QueryTagConverter>();
         services.AddScoped<HashSearcher>();
+        services.AddScoped<QuerySuggestionFinder>();
+        services.AddScoped<TagSplitter>();
 
         // Stats
         services.AddScoped<StatsService>();

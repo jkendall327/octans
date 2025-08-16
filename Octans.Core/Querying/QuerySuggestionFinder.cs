@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
+using Octans.Core.Tags;
 
 namespace Octans.Core.Querying;
 
 /// <summary>
 /// Provides suggestions on relevant tags given text, e.g. for autocomplete dropdowns.
 /// </summary>
-public class QuerySuggestionFinder(ServerDbContext context)
+public class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter)
 {
     private async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
     {
@@ -16,7 +17,7 @@ public class QuerySuggestionFinder(ServerDbContext context)
             return [];
         }
 
-        (var space, var subtag) = SplitTag(search);
+        (var space, var subtag) = splitter.SplitTag(search);
 
         if (string.IsNullOrWhiteSpace(subtag))
         {
@@ -100,18 +101,5 @@ public class QuerySuggestionFinder(ServerDbContext context)
             .Namespaces
             .Where(n => n.Value.Contains(clean))
             .ToListAsync(token);
-    }
-
-    private (string space, string subtag) SplitTag(string tag)
-    {
-        var split = tag.Split(PredicateConstants.NamespaceDelimiter);
-
-        return split.Length switch
-        {
-            0 => throw new InvalidOperationException("Somehow, splitting a tag resulted in an empty array"),
-            1 => (string.Empty, split.First()),
-            2 => (split.First(), split.Last()),
-            var _ => throw new InvalidOperationException("Splitting a tag resulted in >2 entries"),
-        };
     }
 }
