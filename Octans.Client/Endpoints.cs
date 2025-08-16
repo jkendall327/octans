@@ -191,7 +191,7 @@ internal static class Endpoints
 
                 // ETag derived from the content hash you're already using.
                 // (Quotes are required around the tag string.)
-                var etag = new EntityTagHeaderValue($"\"{hash.ToLowerInvariant()}\"");
+                var etag = new EntityTagHeaderValue($"\"{hash.ToUpperInvariant()}\"");
 
                 http.Response.Headers[HeaderNames.CacheControl] = "public, max-age=31536000, immutable";
 

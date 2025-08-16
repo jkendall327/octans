@@ -201,7 +201,7 @@ public static class ServiceCollectionExtensions
 
     private static string GetContentType(string extension)
     {
-        return extension.ToLowerInvariant() switch
+        return extension.ToUpperInvariant() switch
         {
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",

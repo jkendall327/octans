@@ -32,7 +32,7 @@ public class HashedBytes
     {
         Bytes = source;
         Hexadecimal = Convert.ToHexString(Bytes);
-        Bucket = Hexadecimal[..2].ToLowerInvariant();
+        Bucket = Hexadecimal[..2].ToUpperInvariant();
         MimeType = source.DetectMimeType();
     }
 

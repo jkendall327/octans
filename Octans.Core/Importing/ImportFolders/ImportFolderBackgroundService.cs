@@ -93,7 +93,7 @@ public sealed class ImportFolderBackgroundService(
         var extension = fileSystem
             .Path
             .GetExtension(filePath)
-            .ToLowerInvariant();
+            .ToUpperInvariant();
 
         return ImageExtensions.Contains(extension);
     }

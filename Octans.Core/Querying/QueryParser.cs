@@ -52,7 +52,9 @@ public class QueryParser
         var head = components.First();
         var tail = string.Join("OR", components.Skip(1));
 
-        tail = tail.Replace("(", "").Replace(")", "");
+        tail = tail
+            .Replace("(", "", StringComparison.OrdinalIgnoreCase)
+            .Replace(")", "", StringComparison.OrdinalIgnoreCase);
 
         var rawHead = StringToRawQuery(head);
         var rawTail = StringToRawQuery(tail);
@@ -93,13 +95,14 @@ public class QueryParser
             0 => throw new InvalidOperationException("Somehow, splitting a raw query resulted in an empty array"),
             1 => (string.Empty, split.First()),
             2 => (split.First(), split.Last()),
+
             // OR queries will have multiple namespace delimiters.
             // E.g. 'or:character:bayonetta OR character:samus aran'
             // The below line will result in ["or"], ["character:bayonetta OR character:samus aran"].
             var _ => (split.First(), string.Join(':', split.Skip(1))),
         };
 
-        prefix = prefix.Replace("-", string.Empty);
+        prefix = prefix.Replace("-", string.Empty, StringComparison.Ordinal);
 
         return new()
         {

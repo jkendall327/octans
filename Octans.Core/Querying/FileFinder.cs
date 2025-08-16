@@ -27,7 +27,7 @@ public class FileFinder(SubfolderManager subfolderManager, ServerDbContext conte
 
         return Directory
             .EnumerateFiles(subfolder.AbsolutePath)
-            .SingleOrDefault(x => x.Contains(hashed.Hexadecimal));
+            .SingleOrDefault(x => x.Contains(hashed.Hexadecimal, StringComparison.Ordinal));
     }
 
     public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)

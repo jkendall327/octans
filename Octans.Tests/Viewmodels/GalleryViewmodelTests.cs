@@ -17,7 +17,7 @@ public class GalleryViewmodelTests
 
     private static readonly string[] Expected =
     [
-        "/media/deadbeef", "/media/01234567"
+        "/media/DEADBEEF", "/media/01234567"
     ];
 
     public GalleryViewmodelTests()

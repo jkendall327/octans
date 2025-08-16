@@ -62,7 +62,7 @@ public sealed class GalleryViewmodel(
                 // Build a stable, lower-case hex string for the route
                 var hex = Convert
                     .ToHexString(result.Hash)
-                    .ToLowerInvariant();
+                    .ToUpperInvariant();
 
                 var url = $"/media/{hex}";
 

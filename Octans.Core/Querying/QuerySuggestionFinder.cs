@@ -23,14 +23,15 @@ public class QuerySuggestionFinder(ServerDbContext context)
             return [];
         }
 
-        if (exact && (space.Contains(PredicateConstants.Wildcard) || subtag.Contains(PredicateConstants.Wildcard)))
+        if (exact && (space.Contains(PredicateConstants.Wildcard, StringComparison.OrdinalIgnoreCase) ||
+                      subtag.Contains(PredicateConstants.Wildcard, StringComparison.OrdinalIgnoreCase)))
         {
             return [];
         }
 
         List<Namespace> namespaces;
 
-        if (space.Contains(PredicateConstants.Wildcard))
+        if (space.Contains(PredicateConstants.Wildcard, StringComparison.OrdinalIgnoreCase))
         {
             namespaces = await GetNamespacesFromQueryPortion(space, token);
         }
@@ -47,9 +48,8 @@ public class QuerySuggestionFinder(ServerDbContext context)
             namespaces = [found];
         }
 
-        var tagsForFoundNamespaces = from t in context.Tags
-                                     join ns in namespaces on t.Namespace.Id equals ns.Id
-                                     select t;
+        var tagsForFoundNamespaces =
+            from t in context.Tags join ns in namespaces on t.Namespace.Id equals ns.Id select t;
 
         List<Tag> tags = [];
 
@@ -60,6 +60,7 @@ public class QuerySuggestionFinder(ServerDbContext context)
             {
                 tags = await context.Tags.ToListAsync(token);
             }
+
             // Get all tags for all the wildcard-expanded namespaces.
             else
             {
@@ -76,7 +77,7 @@ public class QuerySuggestionFinder(ServerDbContext context)
         // Otherwise, search everything.
         var source = namespaces.Any() ? tagsForFoundNamespaces : context.Tags;
 
-        var clean = subtag.Replace(PredicateConstants.Wildcard.ToString(), string.Empty);
+        var clean = subtag.Replace(PredicateConstants.Wildcard.ToString(), string.Empty, StringComparison.Ordinal);
 
         tags = await source
             .Where(t => t.Subtag.Value.Contains(clean))
@@ -85,16 +86,20 @@ public class QuerySuggestionFinder(ServerDbContext context)
         return tags.ToHashSet();
     }
 
-    private async Task<List<Namespace>> GetNamespacesFromQueryPortion(string wildcard, CancellationToken token = default)
+    private async Task<List<Namespace>> GetNamespacesFromQueryPortion(string wildcard,
+        CancellationToken token = default)
     {
         if (wildcard == PredicateConstants.Wildcard.ToString())
         {
             return await context.Namespaces.ToListAsync(token);
         }
 
-        var clean = wildcard.Replace(PredicateConstants.Wildcard.ToString(), string.Empty);
+        var clean = wildcard.Replace(PredicateConstants.Wildcard.ToString(), string.Empty, StringComparison.Ordinal);
 
-        return await context.Namespaces.Where(n => n.Value.Contains(clean)).ToListAsync(token);
+        return await context
+            .Namespaces
+            .Where(n => n.Value.Contains(clean))
+            .ToListAsync(token);
     }
 
     private (string space, string subtag) SplitTag(string tag)

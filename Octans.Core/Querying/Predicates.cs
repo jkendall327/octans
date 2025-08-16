@@ -13,7 +13,8 @@ public class TagPredicate : IPredicate
 
     public bool IsWildcard()
     {
-        return NamespacePattern.Contains(PredicateConstants.Wildcard) || SubtagPattern.Contains(PredicateConstants.Wildcard);
+        return NamespacePattern.Contains(PredicateConstants.Wildcard, StringComparison.OrdinalIgnoreCase) ||
+               SubtagPattern.Contains(PredicateConstants.Wildcard, StringComparison.OrdinalIgnoreCase);
     }
 
     public bool IsSpecificTag() => !IsWildcard();
@@ -25,12 +26,10 @@ public abstract class SystemPredicate : IPredicate
 
 public class FilesizePredicate : SystemPredicate
 {
-
 }
 
 public class EverythingPredicate : SystemPredicate
 {
-
 }
 
 public class OrPredicate : IPredicate
