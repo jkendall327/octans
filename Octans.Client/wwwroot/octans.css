@@ -5,6 +5,7 @@
     --primary-color: #0078d4;
     --background-color: #ffffff;
     --text-color: #212529;
+    --border-color: #0078d4;
 }
 
 /* 2. System Preference for Dark Mode */
@@ -37,6 +38,7 @@
     --primary-color: red;
     --background-color: red;
     --text-color: blue;
+    --border-color: yellow;
 }
 
 body {
@@ -44,4 +46,5 @@ body {
     color: var(--text-color);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     transition: background-color 0.3s, color 0.3s; /* Smooth transition */
+    border-color: var(--border-color);
 }
