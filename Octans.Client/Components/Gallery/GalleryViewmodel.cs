@@ -1,3 +1,4 @@
+using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Pages;
@@ -5,6 +6,7 @@ namespace Octans.Client.Components.Pages;
 public sealed class GalleryViewmodel(
     IQueryService service,
     IBrowserStorage storage,
+    StatusService status,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -40,7 +42,11 @@ public sealed class GalleryViewmodel(
     public async Task OnQueryChanged(List<QueryParameter> arg)
     {
         await CancelPreviousRun();
+        
         ResetState();
+
+        status.WorkingText = "loading...";
+        
         await NotifyStateChanged();
 
         try
@@ -70,6 +76,8 @@ public sealed class GalleryViewmodel(
                 }
             }
 
+            status.MediaInfo = $"{ImageUrls.Count} files";
+            
             await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
             await storage.ToSessionAsync("gallery", "gallery-query", CurrentQuery);
         }
@@ -85,6 +93,7 @@ public sealed class GalleryViewmodel(
         finally
         {
             Searching = false;
+            status.WorkingText = null;
             await NotifyStateChanged();
         }
     }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Pages;
+using Octans.Client.Components.StatusBar;
 using Octans.Core.Models;
 using Octans.Core.Querying;
 
@@ -22,7 +23,7 @@ public class GalleryViewmodelTests
     public GalleryViewmodelTests()
     {
         _service = Substitute.For<IQueryService>();
-        _sut = new(_service, _storage, NullLogger<GalleryViewmodel>.Instance);
+        _sut = new(_service, _storage, new(), NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]

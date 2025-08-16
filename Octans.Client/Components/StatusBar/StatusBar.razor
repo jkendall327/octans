@@ -1,0 +1,30 @@
+@inject StatusBarViewmodel Viewmodel
+
+<div class="status-bar">
+    <p class="left">@Viewmodel.MediaInfo</p>
+
+    <div class="right">
+        <p>@Viewmodel.GenericText</p>
+        <p>@Viewmodel.WorkingText</p>
+    </div>
+</div>
+
+<style>
+    .status-bar {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 0.5em;
+        border: 1px solid black;
+        height: 1.5rem;
+    }
+
+    .left {
+        margin-right: auto;
+    }
+
+    .right {
+        display: flex;
+        gap: 1em;
+    }
+</style>
