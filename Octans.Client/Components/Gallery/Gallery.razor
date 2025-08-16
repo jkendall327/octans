@@ -3,7 +3,11 @@
 @inject GalleryViewmodel Viewmodel
 @implements IAsyncDisposable
 
-<MudPopover Open="@(Viewmodel.CurrentImage is not null)" Fixed="true" Class="image-popover">
+<MudPopover
+    Open="@(Viewmodel.CurrentImage is not null)" 
+    Fixed="true" 
+    TransformOrigin="Origin.TopCenter"
+    AnchorOrigin="Origin.TopCenter" Class="image-popover">
     <ImageViewer
         ImageUrls="Viewmodel.ImageUrls"
         StartingImage="@Viewmodel.CurrentImage"

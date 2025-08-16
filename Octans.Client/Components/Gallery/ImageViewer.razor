@@ -1,5 +1,31 @@
-<div class="image-viewer">
-    <div class="d-flex flex-column">
+<div class="image-viewer" @onkeydown="@OnKeyDown">
+    <section class="toolbar">
+        <MudButton
+            OnClick="@(OnClose)"
+            Size="Size.Small"
+            Class="mr-n3 mb-1"
+            Color="Color.Error">
+            Close
+        </MudButton>
+        <MudButton
+            OnClick="@(PreviousAsync)"
+            Disabled="@(CurrentImage is null)"
+            Size="Size.Small"
+            Class="mr-n3 mb-1"
+            Color="Color.Default">
+            Previous
+        </MudButton>
+        <MudButton
+            OnClick="@(NextAsync)"
+            Disabled="@(CurrentImage is null)"
+            Size="Size.Small"
+            Class="mr-n3 mb-1"
+            Color="Color.Default">
+            Next
+        </MudButton>
+    </section>
+        
+    <section class="image-display">
         @if (CurrentImage is null)
         {
             <p>Loading...</p>
@@ -13,30 +39,7 @@
                 decoding="async"
                 referrerpolicy="no-referrer"/>
         }
-
-        <div class="toolbar">
-            <MudButton
-                OnClick="@(OnClose)"
-                Class="ml-auto mr-n3 mb-1"
-                Color="Color.Error">
-                Close
-            </MudButton>
-            <MudButton
-                OnClick="@(PreviousAsync)"
-                Disabled="@(CurrentImage is null)"
-                Class="ml-auto mr-n3 mb-1"
-                Color="Color.Default">
-                Previous
-            </MudButton>
-            <MudButton
-                OnClick="@(NextAsync)"
-                Disabled="@(CurrentImage is null)"
-                Class="ml-auto mr-n3 mb-1"
-                Color="Color.Default">
-                Next
-            </MudButton>
-        </div>
-    </div>
+    </section>
 </div>
 
 
@@ -51,6 +54,15 @@
     protected override void OnParametersSet()
     {
         CurrentImage = StartingImage ?? ImageUrls.First();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "LeftArrow": await PreviousAsync(); break;
+            case "RightArrow": await NextAsync(); break;
+        }
     }
 
     private async Task PreviousAsync()
@@ -91,13 +103,29 @@
 
 <style>
     .image-viewer {
-        background: #0b5ed7;    
+        display: flex;
+        flex-direction: column;
+        background: #36537f;    
+        justify-items: center;
+        height: 90vh;
+        width: 90vw;
+        overflow: hidden;
+    }
+    
+    .image-display {
+        padding: 0.3rem;
+        flex: 1 1 0;
+        min-height: 0;
     }
     
     img {
-        max-height: 80%;
-        object-fit: cover;
+        object-fit: contain;
         display: block;
+        margin: auto;
+        max-height: 100%;
+        max-width: 100%;
+        height: auto;
+        width: auto;
     }
 
     .toolbar {
@@ -105,5 +133,10 @@
         flex-direction: row;
         gap: 1em;
         align-items: center;
+        border-bottom: 1px solid;
+    }
+    
+    .minwidth {
+        width: min-content;
     }
 </style>

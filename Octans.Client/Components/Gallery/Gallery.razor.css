@@ -32,7 +32,7 @@
     height: 100vh;
 }
 
-.image-popover {
-    min-height: 90vh;
-    min-width: 90vw;
+::deep .image-popover {
+    height: 60%;
+    min-width: 80%;
 }
