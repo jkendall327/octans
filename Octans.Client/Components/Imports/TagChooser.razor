@@ -1,11 +1,14 @@
 @using Octans.Client.Components.Gallery
 <article class="tag-chooser">
     <section class="paths">
-        <MudDataGrid Items="@(Paths.Select((s, i) => new
-                            {
-                                Path = s,
-                                Index = i
-                            }))">
+        <MudDataGrid
+            MultiSelection="true"
+            SelectedItems="@SelectedPaths"
+            Items="@(Paths.Select((s, i) => new
+                   {
+                       Path = s,
+                       Index = i
+                   }))">
             <Columns>
                 <PropertyColumn Property="@(x => x.Index)" Title="#"/>
                 <PropertyColumn Property="@(x => x.Path)"/>
@@ -16,23 +19,69 @@
     <section class="tag-selection">
         <div class="tag-inputs">
             <div class="tags-for-all">
-
+                <h3>tags for all</h3>
+                <div class="tag-listing">
+                    <p>tag</p>
+                    <p>tag</p>
+                    <p>tag</p>
+                    <p>tag</p>
+                </div>
+                <div class="tag-listing-inputs">
+                    <MudTextField T="string"/>
+                    <MudButton>Paste</MudButton>
+                </div>
             </div>
             <div class="tags-for-selected">
-
+                <h3>tags for selected items</h3>
+                <div class="tag-listing">
+                    <p>tag</p>
+                    <p>tag</p>
+                    <p>tag</p>
+                    <p>tag</p>
+                </div>
+                <div class="tag-listing-inputs">
+                    <MudTextField T="string"/>
+                    <MudButton>Paste</MudButton>
+                </div>
             </div>
         </div>
         <div class="misc">
             <h3>misc</h3>
-            
+            <div class="misc-option">
+                <span>add filename?</span>
+                <MudCheckBox T="bool"/>
+                <MudTextField T="string"/>
+            </div>
+            <div class="misc-option">
+                <span>add first directory?</span>
+                <MudCheckBox T="bool"/>
+                <MudTextField T="string"/>
+            </div>
+            <div class="misc-option">
+                <span>add filename?</span>
+                <MudCheckBox T="bool"/>
+                <MudTextField T="string"/>
+            </div>
+            <div class="misc-option">
+                <span>add filename?</span>
+                <MudCheckBox T="bool"/>
+                <MudTextField T="string"/>
+            </div>
+            <div class="misc-option">
+                <span>add filename?</span>
+                <MudCheckBox T="bool"/>
+                <MudTextField T="string"/>
+            </div>
         </div>
     </section>
 </article>
 
 @code {
-    [Parameter, EditorRequired] public List<string> Paths { get; set; } = [];
+    [Parameter, EditorRequired] public IEnumerable<string> Paths { get; set; } = [];
     [Parameter, EditorRequired] public EventCallback<List<TagsForPath>> OnConfirm { get; set; }
     [Parameter, EditorRequired] public EventCallback<bool> OnCancel { get; set; }
+
+    public HashSet<string> SelectedPaths { get; set; } = [];
 
     public sealed class TagsForPath
     {
@@ -46,24 +95,37 @@
     article {
         display: flex;
         flex-direction: column;
+        border: 1px solid;
     }
-    
+
     .tag-selection {
         display: flex;
         flex-direction: row;
     }
-    
+
     .tag-inputs {
         display: flex;
         flex-direction: row;
         flex: 1 1 0;
     }
-    
+
+    .tag-listing-inputs {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
     .misc {
         display: flex;
         flex-direction: column;
         gap: 1rem;
         justify-items: flex-start;
+        align-items: center;
+    }
+
+    .misc-option {
+        display: flex;
+        flex-direction: row;
         align-items: center;
     }
 </style>

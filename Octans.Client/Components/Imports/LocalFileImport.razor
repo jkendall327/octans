@@ -3,6 +3,10 @@
 @inject ILocalFileImportViewmodel Viewmodel
 @inject StorageService StorageService
 
+<TagChooser 
+    Paths="@Viewmodel.LocalFiles.Select(s => s.Name)"
+    />
+
 <div class="file-input-wrapper">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="Viewmodel.LocalFiles">
         <ActivatorContent>
