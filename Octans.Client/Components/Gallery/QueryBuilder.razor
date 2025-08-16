@@ -1,4 +1,6 @@
 @using Octans.Client.Components.Pages
+@using Octans.Core.Models.Tagging
+@using Octans.Core.Querying
 
 <div class="qb-root">
   <div class="qb-parameters" role="list" aria-label="Active query parameters">
@@ -27,8 +29,8 @@
     <input
       class="qb-input"
       placeholder="Type a parameter and press Enter"
-      @bind="_current"
-      @bind:event="oninput"
+      value="@_current"
+      @oninput="OnInput"
       @onkeydown="HandleKeyDown"/>
 
     <!-- Placeholder buttons -->
@@ -36,6 +38,19 @@
     <button class="qb-btn" title="Reserved"><span aria-hidden="true">⭐</span></button>
     <button class="qb-btn" title="Reserved"><span aria-hidden="true">🔒</span></button>
   </div>
+
+  @if (_suggestions.Count > 0)
+  {
+    <div class="qb-suggest">
+      @foreach (var s in _suggestions)
+      {
+        <div class="qb-suggest-item" @onclick="@(() => ApplySuggestion(s))">
+          @s.Namespace : @s.Subtag
+        </div>
+      }
+    </div>
+  }
+
 </div>
 
 @code {
@@ -45,9 +60,16 @@
   [Parameter, EditorRequired] public bool CanCancel { get; set; }
   [Parameter] public IEnumerable<QueryParameter>? Query { get; set; }
 
+  [Inject] private QuerySuggestionFinder SuggestionFinder { get; set; } = default!;
+
   private readonly List<QueryParameter> _parameters = new();
   private string _current = string.Empty;
   private bool _initialized;
+
+  // Suggestions state
+  private readonly List<Tag> _suggestions = new();
+  private CancellationTokenSource? _debounceCts;
+  private CancellationTokenSource? _requestCts;
 
   protected override void OnParametersSet()
   {
@@ -62,20 +84,15 @@
   {
     if (e.Key == "Enter")
     {
+      // committing → clear suggestions & add immediately
+      ClearSuggestions();
       await AddCurrentAsync();
     }
-  }
-
-  private async Task AddCurrentAsync()
-  {
-    var trimmed = _current.Trim();
-
-    if (!string.IsNullOrWhiteSpace(trimmed))
+    else if (e.Key == "Escape")
     {
-      var kind = trimmed.StartsWith("system:", StringComparison.OrdinalIgnoreCase) ? QueryKind.System : QueryKind.Normal;
-      _parameters.Add(new(trimmed, kind));
-      _current = string.Empty;
-      await NotifyChangedAsync();
+      // optional: ESC clears suggestions
+      ClearSuggestions();
+      StateHasChanged();
     }
   }
 
@@ -86,6 +103,111 @@
       _parameters.RemoveAt(index);
       await NotifyChangedAsync();
     }
+  }
+  
+  private void ClearSuggestions()
+  {
+    _suggestions.Clear();
+  }
+
+  private async Task OnInput(ChangeEventArgs e)
+  {
+    _current = e.Value?.ToString() ?? string.Empty;
+    await DebouncedFetchAsync(_current, 200);
+  }
+
+  private async Task DebouncedFetchAsync(string term, int delayMs)
+  {
+    // cancel any pending debounce
+    if (_debounceCts is not null)
+    {
+      await _debounceCts.CancelAsync();
+      _debounceCts.Dispose();
+    }
+
+    _debounceCts = new();
+
+    try
+    {
+      await Task.Delay(delayMs, _debounceCts.Token);
+    }
+    catch (TaskCanceledException)
+    {
+      return; // another keystroke arrived
+    }
+
+    await FetchSuggestionsAsync(term);
+  }
+
+  private async Task FetchSuggestionsAsync(string term)
+  {
+    // optional guard: don't query for empty/very short terms
+    if (string.IsNullOrWhiteSpace(term))
+    {
+      ClearSuggestions();
+      await InvokeAsync(StateHasChanged);
+
+      return;
+    }
+
+    // cancel any in-flight request
+    if (_requestCts is not null)
+    {
+      await _requestCts.CancelAsync();
+      _requestCts.Dispose();
+    }
+
+    _requestCts = new();
+
+    try
+    {
+      var results = await SuggestionFinder.GetAutocompleteTagIds(term, false, _requestCts.Token);
+      _suggestions.Clear();
+
+      _suggestions.AddRange(results
+        .OrderBy(t => t.Namespace)
+        .ThenBy(s => s.Subtag)); // or your preferred sort
+
+      await InvokeAsync(StateHasChanged);
+    }
+    catch (OperationCanceledException)
+    {
+      // ignore; a newer request superseded this one
+    }
+    catch (Exception)
+    {
+      // swallow/log as needed; for UI just clear suggestions on error
+      ClearSuggestions();
+      await InvokeAsync(StateHasChanged);
+    }
+  }
+
+  private async Task AddCurrentAsync()
+  {
+    var trimmed = _current.Trim();
+
+    if (!string.IsNullOrWhiteSpace(trimmed))
+    {
+      var kind = trimmed.StartsWith("system:", StringComparison.OrdinalIgnoreCase) ? QueryKind.System : QueryKind.Normal;
+
+      _parameters.Add(new(trimmed, kind));
+      _current = string.Empty;
+      ClearSuggestions();
+      await NotifyChangedAsync();
+    }
+  }
+
+  private void ApplySuggestion(Tag tag)
+  {
+    // Choose how you “apply” the tag. Options:
+    // 1) Replace input text with the tag text (keeps editing)
+    _current = tag.Namespace + ":" + tag.Subtag;
+
+    // 2) Or immediately add as a committed parameter:
+    // _current = tag.Name;
+    // _ = AddCurrentAsync();
+
+    ClearSuggestions();
   }
 
   private Task NotifyChangedAsync()

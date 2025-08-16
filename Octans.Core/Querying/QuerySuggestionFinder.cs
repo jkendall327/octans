@@ -10,8 +10,10 @@ namespace Octans.Core.Querying;
 /// </summary>
 public class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter)
 {
-    private async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
+    public async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
     {
+        return await context.Tags.ToHashSetAsync(cancellationToken: token);
+        
         if (string.IsNullOrWhiteSpace(search))
         {
             return [];
