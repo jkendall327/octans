@@ -10,20 +10,16 @@
     }
     else
     {
-      @foreach (var item in ViewModel.Parameters.Select((val, idx) => new
-                  {
-                    val,
-                    idx
-                  }))
+      @foreach (var item in ViewModel.Parameters)
       {
-        var colorClass = item.val.Kind == QueryKind.System ? "qb-param-system" : "qb-param-normal";
-        
-        <div 
-          class="qb-param @colorClass" 
-          role="listitem" 
+        var colorClass = item.Kind == QueryKind.System ? "qb-param-system" : "qb-param-normal";
+
+        <div
+          class="qb-param @colorClass"
+          role="listitem"
           title="Double-click to remove"
-          ondblclick="@(async () => await ViewModel.RemoveAtAsync(item.idx))">
-          @item.val.Raw
+          ondblclick="@(async () => await ViewModel.RemoveAtAsync(item))">
+          @item.Raw
         </div>
       }
     }
@@ -48,7 +44,9 @@
     <div class="qb-suggest">
       @foreach (var s in ViewModel.Suggestions)
       {
-        <div class="qb-suggest-item" @onclick="@(async () => await ViewModel.ApplySuggestion(s))">
+        <div
+          class="qb-suggest-item"
+          @onclick="@(async () => await ViewModel.ApplySuggestion(s))">
           @s.Namespace : @s.Subtag
         </div>
       }

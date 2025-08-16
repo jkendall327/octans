@@ -63,13 +63,14 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         await DebouncedFetchAsync(Current, debounceMs);
     }
 
-    public async Task RemoveAtAsync(int index)
+    public async Task RemoveAtAsync(QueryParameter index)
     {
-        if (index >= 0 && index < _parameters.Count)
+        var removed = _parameters.Remove(index);
+
+        if (removed)
         {
-            _parameters.RemoveAt(index);
             await InvokeStateHasChanged();
-            await NotifyChangedAsync();
+            await NotifyQueryChangedAsync();
         }
     }
 
@@ -161,7 +162,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
         await ClearSuggestions();
 
-        await NotifyChangedAsync();
+        await NotifyQueryChangedAsync();
     }
 
     public async Task ApplySuggestion(Tag tag)
@@ -172,7 +173,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         await AddCurrentAsync();
     }
 
-    private async Task NotifyChangedAsync()
+    private async Task NotifyQueryChangedAsync()
     {
         if (QueryChanged is null)
         {
