@@ -1,0 +1,47 @@
+@using Octans.Client.Components.Gallery
+<div class="manual-tag-input">
+    <h3>@Title</h3>
+    <div class="tag-listing">
+        @foreach (var tag in Tags)
+        {
+            <p>@tag.Namespace : @tag.Subtag</p>
+        }
+    </div>
+    <div class="tag-listing-inputs">
+        <MudTextField @bind-Value="Current" OnKeyDown="@Callback"/>
+        <MudButton>Paste</MudButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required string Title { get; set; }
+    [Parameter, EditorRequired] public required EventCallback<List<TagViewer.Tag>> TagsChanged { get; set; }
+
+    private string? Current { get; set; }
+
+    private List<TagViewer.Tag> Tags { get; set; } = [];
+
+    private async Task Callback(KeyboardEventArgs obj)
+    {
+        if (obj.Key == "Enter")
+        {
+            Tags.Add(new TagViewer.Tag("foo", "bar", 1));
+            Current = null;
+            await TagsChanged.InvokeAsync();
+        }
+    }
+
+}
+
+<style>
+    .manual-tag-input {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .tag-listing-inputs {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+</style>

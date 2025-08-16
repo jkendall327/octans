@@ -19,30 +19,16 @@
     <section class="tag-selection">
         <div class="tag-inputs">
             <div class="tags-for-all">
-                <h3>tags for all</h3>
-                <div class="tag-listing">
-                    <p>tag</p>
-                    <p>tag</p>
-                    <p>tag</p>
-                    <p>tag</p>
-                </div>
-                <div class="tag-listing-inputs">
-                    <MudTextField T="string"/>
-                    <MudButton>Paste</MudButton>
-                </div>
+                <ManualTagInput 
+                    Title="tags for all"
+                    TagsChanged="tags => { }"
+                />
             </div>
             <div class="tags-for-selected">
-                <h3>tags for selected items</h3>
-                <div class="tag-listing">
-                    <p>tag</p>
-                    <p>tag</p>
-                    <p>tag</p>
-                    <p>tag</p>
-                </div>
-                <div class="tag-listing-inputs">
-                    <MudTextField T="string"/>
-                    <MudButton>Paste</MudButton>
-                </div>
+                <ManualTagInput 
+                    Title="tags for selected items"
+                    TagsChanged="tags => { }"
+                    />
             </div>
         </div>
         <div class="misc">
@@ -107,12 +93,6 @@
         display: flex;
         flex-direction: row;
         flex: 1 1 0;
-    }
-
-    .tag-listing-inputs {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
     }
 
     .misc {
