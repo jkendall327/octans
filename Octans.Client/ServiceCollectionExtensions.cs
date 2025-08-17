@@ -118,6 +118,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFileSystem>(new FileSystem());
         services.AddScoped<IBrowserStorage, BrowserStorage>();
         services.AddScoped<ThemeService>();
+        services.AddScoped<ShellService>();
 
         return services;
     }
