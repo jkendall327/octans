@@ -1,15 +1,20 @@
 using MudBlazor;
 using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
+using Octans.Core.Scripting;
 
 namespace Octans.Client.Components.Pages;
 
-public record GalleryContextMenuItem(string Text, string Icon, Func<string, Task> Action);
+public record GalleryContextMenuItem(string Text, string Icon, Func<string, Task>? Action = null, List<GalleryContextMenuItem>? SubItems = null)
+{
+    public bool HasSubItems => SubItems is not null && SubItems.Count > 0;
+};
 
 public sealed class GalleryViewmodel(
     IQueryService service,
     IBrowserStorage storage,
     StatusService status,
+    ICustomCommandProvider customCommandProvider,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -29,7 +34,7 @@ public sealed class GalleryViewmodel(
 
     public async Task OnInitialized()
     {
-        InitializeContextMenuItems();
+        await InitializeContextMenuItems();
 
         var images = await storage.FromSessionAsync<List<string>>("gallery", "gallery-images");
 
@@ -46,14 +51,20 @@ public sealed class GalleryViewmodel(
         }
     }
 
-    private void InitializeContextMenuItems()
+    private async Task InitializeContextMenuItems()
     {
+        var customCommands = await customCommandProvider.GetCustomCommandsAsync();
+        var customCommandItems = customCommands
+            .Select(cmd => new GalleryContextMenuItem(cmd.Name, cmd.Icon, cmd.Execute))
+            .ToList();
+
         ContextMenuItems =
         [
             new("Open in New Tab", Icons.Material.Filled.OpenInNew, OnOpenInNewTab),
             new("Copy URL", Icons.Material.Filled.ContentCopy, OnCopyUrl),
             new("Download", Icons.Material.Filled.Download, OnDownload),
             new("Add to Favorites", Icons.Material.Filled.Star, OnAddToFavorites),
+            new("Custom Commands", Icons.Material.Filled.Extension, SubItems: customCommandItems),
             new("Delete", Icons.Material.Filled.Delete, OnDelete)
         ];
     }

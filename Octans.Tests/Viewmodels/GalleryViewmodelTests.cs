@@ -6,6 +6,7 @@ using Octans.Client.Components.Pages;
 using Octans.Client.Components.StatusBar;
 using Octans.Core.Models;
 using Octans.Core.Querying;
+using Octans.Core.Scripting;
 
 namespace Octans.Tests.Viewmodels;
 
@@ -23,7 +24,8 @@ public class GalleryViewmodelTests
     public GalleryViewmodelTests()
     {
         _service = Substitute.For<IQueryService>();
-        _sut = new(_service, _storage, new(), NullLogger<GalleryViewmodel>.Instance);
+        var command = Substitute.For<ICustomCommandProvider>();
+        _sut = new(_service, _storage, new(), command, NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]

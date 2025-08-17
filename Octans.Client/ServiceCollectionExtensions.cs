@@ -16,6 +16,7 @@ using Octans.Core.Importing;
 using Octans.Core.Infrastructure;
 using Octans.Core.Models;
 using Octans.Core.Querying;
+using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Server;
 using Octans.Server.Services;
@@ -83,6 +84,9 @@ public static class ServiceCollectionExtensions
         // Stats
         services.AddScoped<StatsService>();
         services.AddScoped<StorageService>();
+
+        // Scripting
+        services.AddScoped<ICustomCommandProvider, CustomCommandProvider>();
 
         services.AddMemoryCache();
     }

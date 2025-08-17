@@ -45,9 +45,34 @@
                                 <ChildContent>
                                     @foreach (var menuItem in Viewmodel.ContextMenuItems)
                                     {
-                                        <MudMenuItem Icon="@menuItem.Icon" OnClick="@(() => menuItem.Action(url))">
-                                            @menuItem.Text
-                                        </MudMenuItem>
+                                        @if (menuItem.HasSubItems)
+                                        {
+                                            <MudMenu Icon="@menuItem.Icon">
+                                                <ActivatorContent>
+                                                    <MudMenuItem Icon="@menuItem.Icon">
+                                                        @menuItem.Text
+                                                        <MudIcon Icon="Icons.Material.Filled.ChevronRight" Style="margin-left: auto;" />
+                                                    </MudMenuItem>
+                                                </ActivatorContent>
+                                                <ChildContent>
+                                                    @foreach (var subItem in menuItem.SubItems!)
+                                                    {
+                                                        <MudMenuItem Icon="@subItem.Icon" OnClick="@(() => subItem.Action!(url))">
+                                                            @subItem.Text
+                                                        </MudMenuItem>
+                                                    }
+                                                </ChildContent>
+                                            </MudMenu>
+                                        }
+                                        else
+                                        {
+                                            <MudMenuItem 
+                                                Icon="@menuItem.Icon" 
+                                                Disabled="@(menuItem.Action is null)" 
+                                                OnClick="@(() => menuItem.Action!(url))">
+                                                @menuItem.Text
+                                            </MudMenuItem>
+                                        }
                                     }
                                 </ChildContent>
                             </MudMenu>
