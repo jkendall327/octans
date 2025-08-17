@@ -1,7 +1,10 @@
+using MudBlazor;
 using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Pages;
+
+public record GalleryContextMenuItem(string Text, string Icon, Func<string, Task> Action);
 
 public sealed class GalleryViewmodel(
     IQueryService service,
@@ -18,12 +21,16 @@ public sealed class GalleryViewmodel(
     public string? CurrentImage { get; set; }
     public List<QueryParameter> CurrentQuery { get; private set; } = [];
 
+    public List<GalleryContextMenuItem> ContextMenuItems { get; private set; } = [];
+
     private int _total;
     private int _processed;
     public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
 
     public async Task OnInitialized()
     {
+        InitializeContextMenuItems();
+
         var images = await storage.FromSessionAsync<List<string>>("gallery", "gallery-images");
 
         if (images is not null)
@@ -37,6 +44,48 @@ public sealed class GalleryViewmodel(
         {
             CurrentQuery = query;
         }
+    }
+
+    private void InitializeContextMenuItems()
+    {
+        ContextMenuItems =
+        [
+            new("Open in New Tab", Icons.Material.Filled.OpenInNew, OnOpenInNewTab),
+            new("Copy URL", Icons.Material.Filled.ContentCopy, OnCopyUrl),
+            new("Download", Icons.Material.Filled.Download, OnDownload),
+            new("Add to Favorites", Icons.Material.Filled.Star, OnAddToFavorites),
+            new("Delete", Icons.Material.Filled.Delete, OnDelete)
+        ];
+    }
+
+    private async Task OnOpenInNewTab(string imageUrl)
+    {
+        // No-op for now
+        await Task.CompletedTask;
+    }
+
+    private async Task OnCopyUrl(string imageUrl)
+    {
+        // No-op for now
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDownload(string imageUrl)
+    {
+        // No-op for now
+        await Task.CompletedTask;
+    }
+
+    private async Task OnAddToFavorites(string imageUrl)
+    {
+        // No-op for now
+        await Task.CompletedTask;
+    }
+
+    private async Task OnDelete(string imageUrl)
+    {
+        // No-op for now
+        await Task.CompletedTask;
     }
 
     public async Task OnQueryChanged(List<QueryParameter> arg)

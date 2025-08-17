@@ -34,11 +34,23 @@
                     @foreach (var url in Viewmodel.ImageUrls)
                     {
                         <div class="image-card" @ondblclick="@(() => Viewmodel.CurrentImage = url)">
-                            <img src="@url"
-                                 alt="Gallery image"
-                                 loading="lazy"
-                                 decoding="async"
-                                 referrerpolicy="no-referrer"/>
+                            <MudMenu ActivationEvent="MouseEvent.RightClick" PositionAtCursor="true">
+                                <ActivatorContent>
+                                    <img src="@url"
+                                         alt="Gallery image"
+                                         loading="lazy"
+                                         decoding="async"
+                                         referrerpolicy="no-referrer"/>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    @foreach (var menuItem in Viewmodel.ContextMenuItems)
+                                    {
+                                        <MudMenuItem Icon="@menuItem.Icon" OnClick="@(() => menuItem.Action(url))">
+                                            @menuItem.Text
+                                        </MudMenuItem>
+                                    }
+                                </ChildContent>
+                            </MudMenu>
                         </div>
                     }
                 </div>
