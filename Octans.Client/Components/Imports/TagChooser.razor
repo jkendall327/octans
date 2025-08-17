@@ -37,8 +37,22 @@
                     />
             </div>
         </div>
-        <MiscTagOptionsComponent OptionsChanged="OnMiscOptionsChanged" />
+        <MiscTagOptionsComponent @bind-Options="MiscOptions" />
     </section>
+    <footer class="tag-chooser-actions">
+        <MudButton 
+            Variant="Variant.Outlined" 
+            OnClick="@OnCancelClick"
+            Color="Color.Secondary">
+            Cancel
+        </MudButton>
+        <MudButton 
+            Variant="Variant.Filled" 
+            OnClick="@OnConfirmClick"
+            Color="Color.Primary">
+            OK
+        </MudButton>
+    </footer>
 </article>
 
 @code {
@@ -56,12 +70,7 @@
         StateHasChanged();
     }
 
-    private void OnMiscOptionsChanged(MiscTagOptionsData miscOptions)
-    {
-        MiscOptions = miscOptions;
-    }
-
-    public async Task ConfirmSelection()
+    private async Task OnConfirmClick()
     {
         var result = new TagChooserResult
         {
@@ -71,6 +80,11 @@
         };
         
         await OnConfirm.InvokeAsync(result);
+    }
+
+    private async Task OnCancelClick()
+    {
+        await OnCancel.InvokeAsync();
     }
 
     public sealed class PathItem
@@ -165,6 +179,15 @@
         display: flex;
         flex-direction: row;
         flex: 1 1 0;
+    }
+
+    .tag-chooser-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--background-color);
     }
 
 </style>

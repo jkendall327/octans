@@ -1,7 +1,7 @@
 <div class="misc-tag-options">
     <h3>misc</h3>
     <div class="misc-options-grid">
-        @foreach (var option in OptionsData.Options)
+        @foreach (var option in Options.Options)
         {
             <MiscTagOptionComponent 
                 Option="option" 
@@ -11,13 +11,12 @@
 </div>
 
 @code {
+    [Parameter] public MiscTagOptionsData Options { get; set; } = new();
     [Parameter] public EventCallback<MiscTagOptionsData> OptionsChanged { get; set; }
-
-    public MiscTagOptionsData OptionsData { get; set; } = new();
 
     private async Task OnOptionChanged(MiscTagOption changedOption)
     {
-        await OptionsChanged.InvokeAsync(OptionsData);
+        await OptionsChanged.InvokeAsync(Options);
     }
 }
 
