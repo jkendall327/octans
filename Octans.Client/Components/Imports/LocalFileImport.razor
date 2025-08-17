@@ -1,11 +1,7 @@
-@using MudBlazor
 @using Octans.Core.Infrastructure
 @inject ILocalFileImportViewmodel Viewmodel
 @inject StorageService StorageService
-
-<TagChooser 
-    Paths="@Viewmodel.LocalFiles.Select(s => s.Name)"
-    />
+@inject IDialogService DialogService
 
 <div class="file-input-wrapper">
     <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="Viewmodel.LocalFiles">
@@ -32,6 +28,17 @@
             </div>
         }
     </div>
+    
+    <div class="import-actions">
+        <MudButton
+            Variant="Variant.Outlined"
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Tag"
+            OnClick="@OpenTagChooser"
+            Disabled="@(Viewmodel.LocalFiles.Count == 0)">
+            Add Tags
+        </MudButton>
+    </div>
 }
 
 <MudButton
@@ -52,3 +59,39 @@
         }
     </section>
 }
+
+@code {
+    private TagChooser.TagChooserResult? TagChooserResult { get; set; }
+
+    private async Task OpenTagChooser()
+    {
+        var parameters = new DialogParameters<TagChooserDialog>
+        {
+            { x => x.Paths, Viewmodel.LocalFiles.Select(f => f.Name) }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<TagChooserDialog>("Add Tags", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is {Canceled: false, Data: TagChooser.TagChooserResult tagResult})
+        {
+            TagChooserResult = tagResult;
+            // TODO: Store tag result for use during import
+        }
+    }
+}
+
+<style>
+    .import-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>

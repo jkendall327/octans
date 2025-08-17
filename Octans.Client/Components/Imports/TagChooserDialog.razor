@@ -1,0 +1,37 @@
+@using MudBlazor
+@using Octans.Client.Components.Gallery
+@inherits MudComponentBase
+
+<MudDialog Class="tag-chooser-dialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Tags</MudText>
+    </TitleContent>
+    <DialogContent>
+        <TagChooser 
+            Paths="@Paths"
+            OnConfirm="@OnConfirm"
+            OnCancel="@OnCancel" />
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IDialogReference? MudDialog { get; set; }
+
+    [Parameter, EditorRequired] public IEnumerable<string> Paths { get; set; } = [];
+
+    private void OnConfirm(TagChooser.TagChooserResult result)
+    {
+        MudDialog?.Close(DialogResult.Ok(result));
+    }
+
+    private void OnCancel()
+    {
+        MudDialog?.Close(DialogResult.Cancel());
+    }
+}
+
+<style>
+    .tag-chooser-dialog {
+        min-height: 600px;
+    }
+</style>

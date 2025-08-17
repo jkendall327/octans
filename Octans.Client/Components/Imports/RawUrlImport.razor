@@ -1,5 +1,5 @@
-@using MudBlazor
 @inject IRawUrlImportViewmodel Viewmodel
+@inject IDialogService DialogService
 
 <div class="input-group">
     <textarea
@@ -15,6 +15,15 @@
         @bind-Value="Viewmodel.AllowReimportDeleted">
         Allow reimport of deleted items
     </MudCheckBox>
+    
+    <MudButton
+        Variant="Variant.Outlined"
+        Color="Color.Primary"
+        StartIcon="@Icons.Material.Filled.Tag"
+        OnClick="@OpenTagChooser"
+        Disabled="@(string.IsNullOrWhiteSpace(Viewmodel.RawInputs))">
+        Add Tags
+    </MudButton>
 </div>
 
 <MudButton
@@ -23,3 +32,54 @@
     Disabled="@(string.IsNullOrWhiteSpace(Viewmodel.RawInputs))">
     Import
 </MudButton>
+
+@code {
+    private TagChooser.TagChooserResult? TagChooserResult { get; set; }
+
+    private async Task OpenTagChooser()
+    {
+        var urls = GetUrlsFromInput();
+        
+        var parameters = new DialogParameters<TagChooserDialog>
+        {
+            { x => x.Paths, urls }
+        };
+
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService.ShowAsync<TagChooserDialog>("Add Tags", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is {Canceled: false, Data: TagChooser.TagChooserResult tagResult})
+        {
+            TagChooserResult = tagResult;
+            // TODO: Store tag result for use during import
+        }
+    }
+
+    private List<string> GetUrlsFromInput()
+    {
+        if (string.IsNullOrWhiteSpace(Viewmodel.RawInputs))
+            return [];
+
+        return Viewmodel.RawInputs
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(url => url.Trim())
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .ToList();
+    }
+}
+
+<style>
+    .import-options {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+</style>
