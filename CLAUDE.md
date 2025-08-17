@@ -1,11 +1,37 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Octans Development Guide
 
 ## Commands
 - Build: `dotnet build`
 - Run tests: `dotnet test`
 - Run single test: `dotnet test --filter "FullyQualifiedName=Octans.Tests.YourTestNamespace.YourTestClass.YourTestMethod"`
-- Run server: `dotnet run --project Octans.Server`
 - Run client: `dotnet run --project Octans.Client`
+
+## Project Architecture
+
+### Core Projects
+- **Octans.Core**: Business logic, downloading, importing, querying, thumbnails, and tag management
+- **Octans.Data**: Entity Framework models and database context using SQLite
+- **Octans.Client**: Blazor Server UI with MudBlazor components
+- **Octans.Tests**: xUnit test project
+
+### Key Architecture Patterns
+- Clean architecture with dependency injection throughout
+- Blazor Server components with viewmodel pattern
+- Background services for import folders, downloads, subscriptions, and thumbnail creation
+- Refit for API client generation (IOctansApi interface)
+- Channel-based queuing for background processing
+- Entity Framework Core with SQLite for data persistence
+
+### Major Components
+- **Query System**: Tag-based search with complex boolean logic (see docs/Querying.md)
+- **Import System**: File importing with hash deduplication and metadata extraction
+- **Download System**: Bandwidth-limited downloading with Lua script extensibility
+- **Tag System**: Namespaced tags with parent/sibling relationships
+- **Thumbnail System**: Background thumbnail generation using ImageSharp
 
 ## Code Style
 - Use C# 12 features (primary constructors, collection expressions)

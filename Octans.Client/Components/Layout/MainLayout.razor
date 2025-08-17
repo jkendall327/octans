@@ -1,15 +1,17 @@
 ﻿@using Octans.Client.Components.StatusBar
 @using Octans.Client.Components.MainToolbar
 @inherits LayoutComponentBase
+@inject ShellService ShellService
+@implements IDisposable
 
 <div class="octans">
-    <div>
+    <div class="@(ShellService.IsShellVisible ? "" : "hidden")">
         <MainToolbar/>
     </div>
     <article class="main-content">
         @Body
     </article>
-    <div>
+    <div class="@(ShellService.IsShellVisible ? "" : "hidden")">
         <StatusBar/>
     </div>
 </div>
@@ -29,3 +31,15 @@
 
 @* Needed for snackbars *@
 <MudSnackbarProvider/>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ShellService.ShellVisibilityChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ShellService.ShellVisibilityChanged -= StateHasChanged;
+    }
+}
