@@ -1,0 +1,46 @@
+<div class="misc-tag-options">
+    <h3>misc</h3>
+    <div class="misc-options-grid">
+        @foreach (var option in OptionsData.Options)
+        {
+            <MiscTagOptionComponent 
+                Option="option" 
+                OptionChanged="OnOptionChanged" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<MiscTagOptionsData> OptionsChanged { get; set; }
+
+    public MiscTagOptionsData OptionsData { get; set; } = new();
+
+    private async Task OnOptionChanged(MiscTagOption changedOption)
+    {
+        await OptionsChanged.InvokeAsync(OptionsData);
+    }
+}
+
+<style>
+    .misc-tag-options {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        border-left: 1px solid var(--border-color);
+        min-width: 350px;
+    }
+
+    .misc-tag-options h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        color: var(--text-color);
+        text-align: center;
+    }
+
+    .misc-options-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+</style>

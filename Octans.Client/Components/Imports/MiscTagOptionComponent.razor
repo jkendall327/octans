@@ -1,0 +1,55 @@
+<div class="misc-tag-option">
+    <span class="misc-tag-label">@Option.Label</span>
+    <MudCheckBox 
+        T="bool" 
+        Value="Option.IsEnabled" 
+        ValueChanged="OnOptionChanged"
+        Class="misc-tag-checkbox" />
+    <MudTextField 
+        T="string" 
+        Value="Option.Namespace" 
+        ValueChanged="OnNamespaceChanged"
+        Placeholder="namespace"
+        Disabled="!Option.IsEnabled"
+        Class="misc-tag-textfield" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required MiscTagOption Option { get; set; }
+    [Parameter] public EventCallback<MiscTagOption> OptionChanged { get; set; }
+
+    private async Task OnOptionChanged(bool value)
+    {
+        Option.IsEnabled = value;
+        await OptionChanged.InvokeAsync(Option);
+    }
+
+    private async Task OnNamespaceChanged(string value)
+    {
+        Option.Namespace = value ?? string.Empty;
+        await OptionChanged.InvokeAsync(Option);
+    }
+}
+
+<style>
+    .misc-tag-option {
+        display: grid;
+        grid-template-columns: 1fr auto 200px;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.25rem 0;
+    }
+
+    .misc-tag-label {
+        font-size: 0.9rem;
+        color: var(--text-color);
+    }
+
+    .misc-tag-checkbox {
+        justify-self: center;
+    }
+
+    .misc-tag-textfield {
+        min-width: 0;
+    }
+</style>

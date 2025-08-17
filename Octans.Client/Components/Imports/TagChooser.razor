@@ -2,9 +2,10 @@
 <article class="tag-chooser">
     <section class="paths">
         <MudDataGrid
+            T="PathItem"
             MultiSelection="true"
             SelectedItems="@SelectedPaths"
-            Items="@(Paths.Select((s, i) => new
+            Items="@(Paths.Select((s, i) => new PathItem
                    {
                        Path = s,
                        Index = i
@@ -31,43 +32,28 @@
                     />
             </div>
         </div>
-        <div class="misc">
-            <h3>misc</h3>
-            <div class="misc-option">
-                <span>add filename?</span>
-                <MudCheckBox T="bool"/>
-                <MudTextField T="string"/>
-            </div>
-            <div class="misc-option">
-                <span>add first directory?</span>
-                <MudCheckBox T="bool"/>
-                <MudTextField T="string"/>
-            </div>
-            <div class="misc-option">
-                <span>add filename?</span>
-                <MudCheckBox T="bool"/>
-                <MudTextField T="string"/>
-            </div>
-            <div class="misc-option">
-                <span>add filename?</span>
-                <MudCheckBox T="bool"/>
-                <MudTextField T="string"/>
-            </div>
-            <div class="misc-option">
-                <span>add filename?</span>
-                <MudCheckBox T="bool"/>
-                <MudTextField T="string"/>
-            </div>
-        </div>
+        <MiscTagOptionsComponent OptionsChanged="OnMiscOptionsChanged" />
     </section>
 </article>
 
 @code {
     [Parameter, EditorRequired] public IEnumerable<string> Paths { get; set; } = [];
     [Parameter, EditorRequired] public EventCallback<List<TagsForPath>> OnConfirm { get; set; }
-    [Parameter, EditorRequired] public EventCallback<bool> OnCancel { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnCancel { get; set; }
 
-    public HashSet<string> SelectedPaths { get; set; } = [];
+    public HashSet<PathItem> SelectedPaths { get; set; } = [];
+
+    private void OnMiscOptionsChanged(MiscTagOptionsData miscOptions)
+    {
+        // Handle misc options change - this data can be used during import
+        // to automatically generate tags based on file paths
+    }
+
+    public sealed class PathItem
+    {
+        public required string Path { get; set; }
+        public required int Index { get; set; }
+    }
 
     public sealed class TagsForPath
     {
@@ -95,17 +81,4 @@
         flex: 1 1 0;
     }
 
-    .misc {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        justify-items: flex-start;
-        align-items: center;
-    }
-
-    .misc-option {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-    }
 </style>
