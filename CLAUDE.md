@@ -43,6 +43,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use structured logging: `logger.LogInformation("Message: {Value}", value)`
 - Nullable reference types are enabled - handle nulls appropriately
 - Use async/await consistently
+- Avoid reflection. Prefer to give up on a task than hack at it with reflection
 
 ## Test Conventions
 - Use xUnit with FluentAssertions and NSubstitute
