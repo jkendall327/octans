@@ -2,46 +2,136 @@
 <div class="manual-tag-input">
     <h3>@Title</h3>
     <div class="tag-listing">
-        @foreach (var tag in Tags)
+        @foreach (var tag in GetDisplayTags())
         {
-            <p>@tag.Namespace : @tag.Subtag</p>
+            <div class="tag-item">
+                <span class="tag-text">@tag.Namespace : @tag.Subtag</span>
+                <MudIconButton 
+                    Icon="@Icons.Material.Filled.Close" 
+                    Size="Size.Small" 
+                    OnClick="() => RemoveTag(tag)" />
+            </div>
         }
     </div>
     <div class="tag-listing-inputs">
-        <MudTextField @bind-Value="Current" OnKeyDown="@Callback"/>
-        <MudButton>Paste</MudButton>
+        <MudTextField 
+            @bind-Value="Current" 
+            OnKeyDown="@OnKeyDown"
+            Placeholder="namespace:subtag"
+            Label="Add tag" />
+        <MudButton OnClick="@OnPasteClick" Variant="Variant.Outlined">Paste</MudButton>
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public required string Title { get; set; }
-    [Parameter, EditorRequired] public required EventCallback<List<TagViewer.Tag>> TagsChanged { get; set; }
+    [Parameter, EditorRequired] public required TagScope Scope { get; set; }
+    [Parameter, EditorRequired] public required TagAssignmentCollection Assignments { get; set; }
+    [Parameter, EditorRequired] public required EventCallback TagsChanged { get; set; }
+    [Parameter] public IEnumerable<string> SelectedPaths { get; set; } = [];
 
     private string? Current { get; set; }
 
-    private List<TagViewer.Tag> Tags { get; set; } = [];
-
-    private async Task Callback(KeyboardEventArgs obj)
+    private List<TagViewer.Tag> GetDisplayTags()
     {
-        if (obj.Key == "Enter")
+        return Assignments.Assignments
+            .Where(a => a.Scope == Scope)
+            .Select(a => a.Tag)
+            .ToList();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !string.IsNullOrWhiteSpace(Current))
         {
-            Tags.Add(new TagViewer.Tag("foo", "bar", 1));
-            Current = null;
-            await TagsChanged.InvokeAsync();
+            await AddCurrentTag();
         }
     }
 
+    private async Task OnPasteClick()
+    {
+        // TODO: Implement clipboard paste functionality
+        await AddCurrentTag();
+    }
+
+    private async Task AddCurrentTag()
+    {
+        if (string.IsNullOrWhiteSpace(Current)) return;
+
+        var parts = Current.Split(':');
+        if (parts.Length != 2) return;
+
+        var tag = new TagViewer.Tag(parts[0].Trim(), parts[1].Trim(), 1);
+        
+        if (Scope == TagScope.AllPaths)
+        {
+            Assignments.AddTagForAllPaths(tag);
+        }
+        else
+        {
+            Assignments.AddTagForSelectedPaths(tag, SelectedPaths);
+        }
+
+        Current = null;
+        await TagsChanged.InvokeAsync();
+    }
+
+    private async Task RemoveTag(TagViewer.Tag tag)
+    {
+        // Remove only the specific assignment for this scope
+        var toRemove = Assignments.Assignments
+            .Where(a => a.Scope == Scope && 
+                       a.Tag.Namespace == tag.Namespace && 
+                       a.Tag.Subtag == tag.Subtag)
+            .ToList();
+
+        foreach (var assignment in toRemove)
+        {
+            Assignments.Assignments.Remove(assignment);
+        }
+
+        await TagsChanged.InvokeAsync();
+    }
 }
 
 <style>
     .manual-tag-input {
         display: flex;
         flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .tag-listing {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-height: 100px;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+    
+    .tag-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+    
+    .tag-text {
+        font-size: 0.9rem;
+        color: var(--text-color);
     }
     
     .tag-listing-inputs {
         display: flex;
         flex-direction: row;
         align-items: center;
+        gap: 0.5rem;
     }
 </style>

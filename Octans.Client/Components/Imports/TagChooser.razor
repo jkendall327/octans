@@ -22,13 +22,18 @@
             <div class="tags-for-all">
                 <ManualTagInput 
                     Title="tags for all"
-                    TagsChanged="tags => { }"
+                    Scope="TagScope.AllPaths"
+                    Assignments="@TagAssignments"
+                    TagsChanged="OnTagsChanged"
                 />
             </div>
             <div class="tags-for-selected">
                 <ManualTagInput 
                     Title="tags for selected items"
-                    TagsChanged="tags => { }"
+                    Scope="TagScope.SelectedPaths"
+                    Assignments="@TagAssignments"
+                    SelectedPaths="@(SelectedPaths.Select(p => p.Path))"
+                    TagsChanged="OnTagsChanged"
                     />
             </div>
         </div>
@@ -38,15 +43,34 @@
 
 @code {
     [Parameter, EditorRequired] public IEnumerable<string> Paths { get; set; } = [];
-    [Parameter, EditorRequired] public EventCallback<List<TagsForPath>> OnConfirm { get; set; }
+    [Parameter, EditorRequired] public EventCallback<TagChooserResult> OnConfirm { get; set; }
     [Parameter, EditorRequired] public EventCallback OnCancel { get; set; }
 
     public HashSet<PathItem> SelectedPaths { get; set; } = [];
+    public TagAssignmentCollection TagAssignments { get; set; } = new();
+    private MiscTagOptionsData MiscOptions { get; set; } = new();
+
+    private void OnTagsChanged()
+    {
+        // Tags have been updated - could trigger UI refresh if needed
+        StateHasChanged();
+    }
 
     private void OnMiscOptionsChanged(MiscTagOptionsData miscOptions)
     {
-        // Handle misc options change - this data can be used during import
-        // to automatically generate tags based on file paths
+        MiscOptions = miscOptions;
+    }
+
+    public async Task ConfirmSelection()
+    {
+        var result = new TagChooserResult
+        {
+            ManualTagAssignments = TagAssignments,
+            MiscTagOptions = MiscOptions,
+            AllPaths = Paths.ToList()
+        };
+        
+        await OnConfirm.InvokeAsync(result);
     }
 
     public sealed class PathItem
@@ -59,6 +83,68 @@
     {
         public required string Path { get; set; }
         public List<TagViewer.Tag> Tags { get; set; } = [];
+    }
+
+    public sealed class TagChooserResult
+    {
+        public required TagAssignmentCollection ManualTagAssignments { get; set; }
+        public required MiscTagOptionsData MiscTagOptions { get; set; }
+        public required List<string> AllPaths { get; set; }
+        
+        public List<TagsForPath> GenerateTagsForPaths()
+        {
+            var result = new List<TagsForPath>();
+            
+            foreach (var path in AllPaths)
+            {
+                var tags = new List<TagViewer.Tag>();
+                
+                // Add manual tag assignments
+                tags.AddRange(ManualTagAssignments.GetTagsForPath(path, AllPaths));
+                
+                // Add misc tags based on file path
+                tags.AddRange(GenerateMiscTags(path));
+                
+                result.Add(new TagsForPath
+                {
+                    Path = path,
+                    Tags = tags
+                });
+            }
+            
+            return result;
+        }
+        
+        private List<TagViewer.Tag> GenerateMiscTags(string filePath)
+        {
+            var tags = new List<TagViewer.Tag>();
+            var pathParts = filePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var fileName = Path.GetFileNameWithoutExtension(filePath);
+            
+            foreach (var option in MiscTagOptions.Options.Where(o => o.IsEnabled))
+            {
+                if (string.IsNullOrWhiteSpace(option.Namespace)) continue;
+                
+                var tagValue = option.Purpose switch
+                {
+                    MiscTagPurpose.Filename => fileName,
+                    MiscTagPurpose.LastDirectory => pathParts.Length > 1 ? pathParts[^2] : null,
+                    MiscTagPurpose.SecondLastDirectory => pathParts.Length > 2 ? pathParts[^3] : null,
+                    MiscTagPurpose.ThirdLastDirectory => pathParts.Length > 3 ? pathParts[^4] : null,
+                    MiscTagPurpose.FirstDirectory => pathParts.Length > 1 ? pathParts[0] : null,
+                    MiscTagPurpose.SecondDirectory => pathParts.Length > 2 ? pathParts[1] : null,
+                    MiscTagPurpose.ThirdDirectory => pathParts.Length > 3 ? pathParts[2] : null,
+                    _ => null
+                };
+                
+                if (!string.IsNullOrWhiteSpace(tagValue))
+                {
+                    tags.Add(new TagViewer.Tag(option.Namespace, tagValue, 1));
+                }
+            }
+            
+            return tags;
+        }
     }
 
 }
