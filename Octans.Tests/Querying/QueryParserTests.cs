@@ -139,4 +139,15 @@ public class QueryParserTests
         inner.Predicates.Last().Should().Match<TagPredicate>(tp =>
                 tp.NamespacePattern == "character" && tp.SubtagPattern == "luigi" && !tp.IsExclusive);
     }
+
+    [Fact]
+    public void Parse_MultipleWildcards_CollapsesToSingleWildcard()
+    {
+        var result = _parser.Parse(["character:**samus**"]);
+
+        var tag = result.OfType<TagPredicate>().Single();
+
+        tag.NamespacePattern.Should().Be("character");
+        tag.SubtagPattern.Should().Be("*samus*");
+    }
 }
