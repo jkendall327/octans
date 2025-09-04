@@ -8,13 +8,12 @@ namespace Octans.Tests;
 /// <summary>
 /// The actual value of these tests is checking if DI is set up correctly for the client project.
 /// </summary>
-public class ClientHealthcheckTest(WebApplicationFactory<Program> factory, ITestOutputHelper helper)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class ClientHealthcheckTest(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
 {
     [Fact]
     public async Task HealthcheckEndpointServesResponse()
     {
-        var client = factory.CreateClient();
+        var client = Factory.CreateClient();
 
         var response = await client.GetAsync(new Uri("/health"));
 
