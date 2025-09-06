@@ -12,7 +12,8 @@
     <ImageViewer
         ImageUrls="Viewmodel.ImageUrls"
         StartingImage="@Viewmodel.CurrentImage"
-        OnClose="@(() => Viewmodel.CurrentImage = null)"/>
+        FilterMode="Viewmodel.FilterMode"
+        OnClose="@OnClose"/>
 </MudPopover>
 
 <SplitContainer
@@ -127,5 +128,11 @@
             Viewmodel.StateChanged -= OnViewmodelOnStateChanged;
             await Viewmodel.DisposeAsync();
         }
+    }
+
+    private void OnClose()
+    {
+        Viewmodel.CurrentImage = null;
+        Viewmodel.FilterMode = false;
     }
 }

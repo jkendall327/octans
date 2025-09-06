@@ -24,6 +24,7 @@ public sealed class GalleryViewmodel(
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
     public string? CurrentImage { get; set; }
+    public bool FilterMode { get; set; }
     public List<QueryParameter> CurrentQuery { get; private set; } = [];
 
     public List<GalleryContextMenuItem> ContextMenuItems { get; private set; } = [];
@@ -72,7 +73,9 @@ public sealed class GalleryViewmodel(
 
     private async Task OpenFilter(string imageUrl)
     {
-        // No-op for now
+        CurrentImage = imageUrl;
+        FilterMode = true;
+        
         await Task.CompletedTask;
     }
 
