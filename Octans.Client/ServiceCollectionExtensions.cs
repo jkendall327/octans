@@ -16,6 +16,7 @@ using Octans.Core.Importing;
 using Octans.Core.Infrastructure;
 using Octans.Core.Models;
 using Octans.Core.Querying;
+using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Server;
@@ -30,6 +31,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<ImportFolderBackgroundService>();
         services.AddHostedService<SubscriptionBackgroundService>();
+        services.AddHostedService<RepositoryChangeBackgroundService>();
 
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<StorageService>();
@@ -47,6 +49,14 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(channel.Reader);
         services.AddSingleton(channel.Writer);
+
+        var repoChannel = Channel.CreateBounded<RepositoryChangeRequest>(new BoundedChannelOptions(100)
+        {
+            FullMode = BoundedChannelFullMode.Wait
+        });
+
+        services.AddSingleton(repoChannel.Reader);
+        services.AddSingleton(repoChannel.Writer);
     }
 
     public static void AddBusinessServices(this IServiceCollection services)

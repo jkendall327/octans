@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
+using Octans.Core.Repositories;
 
 namespace Octans.Core.Models;
 
@@ -9,6 +10,8 @@ public class HashItem
     [Key] public int Id { get; set; }
     public required byte[] Hash { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public int RepositoryId { get; set; } = (int)RepositoryType.Inbox;
+    public Repository? Repository { get; set; }
 
     public bool IsDeleted() => DeletedAt is not null;
 }
