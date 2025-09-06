@@ -1,0 +1,31 @@
+@using Octans.Client.Components.Settings
+
+<ul class="settings-sidebar">
+    @foreach (var p in Pages)
+    {
+        <li class="@(p == ActivePage ? "active" : null)" @onclick="@(() => OnSelectPage.InvokeAsync(p))">@p.Title</li>
+    }
+</ul>
+
+@code {
+    [Parameter] public IEnumerable<SettingsPageDescriptor> Pages { get; set; } = Enumerable.Empty<SettingsPageDescriptor>();
+    [Parameter] public SettingsPageDescriptor? ActivePage { get; set; }
+    [Parameter] public EventCallback<SettingsPageDescriptor> OnSelectPage { get; set; }
+}
+
+<style>
+    .settings-sidebar {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .settings-sidebar li {
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+    }
+
+    .settings-sidebar li.active {
+        font-weight: bold;
+    }
+</style>
