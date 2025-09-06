@@ -88,6 +88,9 @@ public static class ServiceCollectionExtensions
         // Scripting
         services.AddScoped<ICustomCommandProvider, CustomCommandProvider>();
 
+        // Subscriptions
+        services.AddScoped<ISubscriptionExecutor, NoOpSubscriptionExecutor>();
+
         services.AddMemoryCache();
     }
 
@@ -158,9 +161,6 @@ public static class ServiceCollectionExtensions
     {
         builder.Services.Configure<GlobalSettings>(
             builder.Configuration.GetSection(nameof(GlobalSettings)));
-
-        builder.Services.Configure<SubscriptionOptions>(
-            builder.Configuration.GetSection(SubscriptionOptions.SectionName));
 
         builder.Services.AddOptions<ThumbnailOptions>()
             .BindConfiguration(ThumbnailOptions.ConfigurationSectionName)
