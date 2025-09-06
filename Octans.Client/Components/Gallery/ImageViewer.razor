@@ -1,4 +1,5 @@
 @inject ShellService ShellService
+@inject IDialogService DialogService
 @implements IDisposable
 
 <div class="image-viewer"
@@ -22,6 +23,25 @@
             Color="Color.Default">
             Previous
         </MudButton>
+        @if (FilterMode)
+        {
+            <MudButton
+                OnClick="@(ArchiveAsync)"
+                Disabled="@(CurrentImage is null)"
+                Size="Size.Small"
+                Class="mr-n3 mb-1"
+                Color="Color.Success">
+                Archive
+            </MudButton>
+            <MudButton
+                OnClick="@(DeleteAsync)"
+                Disabled="@(CurrentImage is null)"
+                Size="Size.Small"
+                Class="mr-n3 mb-1"
+                Color="Color.Error">
+                Delete
+            </MudButton>
+        }
         <MudButton
             OnClick="@(NextAsync)"
             Disabled="@(CurrentImage is null)"
@@ -44,7 +64,7 @@
             <p>foo</p>
             <p>foo</p>
         </div>
-        <div class="image-display">
+        <div class="image-display" @onmousedown="@OnImageMouseDown" @oncontextmenu:preventDefault>
             @if (CurrentImage is null)
             {
                 <p>Loading...</p>
@@ -71,13 +91,20 @@
     [Parameter] public string? StartingImage { get; set; }
     [Parameter] public EventCallback<string> CurrentImageChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool FilterMode { get; set; }
+    [Parameter] public EventCallback<FilterResult> OnFilterComplete { get; set; }
 
     private string? CurrentImage { get; set; }
+    private Dictionary<string, FilterChoice> _choices = [];
 
     protected override void OnParametersSet()
     {
         CurrentImage = StartingImage ?? ImageUrls.First();
         _shouldFocus = true;
+        if (FilterMode)
+        {
+            _choices = [];
+        }
         ShellService.HideShell();
     }
 
@@ -96,7 +123,16 @@
         {
             case "ArrowLeft": await PreviousAsync(); break;
             case "ArrowRight": await NextAsync(); break;
-            case "Escape": await OnClose.InvokeAsync(); break;
+            case "Escape":
+                if (FilterMode)
+                {
+                    await PromptCommitAsync();
+                }
+                else
+                {
+                    await OnClose.InvokeAsync();
+                }
+                break;
         }
     }
 
@@ -132,11 +168,110 @@
         await CurrentImageChanged.InvokeAsync(CurrentImage);
     }
 
+    private async Task ArchiveAsync()
+    {
+        if (CurrentImage is null)
+        {
+            throw new InvalidOperationException("Current image was null after parameters being set");
+        }
+
+        _choices[CurrentImage] = FilterChoice.Archive;
+
+        if (_choices.Count == ImageUrls.Count && ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1)
+        {
+            await PromptCommitAsync(undoLast: true);
+        }
+        else
+        {
+            await NextAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (CurrentImage is null)
+        {
+            throw new InvalidOperationException("Current image was null after parameters being set");
+        }
+
+        _choices[CurrentImage] = FilterChoice.Delete;
+
+        if (_choices.Count == ImageUrls.Count && ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1)
+        {
+            await PromptCommitAsync(undoLast: true);
+        }
+        else
+        {
+            await NextAsync();
+        }
+    }
+
+    private async Task OnImageMouseDown(MouseEventArgs e)
+    {
+        if (!FilterMode || CurrentImage is null)
+        {
+            return;
+        }
+
+        switch (e.Button)
+        {
+            case 0:
+                await ArchiveAsync();
+                break;
+            case 1:
+                await PreviousAsync();
+                break;
+            case 2:
+                await DeleteAsync();
+                break;
+        }
+    }
+
+    private async Task PromptCommitAsync(bool undoLast = false)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Finished",
+            (MarkupString)"All images have been marked.",
+            yesText: "Commit",
+            noText: "Cancel",
+            cancelText: "Stay");
+
+        if (result == true)
+        {
+            var filterResult = new FilterResult
+            {
+                Choices = new(_choices)
+            };
+
+            await OnFilterComplete.InvokeAsync(filterResult);
+            await OnClose.InvokeAsync();
+        }
+        else if (result == false)
+        {
+            await OnClose.InvokeAsync();
+        }
+        else if (undoLast && CurrentImage is not null)
+        {
+            _choices.Remove(CurrentImage);
+        }
+    }
+
     private bool IsValidIndex<T>(List<T> list, int index) => index >= 0 && index < list.Count;
 
     public void Dispose()
     {
         ShellService.ShowShell();
+    }
+
+    public enum FilterChoice
+    {
+        Archive,
+        Delete
+    }
+
+    public sealed class FilterResult
+    {
+        public required Dictionary<string, FilterChoice> Choices { get; init; }
     }
 }
 
