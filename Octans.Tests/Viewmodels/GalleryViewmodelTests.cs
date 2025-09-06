@@ -3,9 +3,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Pages;
-using Octans.Client.Components.StatusBar;
+using Octans.Client.Components.Gallery;
 using Octans.Core.Models;
 using Octans.Core.Querying;
+using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 
 namespace Octans.Tests.Viewmodels;
@@ -15,6 +16,7 @@ public class GalleryViewmodelTests
     private readonly IQueryService _service;
     private readonly GalleryViewmodel _sut;
     private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
+    private readonly SpyChannelWriter<RepositoryChangeRequest> _repoChannel = new();
 
     private static readonly string[] Expected =
     [
@@ -25,7 +27,7 @@ public class GalleryViewmodelTests
     {
         _service = Substitute.For<IQueryService>();
         var command = Substitute.For<ICustomCommandProvider>();
-        _sut = new(_service, _storage, new(), command, NullLogger<GalleryViewmodel>.Instance);
+        _sut = new(_service, _storage, new(), command, _repoChannel, NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]
@@ -108,6 +110,31 @@ public class GalleryViewmodelTests
 
         Assert.Equal("boom", _sut.LastError);
         Assert.False(_sut.Searching);
+    }
+
+    [Fact]
+    public async Task OnFilterComplete_writes_repository_requests()
+    {
+        var result = new ImageViewer.FilterResult
+        {
+            Choices = new()
+            {
+                ["/media/DEADBEEF"] = ImageViewer.FilterChoice.Archive,
+                ["/media/01234567"] = ImageViewer.FilterChoice.Delete
+            }
+        };
+
+        await _sut.OnFilterComplete(result);
+
+        var items = new List<RepositoryChangeRequest>();
+
+        while (_repoChannel.Channel.Reader.TryRead(out var item))
+        {
+            items.Add(item);
+        }
+
+        Assert.Contains(items, r => r is {Hash: "DEADBEEF", Destination: RepositoryType.Archive});
+        Assert.Contains(items, r => r is {Hash: "01234567", Destination: RepositoryType.Trash});
     }
 
     private static async IAsyncEnumerable<HashItem> ReturnAsync(IEnumerable<HashItem> items)

@@ -1,6 +1,9 @@
+using System.Threading.Channels;
 using MudBlazor;
+using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
+using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 
 namespace Octans.Client.Components.Pages;
@@ -15,6 +18,7 @@ public sealed class GalleryViewmodel(
     IBrowserStorage storage,
     StatusService status,
     ICustomCommandProvider customCommandProvider,
+    ChannelWriter<RepositoryChangeRequest> repositoryChannel,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -196,6 +200,22 @@ public sealed class GalleryViewmodel(
     public async Task OnCancel()
     {
         await _cts.CancelAsync();
+    }
+
+    public async Task OnFilterComplete(ImageViewer.FilterResult result)
+    {
+        foreach (var (url, choice) in result.Choices)
+        {
+            var hex = url[(url.LastIndexOf('/') + 1)..];
+            var destination = choice switch
+            {
+                ImageViewer.FilterChoice.Archive => RepositoryType.Archive,
+                ImageViewer.FilterChoice.Delete => RepositoryType.Trash,
+                _ => RepositoryType.Inbox
+            };
+
+            await repositoryChannel.WriteAsync(new(hex, destination));
+        }
     }
 
     public async ValueTask DisposeAsync()

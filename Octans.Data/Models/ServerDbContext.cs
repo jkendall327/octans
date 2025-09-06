@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloaders;
 using Octans.Core.Models.Tagging;
+using Octans.Core.Repositories;
 
 namespace Octans.Core.Models;
 
@@ -8,6 +9,7 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
 {
     public virtual DbSet<FileRecord> FileRecords { get; set; }
     public virtual DbSet<HashItem> Hashes { get; set; }
+    public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Tag> Tags { get; set; }
     public virtual DbSet<Namespace> Namespaces { get; set; }
     public virtual DbSet<Subtag> Subtags { get; set; }
@@ -18,4 +20,15 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<DownloadStatus> DownloadStatuses { get; set; }
     public virtual DbSet<Provider> Providers { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Repository>().HasData(
+            new Repository { Id = (int)RepositoryType.Inbox, Name = "Inbox" },
+            new Repository { Id = (int)RepositoryType.Archive, Name = "Archive" },
+            new Repository { Id = (int)RepositoryType.Trash, Name = "Trash" }
+        );
+    }
 }
