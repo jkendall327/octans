@@ -1,0 +1,49 @@
+@using Octans.Client.Components.Settings
+@implements IDisposable
+
+<div class="setting-item" @ref="_element">
+    <label>@Name</label>
+    @Control
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p>@Description</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public SettingsContext Context { get; set; } = null!;
+    [CascadingParameter] public SettingsPageDescriptor Page { get; set; } = null!;
+
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public IEnumerable<string> Tags { get; set; } = Enumerable.Empty<string>();
+    [Parameter] public RenderFragment? Control { get; set; }
+
+    private ElementReference _element;
+    private SettingDescriptor? _descriptor;
+
+    protected override void OnInitialized()
+    {
+        _descriptor = new SettingDescriptor(Name, Page, Tags, () => _element.FocusAsync().AsTask());
+        Context.RegisterSetting(_descriptor);
+    }
+
+    public void Dispose()
+    {
+        if (_descriptor is not null)
+        {
+            Context.UnregisterSetting(_descriptor);
+        }
+    }
+}
+
+<style>
+    .setting-item {
+        margin-bottom: 1rem;
+    }
+
+    .setting-item label {
+        display: block;
+        font-weight: bold;
+    }
+</style>

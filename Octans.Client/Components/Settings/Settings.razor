@@ -1,0 +1,109 @@
+@page "/settings"
+@using Octans.Client.Components.Settings
+@rendermode InteractiveServer
+
+<CascadingValue Value="_context">
+    <div class="settings-layout">
+        <input class="settings-search" @bind="_searchText" placeholder="Search settings..." />
+        <div class="settings-body">
+            <SettingsSidebar Pages="_context.Pages" ActivePage="_activePage" OnSelectPage="SelectPage" />
+            <div class="settings-content">
+                <CascadingValue Value="_activePage">
+                    <SettingsPage Title="Import">
+                        <SettingItem Name="Import Source" Tags=@(new[] { "import" })>
+                            <Control>
+                                <input />
+                            </Control>
+                        </SettingItem>
+                    </SettingsPage>
+
+                    <SettingsPage Title="Tags">
+                        <SettingItem Name="Tag Colour" Tags=@(new[] { "colour", "tag" })>
+                            <Control>
+                                <input />
+                            </Control>
+                        </SettingItem>
+                    </SettingsPage>
+
+                    <SettingsPage Title="System">
+                        <SettingItem Name="Enable Logs" Tags=@(new[] { "log" })>
+                            <Control>
+                                <input type="checkbox" />
+                            </Control>
+                        </SettingItem>
+                    </SettingsPage>
+                </CascadingValue>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            <ul class="settings-search-results">
+                @foreach (var result in _context.Search(_searchText))
+                {
+                    <li @onclick="@(() => NavigateTo(result))">@result.Name (@result.Page.Title)</li>
+                }
+            </ul>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly SettingsContext _context = new();
+    private SettingsPageDescriptor? _activePage;
+    private string _searchText = string.Empty;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _context.Pages.Count > 0 && _activePage is null)
+        {
+            _activePage = _context.Pages[0];
+            StateHasChanged();
+        }
+    }
+
+    private void SelectPage(SettingsPageDescriptor page)
+    {
+        _activePage = page;
+    }
+
+    private async Task NavigateTo(SettingDescriptor descriptor)
+    {
+        _activePage = descriptor.Page;
+        await descriptor.Focus();
+    }
+}
+
+<style>
+    .settings-layout {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .settings-search {
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+    }
+
+    .settings-body {
+        display: flex;
+        flex: 1;
+    }
+
+    .settings-content {
+        flex: 1;
+        padding: 1rem;
+    }
+
+    .settings-search-results {
+        list-style: none;
+        margin: 1rem 0 0 0;
+        padding: 0;
+    }
+
+    .settings-search-results li {
+        cursor: pointer;
+        padding: 0.25rem 0;
+    }
+</style>

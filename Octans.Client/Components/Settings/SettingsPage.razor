@@ -1,0 +1,26 @@
+@using Octans.Client.Components.Settings
+
+<CascadingValue Value="Descriptor">
+    <div hidden="@(!IsActive)">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [CascadingParameter] public SettingsContext Context { get; set; } = null!;
+    [CascadingParameter] public SettingsPageDescriptor? ActivePage { get; set; }
+
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public SettingsPageDescriptor Descriptor { get; private set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        Descriptor = new SettingsPageDescriptor(Title, Icon, ChildContent ?? (_ => { }));
+        Context.RegisterPage(Descriptor);
+    }
+
+    private bool IsActive => ActivePage == Descriptor;
+}
