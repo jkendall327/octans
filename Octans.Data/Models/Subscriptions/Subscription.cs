@@ -7,12 +7,16 @@ namespace Octans.Core.Models;
 public class Subscription
 {
     [Key]
-    public int Id { get; set; }
-    public required string Name { get; set; }
-    public TimeSpan CheckPeriod { get; set; }
-    public required string Query { get; set; }
-    public int ProviderId { get; set; }
+    public int Id { get; init; }
+
+    [MaxLength(100)]
+    public required string Name { get; init; }
+    public TimeSpan CheckPeriod { get; init; }
+
+    [MaxLength(500)]
+    public required string Query { get; init; }
+    public int ProviderId { get; init; }
     [ForeignKey(nameof(ProviderId))]
-    public Provider Provider { get; set; } = null!;
+    public Provider Provider { get; init; } = null!;
     public DateTime NextCheck { get; set; }
 }

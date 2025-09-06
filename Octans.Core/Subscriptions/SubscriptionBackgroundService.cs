@@ -19,22 +19,25 @@ public class SubscriptionBackgroundService(
 
         try
         {
-            await db.Database.MigrateAsync(stoppingToken);
-
-            var now = timeProvider.GetUtcNow().UtcDateTime;
-
-            var subscriptions = await db.Subscriptions
-                .Where(s => s.NextCheck <= now)
-                .ToListAsync(stoppingToken);
-
-            foreach (var subscription in subscriptions)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await executor.ExecuteAsync(subscription, stoppingToken);
-                subscription.NextCheck = now.Add(subscription.CheckPeriod);
-                logger.LogInformation("Executed subscription {Name}", subscription.Name);
-            }
+                var now = timeProvider.GetUtcNow()
+                    .UtcDateTime;
 
-            await db.SaveChangesAsync(stoppingToken);
+                var subscriptions = await db
+                    .Subscriptions
+                    .Where(s => s.NextCheck <= now)
+                    .ToListAsync(stoppingToken);
+
+                foreach (var subscription in subscriptions)
+                {
+                    await executor.ExecuteAsync(subscription, stoppingToken);
+                    subscription.NextCheck = now.Add(subscription.CheckPeriod);
+                    logger.LogInformation("Executed subscription {Name}", subscription.Name);
+                }
+
+                await db.SaveChangesAsync(stoppingToken);
+            }
         }
         catch (Exception ex)
         {
