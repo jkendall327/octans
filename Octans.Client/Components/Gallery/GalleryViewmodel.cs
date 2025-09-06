@@ -24,6 +24,7 @@ public sealed class GalleryViewmodel(
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
     public string? CurrentImage { get; set; }
+    public bool FilterMode { get; set; }
     public List<QueryParameter> CurrentQuery { get; private set; } = [];
 
     public List<GalleryContextMenuItem> ContextMenuItems { get; private set; } = [];
@@ -61,6 +62,7 @@ public sealed class GalleryViewmodel(
         ContextMenuItems =
         [
             new("Open in New Tab", Icons.Material.Filled.OpenInNew, OnOpenInNewTab),
+            new("Archive/Delete filter", Icons.Material.Filled.Inbox, OpenFilter),
             new("Copy URL", Icons.Material.Filled.ContentCopy, OnCopyUrl),
             new("Download", Icons.Material.Filled.Download, OnDownload),
             new("Add to Favorites", Icons.Material.Filled.Star, OnAddToFavorites),
@@ -69,6 +71,15 @@ public sealed class GalleryViewmodel(
         ];
     }
 
+    private async Task OpenFilter(string imageUrl)
+    {
+        CurrentImage = imageUrl;
+        FilterMode = true;
+        
+        await Task.CompletedTask;
+    }
+
+    
     private async Task OnOpenInNewTab(string imageUrl)
     {
         // No-op for now
