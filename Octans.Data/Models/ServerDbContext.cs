@@ -16,4 +16,6 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<TagSibling> TagSiblings { get; set; }
     public virtual DbSet<QueuedDownload> QueuedDownloads { get; set; }
     public virtual DbSet<DownloadStatus> DownloadStatuses { get; set; }
+    public virtual DbSet<Provider> Providers { get; set; }
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
 }
