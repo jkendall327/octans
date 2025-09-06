@@ -59,26 +59,28 @@ public class MainToolbarViewmodel(NavigationManager nav)
             },
             new()
             {
-                Name = "help",
-                Items = []
+                Name = "system",
+                Items =
+                [
+                    new()
+                    {
+                        Name = "settings",
+                        Page = Page.Settings
+                    }
+                ]
             }
         ];
     }
 
-    private static readonly Dictionary<Page, string> _pages = new()
-    {
-        {
-            Page.LocalFiles, "/imports"
-        },
-        {
-            Page.WebUrls, "/imports"
-        }
-
-    };
-
     public Task Navigate(Page page)
     {
-        var url = _pages[page];
+        var url = page switch
+        {
+            Page.LocalFiles => "/imports",
+            Page.WebUrls => "/imports",
+            Page.Settings => "/settings",
+            _ => throw new ArgumentOutOfRangeException(nameof(page), page, null)
+        };
 
         nav.NavigateTo(url);
 
@@ -89,7 +91,8 @@ public class MainToolbarViewmodel(NavigationManager nav)
 public enum Page
 {
     LocalFiles,
-    WebUrls
+    WebUrls,
+    Settings
 }
 
 public class MenuItem
