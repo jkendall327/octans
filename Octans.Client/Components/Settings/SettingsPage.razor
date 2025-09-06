@@ -1,11 +1,10 @@
 @using Octans.Client.Components.Settings
 
-@if (IsActive)
-{
-    <CascadingValue Value="Descriptor">
+<CascadingValue Value="Descriptor">
+    <div hidden="@(!IsActive)">
         @ChildContent
-    </CascadingValue>
-}
+    </div>
+</CascadingValue>
 
 @code {
     [CascadingParameter] public SettingsContext Context { get; set; } = null!;
