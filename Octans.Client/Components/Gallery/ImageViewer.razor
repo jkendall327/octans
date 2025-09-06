@@ -33,6 +33,7 @@
                 Color="Color.Success">
                 Archive
             </MudButton>
+
             <MudButton
                 OnClick="@(DeleteAsync)"
                 Disabled="@(CurrentImage is null)"
@@ -51,7 +52,7 @@
             Next
         </MudButton>
     </section>
-    
+
     <section class="media-plane" @ondblclick="@OnClose">
         <div class="tag-list">
             <!-- TODO: get actual tags. -->
@@ -101,10 +102,12 @@
     {
         CurrentImage = StartingImage ?? ImageUrls.First();
         _shouldFocus = true;
+
         if (FilterMode)
         {
             _choices = [];
         }
+
         ShellService.HideShell();
     }
 
@@ -132,6 +135,7 @@
                 {
                     await OnClose.InvokeAsync();
                 }
+
                 break;
         }
     }
@@ -170,33 +174,27 @@
 
     private async Task ArchiveAsync()
     {
-        if (CurrentImage is null)
-        {
-            throw new InvalidOperationException("Current image was null after parameters being set");
-        }
-
-        _choices[CurrentImage] = FilterChoice.Archive;
-
-        if (_choices.Count == ImageUrls.Count && ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1)
-        {
-            await PromptCommitAsync(undoLast: true);
-        }
-        else
-        {
-            await NextAsync();
-        }
+        await RecordChoiceAsync(FilterChoice.Archive);
     }
 
     private async Task DeleteAsync()
+    {
+        await RecordChoiceAsync(FilterChoice.Delete);
+    }
+
+    private async Task RecordChoiceAsync(FilterChoice choice)
     {
         if (CurrentImage is null)
         {
             throw new InvalidOperationException("Current image was null after parameters being set");
         }
 
-        _choices[CurrentImage] = FilterChoice.Delete;
+        _choices[CurrentImage] = choice;
 
-        if (_choices.Count == ImageUrls.Count && ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1)
+        var allImagesJudged = _choices.Count == ImageUrls.Count;
+        var onLastImage = ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1;
+
+        if (allImagesJudged || onLastImage)
         {
             await PromptCommitAsync(undoLast: true);
         }
@@ -217,42 +215,47 @@
         {
             case 0:
                 await ArchiveAsync();
+
                 break;
             case 1:
                 await PreviousAsync();
+
                 break;
             case 2:
                 await DeleteAsync();
+
                 break;
         }
     }
 
     private async Task PromptCommitAsync(bool undoLast = false)
     {
-        var result = await DialogService.ShowMessageBox(
-            "Finished",
-            (MarkupString)"All images have been marked.",
-            yesText: "Commit",
-            noText: "Cancel",
-            cancelText: "Stay");
+        bool? result = await DialogService.ShowMessageBox("Finished", (MarkupString) "All images have been marked.", yesText: "Commit", noText: "Cancel", cancelText: "Stay");
 
-        if (result == true)
+        switch (result)
         {
-            var filterResult = new FilterResult
+            case true:
             {
-                Choices = new(_choices)
-            };
+                var filterResult = new FilterResult
+                {
+                    Choices = new(_choices)
+                };
 
-            await OnFilterComplete.InvokeAsync(filterResult);
-            await OnClose.InvokeAsync();
-        }
-        else if (result == false)
-        {
-            await OnClose.InvokeAsync();
-        }
-        else if (undoLast && CurrentImage is not null)
-        {
-            _choices.Remove(CurrentImage);
+                await OnFilterComplete.InvokeAsync(filterResult);
+                await OnClose.InvokeAsync();
+
+                break;
+            }
+            case false: await OnClose.InvokeAsync(); break;
+            default:
+            {
+                if (undoLast && CurrentImage is not null)
+                {
+                    _choices.Remove(CurrentImage);
+                }
+
+                break;
+            }
         }
     }
 
@@ -273,6 +276,7 @@
     {
         public required Dictionary<string, FilterChoice> Choices { get; init; }
     }
+
 }
 
 <style>
@@ -296,14 +300,14 @@
         min-height: 0;
 
     }
-    
+
     .tag-list {
         display: flex;
         flex-direction: column;
         gap: 1rem;
         max-width: 10%;
     }
-    
+
     .image-display {
         overflow-x: visible;
     }
