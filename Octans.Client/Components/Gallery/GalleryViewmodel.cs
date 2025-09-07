@@ -216,6 +216,14 @@ public sealed class GalleryViewmodel(
 
             await repositoryChannel.WriteAsync(new(hex, destination));
         }
+
+        ImageUrls.RemoveAll(url =>
+            result.Choices.TryGetValue(url, out var choice) &&
+            choice == ImageViewer.FilterChoice.Delete);
+
+        await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
+
+        await NotifyStateChanged();
     }
 
     public async ValueTask DisposeAsync()
