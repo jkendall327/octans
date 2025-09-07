@@ -5,7 +5,7 @@ namespace Octans.Client;
 public interface IBrowserStorage
 {
     Task<T?> GetFromLocalStorageAsync<T>(string key);
-    Task SetToLocalStorageAsync<T>(string key) where T : notnull;
+    Task SetToLocalStorageAsync<T>(string key, T state) where T : notnull;
 
     Task ToSessionAsync<T>(string purpose, string key, T state) where T : notnull;
     Task<T?> FromSessionAsync<T>(string purpose, string key);
@@ -16,14 +16,40 @@ public class BrowserStorage(
     ProtectedSessionStorage session,
     ILogger<BrowserStorage> logger) : IBrowserStorage
 {
-    public Task<T?> GetFromLocalStorageAsync<T>(string key)
+    public async Task<T?> GetFromLocalStorageAsync<T>(string key)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var result = await local.GetAsync<T>(key);
+            return result.Value;
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error pulling from local storage: {Key}", key);
+
+            try
+            {
+                await local.DeleteAsync(key);
+            }
+            catch
+            {
+                return default;
+            }
+
+            return default;
+        }
     }
 
-    public Task SetToLocalStorageAsync<T>(string key) where T : notnull
+    public async Task SetToLocalStorageAsync<T>(string key, T state) where T : notnull
     {
-        throw new NotImplementedException();
+        try
+        {
+            await local.SetAsync(key, state);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error setting local storage: {Key}", key);
+        }
     }
 
     public async Task ToSessionAsync<T>(string purpose, string key, T state) where T : notnull
