@@ -1,5 +1,6 @@
-﻿@using Octans.Client.Components.StatusBar
+@using Octans.Client.Components.StatusBar
 @using Octans.Client.Components.MainToolbar
+@using Octans.Client.Components.Progress
 @inherits LayoutComponentBase
 @inject ShellService ShellService
 @implements IDisposable
@@ -14,6 +15,7 @@
     <div class="@(ShellService.IsShellVisible ? "" : "hidden")">
         <StatusBar/>
     </div>
+    <ProgressPopup/>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Octans.Core.Progress;
 
 namespace Octans.Core.Importing;
 
@@ -10,6 +11,7 @@ public sealed class ImportFolderBackgroundService(
     IOptions<ImportFolderOptions> options,
     IServiceScopeFactory scopeFactory,
     IFileSystem fileSystem,
+    IBackgroundProgressReporter progressReporter,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
     private readonly string[] _importFolders = options.Value.Directories.ToArray();
@@ -45,12 +47,16 @@ public sealed class ImportFolderBackgroundService(
             }
         };
 
+        var handle = progressReporter.Start("Import folder scan", _importFolders.Length);
+        var processed = 0;
+
         foreach (var folder in _importFolders)
         {
             if (!fileSystem.Directory.Exists(folder))
             {
                 logger.LogWarning("Import folder does not exist: {Folder}", folder);
-
+                processed++;
+                progressReporter.Report(handle.Id, processed);
                 continue;
             }
 
@@ -65,8 +71,11 @@ public sealed class ImportFolderBackgroundService(
                 .ToList();
 
             request.Items.AddRange(imports);
+            processed++;
+            progressReporter.Report(handle.Id, processed);
         }
 
+        progressReporter.Complete(handle.Id);
         await SendImportRequest(request, stoppingToken);
     }
 
