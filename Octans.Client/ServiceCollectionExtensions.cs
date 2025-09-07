@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using System.Threading.Channels;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
@@ -170,7 +171,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();
         services.AddScoped<StatusService>();
-        services.AddScoped<ProgressStore>();
+        services.AddSingleton<ProgressStore>();
 
         return services;
     }

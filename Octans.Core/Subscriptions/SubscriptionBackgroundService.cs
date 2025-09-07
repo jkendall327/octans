@@ -3,11 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Models;
+using Octans.Core.Progress;
 
 namespace Octans.Client;
 
 public class SubscriptionBackgroundService(
     IServiceProvider serviceProvider,
+    IBackgroundProgressReporter reporter,
     ILogger<SubscriptionBackgroundService> logger,
     TimeProvider timeProvider) : BackgroundService
 {
@@ -17,10 +19,16 @@ public class SubscriptionBackgroundService(
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
         var executor = scope.ServiceProvider.GetRequiredService<ISubscriptionExecutor>();
 
+        await reporter.ReportMessage("Test");
+
+        return;
+        
         try
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                
+                
                 var now = timeProvider.GetUtcNow()
                     .UtcDateTime;
 
