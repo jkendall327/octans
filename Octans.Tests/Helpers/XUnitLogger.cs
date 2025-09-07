@@ -37,7 +37,7 @@ public sealed class XUnitLoggerProvider(ITestOutputHelper testOutputHelper) : IL
 
 public sealed class NullScope : IDisposable
 {
-    public static NullScope Instance { get; } = new NullScope();
+    public static NullScope Instance { get; } = new();
     private NullScope() { }
     public void Dispose() { }
 }

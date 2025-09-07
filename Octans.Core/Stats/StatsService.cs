@@ -22,7 +22,7 @@ public class StatsService(ServerDbContext dbContext, StorageService storageServi
         // Calculate storage used
         var storageUsed = storageService.GetStorageUsed();
 
-        return new HomeStats
+        return new()
         {
             TotalImages = totalImages,
             InboxCount = inboxCount,

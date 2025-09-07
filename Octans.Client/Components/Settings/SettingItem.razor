@@ -1,4 +1,3 @@
-@using Octans.Client.Components.Settings
 @implements IDisposable
 
 <div class="setting-item" @ref="_element">
@@ -24,7 +23,7 @@
 
     protected override void OnInitialized()
     {
-        _descriptor = new SettingDescriptor(Name, Page, Tags, () => _element.FocusAsync().AsTask());
+        _descriptor = new(Name, Page, Tags, () => _element.FocusAsync().AsTask());
         Context.RegisterSetting(_descriptor);
     }
 

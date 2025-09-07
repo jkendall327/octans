@@ -1,14 +1,13 @@
 @page "/gallery"
 @using Octans.Client.Components.Pages
 @inject GalleryViewmodel Viewmodel
-@using System.Collections.Generic
 @implements IAsyncDisposable
 
 <MudPopover
-    Open="@(Viewmodel.CurrentImage is not null)" 
-    Fixed="true" 
+    Open="@(Viewmodel.CurrentImage is not null)"
+    Fixed="true"
     TransformOrigin="Origin.TopCenter"
-    AnchorOrigin="Origin.TopCenter" 
+    AnchorOrigin="Origin.TopCenter"
     Class="image-popover">
     <ImageViewer
         ImageUrls="Viewmodel.ImageUrls"
@@ -54,13 +53,18 @@
                                                 <ActivatorContent>
                                                     <MudMenuItem Icon="@menuItem.Icon">
                                                         @menuItem.Text
-                                                        <MudIcon Icon="Icons.Material.Filled.ChevronRight" Style="margin-left: auto;" />
+                                                        <MudIcon Icon="Icons.Material.Filled.ChevronRight"
+                                                                 Style="margin-left: auto;"/>
                                                     </MudMenuItem>
                                                 </ActivatorContent>
                                                 <ChildContent>
                                                     @foreach (var subItem in menuItem.SubItems!)
                                                     {
-                                                        <MudMenuItem Icon="@subItem.Icon" OnClick="@(() => subItem.Action!(new List<string> { url }))">
+                                                        <MudMenuItem Icon="@subItem.Icon"
+                                                                     OnClick="@(() => subItem.Action!(new List<string>
+                                                                              {
+                                                                                  url
+                                                                              }))">
                                                             @subItem.Text
                                                         </MudMenuItem>
                                                     }
@@ -72,7 +76,10 @@
                                             <MudMenuItem
                                                 Icon="@menuItem.Icon"
                                                 Disabled="@(menuItem.Action is null)"
-                                                OnClick="@(() => menuItem.Action!(new List<string> { url }))">
+                                                OnClick="@(() => menuItem.Action!(new List<string>
+                                                         {
+                                                             url
+                                                         }))">
                                                 @menuItem.Text
                                             </MudMenuItem>
                                         }

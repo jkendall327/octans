@@ -29,7 +29,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         _operations[status.Id] = status;
         _logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})", operation, totalItems, status.Id);
         Raise(status);
-        return new ProgressHandle(status.Id, operation, totalItems);
+        return new(status.Id, operation, totalItems);
     }
 
     public void Report(Guid id, int processed)
@@ -55,7 +55,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
     public void ReportMessage(string message)
     {
         _logger.LogDebug("Background message: {Message}", message);
-        MessageReported?.Invoke(this, new ProgressMessageEventArgs
+        MessageReported?.Invoke(this, new()
         {
             Message = message,
             IsError = false
@@ -65,7 +65,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
     public void ReportError(string message)
     {
         _logger.LogDebug("Background error: {Message}", message);
-        MessageReported?.Invoke(this, new ProgressMessageEventArgs
+        MessageReported?.Invoke(this, new()
         {
             Message = message,
             IsError = true
@@ -74,7 +74,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
 
     private void Raise(ProgressStatus status, bool completed = false)
     {
-        ProgressChanged?.Invoke(this, new ProgressEventArgs
+        ProgressChanged?.Invoke(this, new()
         {
             Id = status.Id,
             Operation = status.Operation,

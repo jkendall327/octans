@@ -89,7 +89,7 @@ public class RawUrlImportViewmodel(
             logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, ImportType.RawUrl);
 
             var importItems = urls
-                .Select(url => new ImportItem { Url = new Uri(url) })
+                .Select(url => new ImportItem { Url = new(url) })
                 .ToList();
 
             var request = new ImportRequest

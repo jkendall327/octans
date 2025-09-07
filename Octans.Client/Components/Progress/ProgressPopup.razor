@@ -1,4 +1,3 @@
-@using System.Threading.Tasks
 @inject ProgressStore Store
 @implements IDisposable
 
@@ -7,7 +6,7 @@
     <div class="progress-popup">
         @foreach (var message in Store.Messages)
         {
-            <MudAlert Severity="@(message.IsError ? Severity.Error : Severity.Info)" Dense="true" Closeable="true" OnClose="() => Store.RemoveMessage(message.Id)">
+            <MudAlert Severity="@(message.IsError ? Severity.Error : Severity.Info)" Dense="true" Closeable="true" OnClose="@(() => Store.RemoveMessage(message.Id))">
                 @message.Message
             </MudAlert>
         }

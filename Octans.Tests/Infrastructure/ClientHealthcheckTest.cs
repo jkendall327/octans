@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Octans.Client;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;

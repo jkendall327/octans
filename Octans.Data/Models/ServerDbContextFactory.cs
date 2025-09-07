@@ -9,6 +9,6 @@ public class ServerDbContextFactory : IDesignTimeDbContextFactory<ServerDbContex
     {
         var optionsBuilder = new DbContextOptionsBuilder<ServerDbContext>();
         optionsBuilder.UseSqlite("DataSource=octans.db");
-        return new ServerDbContext(optionsBuilder.Options);
+        return new(optionsBuilder.Options);
     }
 }

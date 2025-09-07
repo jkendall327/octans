@@ -1,6 +1,4 @@
 using System.IO.Abstractions;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLua;
@@ -62,7 +60,7 @@ public sealed class CustomCommandProvider(
 
         var executeAction = CreateExecuteAction(luaFile.FullName, luaContent);
 
-        return new CustomCommand(metadata.Name, metadata.Description, metadata.Icon, executeAction);
+        return new(metadata.Name, metadata.Description, metadata.Icon, executeAction);
     }
 
     private ImageCommandMetadata? ExtractMetadata(string luaContent)
@@ -90,7 +88,7 @@ public sealed class CustomCommandProvider(
         var description = commandTable["description"]?.ToString() ?? "No description provided";
         var icon = commandTable["icon"]?.ToString() ?? "fa-solid fa-code";
 
-        return new ImageCommandMetadata(name, description, icon);
+        return new(name, description, icon);
     }
 
     private Func<List<string>, Task> CreateExecuteAction(string scriptPath, string luaContent)

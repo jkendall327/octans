@@ -1,5 +1,3 @@
-@using Octans.Client.Components.Settings
-
 <CascadingValue Value="Descriptor">
     <div hidden="@(!IsActive)">
         @ChildContent
@@ -18,7 +16,7 @@
 
     protected override void OnInitialized()
     {
-        Descriptor = new SettingsPageDescriptor(Title, Icon, ChildContent ?? (_ => { }));
+        Descriptor = new(Title, Icon, ChildContent ?? (_ => { }));
         Context.RegisterPage(Descriptor);
     }
 

@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using Octans.Core.Progress;
 
 namespace Octans.Client.Components.Progress;
@@ -33,7 +31,7 @@ public sealed class ProgressStore : IDisposable
         }
         else
         {
-            _entries[e.Id] = new ProgressEntry(e.Id, e.Operation, e.Processed, e.TotalItems);
+            _entries[e.Id] = new(e.Id, e.Operation, e.Processed, e.TotalItems);
         }
 
         var handler = OnChange;
@@ -47,7 +45,7 @@ public sealed class ProgressStore : IDisposable
     private async void HandleMessageReported(object? sender, ProgressMessageEventArgs e)
     {
         var id = Guid.NewGuid();
-        _messages[id] = new MessageEntry(id, e.Message, e.IsError);
+        _messages[id] = new(id, e.Message, e.IsError);
         var handler = OnChange;
 
         if (handler != null)

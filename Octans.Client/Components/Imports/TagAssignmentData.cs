@@ -21,7 +21,7 @@ public sealed class TagAssignmentCollection
 
     public void AddTagForAllPaths(TagViewer.Tag tag)
     {
-        Assignments.Add(new TagAssignment
+        Assignments.Add(new()
         {
             Tag = tag,
             Scope = TagScope.AllPaths

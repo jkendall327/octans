@@ -1,7 +1,4 @@
 using System.Threading.Channels;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using MudBlazor;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
@@ -11,7 +8,11 @@ using Octans.Core.Scripting;
 
 namespace Octans.Client.Components.Pages;
 
-public record GalleryContextMenuItem(string Text, string Icon, Func<List<string>, Task>? Action = null, List<GalleryContextMenuItem>? SubItems = null)
+public record GalleryContextMenuItem(
+    string Text,
+    string Icon,
+    Func<List<string>, Task>? Action = null,
+    List<GalleryContextMenuItem>? SubItems = null)
 {
     public bool HasSubItems => SubItems is not null && SubItems.Count > 0;
 };
@@ -38,7 +39,7 @@ public sealed class GalleryViewmodel(
 
     private int _total;
     private int _processed;
-    public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
+    public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
 
     public async Task OnInitialized()
     {
@@ -62,6 +63,7 @@ public sealed class GalleryViewmodel(
     private async Task InitializeContextMenuItems()
     {
         var customCommands = await customCommandProvider.GetCustomCommandsAsync();
+
         var customCommandItems = customCommands
             .Select(cmd => new GalleryContextMenuItem(cmd.Name, cmd.Icon, cmd.Execute))
             .ToList();
@@ -85,7 +87,6 @@ public sealed class GalleryViewmodel(
 
         await Task.CompletedTask;
     }
-
 
     private async Task OnOpenInNewTab(List<string> imageUrls)
     {
@@ -207,9 +208,10 @@ public sealed class GalleryViewmodel(
 
     public async Task OnFilterComplete(ImageViewer.FilterResult result)
     {
-        foreach (var (url, choice) in result.Choices)
+        foreach ((var url, var choice) in result.Choices)
         {
             var hex = url[(url.LastIndexOf('/') + 1)..];
+
             var destination = choice switch
             {
                 ImageViewer.FilterChoice.Archive => RepositoryType.Archive,
@@ -221,8 +223,7 @@ public sealed class GalleryViewmodel(
         }
 
         ImageUrls.RemoveAll(url =>
-            result.Choices.TryGetValue(url, out var choice) &&
-            choice == ImageViewer.FilterChoice.Delete);
+            result.Choices.TryGetValue(url, out var choice) && choice == ImageViewer.FilterChoice.Delete);
 
         await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
 
