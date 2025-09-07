@@ -28,14 +28,6 @@
   - Side-by-side viewer to decide which file to keep.
   - Automatic selection of the higher-quality file.
 
-## Networking and Sync
-- Tag Repository
-  - Implement server component for sharing tag mappings.
-  - Client synchronization with remote tag repository.
-- Content Updates
-  - Support exporting and importing updates via packages.
-  - Provide progress UI for update downloads.
-
 ## User Interface
 - Keyboard Shortcuts
   - Add keybindings for tagging, rating and navigation.
