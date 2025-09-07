@@ -4,17 +4,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Progress;
 
-public class BackgroundProgressService : IBackgroundProgressReporter
+public readonly record struct ProgressHandle(Guid Id, string Operation, int TotalItems);
+
+public interface IBackgroundProgressReporter
+{
+    Task<ProgressHandle> Start(string operation, int totalItems);
+    Task Report(Guid id, int processed);
+    Task Complete(Guid id);
+    Task ReportMessage(string message);
+    Task ReportError(string message);
+}
+
+public class BackgroundProgressService(ILogger<BackgroundProgressService> logger, IMediator mediator)
+    : IBackgroundProgressReporter
 {
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();
-    private readonly ILogger<BackgroundProgressService> _logger;
-    private readonly IMediator _mediator;
-
-    public BackgroundProgressService(ILogger<BackgroundProgressService> logger, IMediator mediator)
-    {
-        _logger = logger;
-        _mediator = mediator;
-    }
 
     public async Task<ProgressHandle> Start(string operation, int totalItems)
     {
@@ -28,7 +32,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
 
         _operations[status.Id] = status;
 
-        _logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})",
+        logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})",
             operation,
             totalItems,
             status.Id);
@@ -44,7 +48,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         {
             status.Processed = processed;
 
-            _logger.LogDebug("Progress for operation {Operation} ({Id}): {Processed}/{Total}",
+            logger.LogDebug("Progress for operation {Operation} ({Id}): {Processed}/{Total}",
                 status.Operation,
                 id,
                 processed,
@@ -59,26 +63,26 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         if (_operations.TryRemove(id, out var status))
         {
             status.Processed = status.TotalItems;
-            _logger.LogDebug("Completed operation {Operation} ({Id})", status.Operation, id);
+            logger.LogDebug("Completed operation {Operation} ({Id})", status.Operation, id);
             await Raise(status, true);
         }
     }
 
     public async Task ReportMessage(string message)
     {
-        _logger.LogDebug("Background message: {Message}", message);
-        await _mediator.Publish(new ProgressMessage(message, false));
+        logger.LogDebug("Background message: {Message}", message);
+        await mediator.Publish(new ProgressMessage(message, false));
     }
 
     public async Task ReportError(string message)
     {
-        _logger.LogDebug("Background error: {Message}", message);
-        await _mediator.Publish(new ProgressMessage(message, true));
+        logger.LogDebug("Background error: {Message}", message);
+        await mediator.Publish(new ProgressMessage(message, true));
     }
 
     private async Task Raise(ProgressStatus status, bool completed = false)
     {
-        await _mediator.Publish(new ProgressStatus
+        await mediator.Publish(new ProgressStatus
         {
             Id = status.Id,
             Operation = status.Operation,
