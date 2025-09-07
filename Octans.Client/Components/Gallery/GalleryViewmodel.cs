@@ -109,7 +109,7 @@ public sealed class GalleryViewmodel(
     {
         if (imageUrls.Count == 0) return;
 
-        var joined = string.Join('\n', imageUrls);
+        var joined = string.Join("\n", imageUrls);
 
         try
         {
