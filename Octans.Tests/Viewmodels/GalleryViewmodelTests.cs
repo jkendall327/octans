@@ -137,6 +137,26 @@ public class GalleryViewmodelTests
         Assert.Contains(items, r => r is {Hash: "01234567", Destination: RepositoryType.Trash});
     }
 
+    [Fact]
+    public async Task OnFilterComplete_filters_out_trashed_images_only()
+    {
+        _sut.ImageUrls.AddRange(Expected);
+
+        var result = new ImageViewer.FilterResult
+        {
+            Choices = new()
+            {
+                ["/media/DEADBEEF"] = ImageViewer.FilterChoice.Archive,
+                ["/media/01234567"] = ImageViewer.FilterChoice.Delete
+            }
+        };
+
+        await _sut.OnFilterComplete(result);
+
+        Assert.Contains("/media/DEADBEEF", _sut.ImageUrls);
+        Assert.DoesNotContain("/media/01234567", _sut.ImageUrls);
+    }
+
     private static async IAsyncEnumerable<HashItem> ReturnAsync(IEnumerable<HashItem> items)
     {
         foreach (var item in items)
