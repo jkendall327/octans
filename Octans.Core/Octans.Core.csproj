@@ -11,6 +11,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
         <PackageReference Include="NLua"/>
         <PackageReference Include="SixLabors.ImageSharp"/>
+        <PackageReference Include="CoenM.ImageSharp.ImageHash" />
         <PackageReference Include="System.IO.Abstractions"/>
         <PackageReference Include="MimeDetective.InMemory.Ext"/>
         <PackageReference Include="Refit"/>
