@@ -18,10 +18,6 @@ public class SubscriptionBackgroundService(
         using var scope = serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
         var executor = scope.ServiceProvider.GetRequiredService<ISubscriptionExecutor>();
-
-        await reporter.ReportMessage("Test");
-
-        return;
         
         try
         {
@@ -36,6 +32,8 @@ public class SubscriptionBackgroundService(
                     .Subscriptions
                     .Where(s => s.NextCheck <= now)
                     .ToListAsync(stoppingToken);
+
+                await reporter.ReportMessage($"Executing {subscriptions.Count} subscriptions...");
 
                 foreach (var subscription in subscriptions)
                 {
