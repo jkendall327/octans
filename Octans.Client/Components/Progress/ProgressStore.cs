@@ -23,6 +23,8 @@ public sealed class ProgressStore : IDisposable
         _reporter.MessageReported += HandleMessageReported;
     }
 
+    // TODO: come up with a proper way to avoid 'async void' here.
+    // Do some proper message passing with Mediator or whatever?
     private async void HandleProgressChanged(object? sender, ProgressEventArgs e)
     {
         if (e.Completed)
