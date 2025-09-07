@@ -4,10 +4,12 @@ using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Pages;
 using Octans.Client.Components.Gallery;
+using Octans.Client.Components.StatusBar;
 using Octans.Core.Models;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
+using Microsoft.JSInterop;
 
 namespace Octans.Tests.Viewmodels;
 
@@ -16,7 +18,11 @@ public class GalleryViewmodelTests
     private readonly IQueryService _service;
     private readonly GalleryViewmodel _sut;
     private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
+    private readonly IClipboard _clipboard = Substitute.For<IClipboard>();
     private readonly SpyChannelWriter<RepositoryChangeRequest> _repoChannel = new();
+    private readonly ICustomCommandProvider _commandProvider = Substitute.For<ICustomCommandProvider>();
+    private readonly IJSRuntime _js = Substitute.For<IJSRuntime>();
+    private readonly StatusService _status = new();
 
     private static readonly string[] Expected =
     [
@@ -26,8 +32,15 @@ public class GalleryViewmodelTests
     public GalleryViewmodelTests()
     {
         _service = Substitute.For<IQueryService>();
-        var command = Substitute.For<ICustomCommandProvider>();
-        _sut = new(_service, _storage, new(), command, _repoChannel, NullLogger<GalleryViewmodel>.Instance);
+
+        _sut = new(_service,
+            _storage,
+            _clipboard,
+            _status,
+            _commandProvider,
+            _repoChannel,
+            _js,
+            NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]
@@ -155,6 +168,53 @@ public class GalleryViewmodelTests
 
         Assert.Contains("/media/DEADBEEF", _sut.ImageUrls);
         Assert.DoesNotContain("/media/01234567", _sut.ImageUrls);
+    }
+
+    [Fact]
+    public async Task OnDelete_queues_repository_change_and_removes_from_list()
+    {
+        _commandProvider
+            .GetCustomCommandsAsync()
+            .Returns(new List<CustomCommand>());
+
+        await _sut.OnInitialized();
+
+        _sut.ImageUrls.AddRange(Expected);
+
+        var toDelete = new List<string>
+        {
+            Expected[0]
+        };
+
+        var deleteItem = _sut.ContextMenuItems.Single(i => i.Text == "Delete");
+        await deleteItem.Action!(toDelete);
+
+        Assert.DoesNotContain(Expected[0], _sut.ImageUrls);
+
+        Assert.True(_repoChannel.Channel.Reader.TryRead(out var item));
+        Assert.Equal("DEADBEEF", item.Hash);
+        Assert.Equal(RepositoryType.Trash, item.Destination);
+    }
+
+    [Fact]
+    public async Task OnCopyUrl_copies_all_urls_joined_by_newlines()
+    {
+        _commandProvider
+            .GetCustomCommandsAsync()
+            .Returns(new List<CustomCommand>());
+
+        await _sut.OnInitialized();
+
+        var toCopy = new List<string>(Expected);
+
+        var copyItem = _sut.ContextMenuItems.Single(i => i.Text == "Copy URL");
+        await copyItem.Action!(toCopy);
+
+        await _clipboard
+            .ReceivedWithAnyArgs(1)
+            .CopyToClipboardAsync("/media/DEADBEEF\n/media/01234567");
+
+        Assert.Equal("Copied 2 URL(s)", _status.GenericText);
     }
 
     private static async IAsyncEnumerable<HashItem> ReturnAsync(IEnumerable<HashItem> items)

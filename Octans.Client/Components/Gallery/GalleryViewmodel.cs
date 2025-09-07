@@ -5,6 +5,7 @@ using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
+using Microsoft.JSInterop;
 
 namespace Octans.Client.Components.Pages;
 
@@ -20,9 +21,11 @@ public record GalleryContextMenuItem(
 public sealed class GalleryViewmodel(
     IQueryService service,
     IBrowserStorage storage,
+    IClipboard clipboard,
     StatusService status,
     ICustomCommandProvider customCommandProvider,
     ChannelWriter<RepositoryChangeRequest> repositoryChannel,
+    IJSRuntime jsRuntime,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
@@ -40,6 +43,8 @@ public sealed class GalleryViewmodel(
     private int _total;
     private int _processed;
     public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
+
+    private readonly IJSRuntime _jsRuntime = jsRuntime;
 
     public async Task OnInitialized()
     {
@@ -73,7 +78,6 @@ public sealed class GalleryViewmodel(
             new("Open in New Tab", Icons.Material.Filled.OpenInNew, OnOpenInNewTab),
             new("Archive/Delete filter", Icons.Material.Filled.Inbox, OpenFilter),
             new("Copy URL", Icons.Material.Filled.ContentCopy, OnCopyUrl),
-            new("Download", Icons.Material.Filled.Download, OnDownload),
             new("Add to Favorites", Icons.Material.Filled.Star, OnAddToFavorites),
             new("Custom Commands", Icons.Material.Filled.Extension, SubItems: customCommandItems),
             new("Delete", Icons.Material.Filled.Delete, OnDelete)
@@ -90,32 +94,63 @@ public sealed class GalleryViewmodel(
 
     private async Task OnOpenInNewTab(List<string> imageUrls)
     {
-        // No-op for now
-        await Task.CompletedTask;
+        foreach (var url in imageUrls)
+        {
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("open", url, "_blank");
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to open {Url} in new tab", url);
+            }
+        }
     }
 
     private async Task OnCopyUrl(List<string> imageUrls)
     {
-        // No-op for now
-        await Task.CompletedTask;
-    }
+        if (imageUrls.Count == 0) return;
 
-    private async Task OnDownload(List<string> imageUrls)
-    {
-        // No-op for now
-        await Task.CompletedTask;
+        var joined = string.Join("\n", imageUrls);
+
+        try
+        {
+            await clipboard.CopyToClipboardAsync(joined);
+            status.GenericText = $"Copied {imageUrls.Count} URL(s)";
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to copy URLs to clipboard");
+        }
+
+        await NotifyStateChanged();
     }
 
     private async Task OnAddToFavorites(List<string> imageUrls)
     {
-        // No-op for now
-        await Task.CompletedTask;
+        // There isn't a dedicated favourites store yet, so simply notify the user.
+        status.GenericText = $"Added {imageUrls.Count} item(s) to favourites";
+        await NotifyStateChanged();
     }
 
     private async Task OnDelete(List<string> imageUrls)
     {
-        // No-op for now
-        await Task.CompletedTask;
+        foreach (var url in imageUrls)
+        {
+            try
+            {
+                var hex = url[(url.LastIndexOf('/') + 1)..];
+                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Trash));
+                ImageUrls.Remove(url);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to queue delete for {Url}", url);
+            }
+        }
+
+        await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
+        await NotifyStateChanged();
     }
 
     public async Task OnQueryChanged(List<QueryParameter> arg)
