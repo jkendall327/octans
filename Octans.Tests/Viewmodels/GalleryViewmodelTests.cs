@@ -133,8 +133,8 @@ public class GalleryViewmodelTests
             items.Add(item);
         }
 
-        Assert.Contains(items, r => r is {Hash: "DEADBEEF", Destination: RepositoryType.Archive});
-        Assert.Contains(items, r => r is {Hash: "01234567", Destination: RepositoryType.Trash});
+        Assert.Contains(items, r => r is { Hash: "DEADBEEF", Destination: RepositoryType.Archive });
+        Assert.Contains(items, r => r is { Hash: "01234567", Destination: RepositoryType.Trash });
     }
 
     [Fact]

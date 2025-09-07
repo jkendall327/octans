@@ -37,6 +37,7 @@ public sealed class ProgressStore : IDisposable
         }
 
         var handler = OnChange;
+
         if (handler != null)
         {
             await handler();
@@ -48,6 +49,7 @@ public sealed class ProgressStore : IDisposable
         var id = Guid.NewGuid();
         _messages[id] = new MessageEntry(id, e.Message, e.IsError);
         var handler = OnChange;
+
         if (handler != null)
         {
             await handler();
@@ -58,6 +60,7 @@ public sealed class ProgressStore : IDisposable
     {
         _messages.TryRemove(id, out _);
         var handler = OnChange;
+
         if (handler != null)
         {
             await handler();
@@ -68,9 +71,9 @@ public sealed class ProgressStore : IDisposable
     {
         _reporter.ProgressChanged -= HandleProgressChanged;
         _reporter.MessageReported -= HandleMessageReported;
-        GC.SuppressFinalize(this);
     }
 }
 
 public record ProgressEntry(Guid Id, string Operation, int Processed, int TotalItems);
+
 public record MessageEntry(Guid Id, string Message, bool IsError);
