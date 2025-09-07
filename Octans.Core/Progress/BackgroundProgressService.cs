@@ -1,13 +1,20 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Progress;
 
 public class BackgroundProgressService : IBackgroundProgressReporter
 {
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();
+    private readonly ILogger<BackgroundProgressService> _logger;
 
     public event EventHandler<ProgressEventArgs>? ProgressChanged;
     public event EventHandler<ProgressMessageEventArgs>? MessageReported;
+
+    public BackgroundProgressService(ILogger<BackgroundProgressService> logger)
+    {
+        _logger = logger;
+    }
 
     public ProgressHandle Start(string operation, int totalItems)
     {
@@ -20,6 +27,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         };
 
         _operations[status.Id] = status;
+        _logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})", operation, totalItems, status.Id);
         Raise(status);
         return new ProgressHandle(status.Id, operation, totalItems);
     }
@@ -29,6 +37,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         if (_operations.TryGetValue(id, out var status))
         {
             status.Processed = processed;
+            _logger.LogDebug("Progress for operation {Operation} ({Id}): {Processed}/{Total}", status.Operation, id, processed, status.TotalItems);
             Raise(status);
         }
     }
@@ -38,12 +47,14 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         if (_operations.TryRemove(id, out var status))
         {
             status.Processed = status.TotalItems;
+            _logger.LogDebug("Completed operation {Operation} ({Id})", status.Operation, id);
             Raise(status, true);
         }
     }
 
     public void ReportMessage(string message)
     {
+        _logger.LogDebug("Background message: {Message}", message);
         MessageReported?.Invoke(this, new ProgressMessageEventArgs
         {
             Message = message,
@@ -53,6 +64,7 @@ public class BackgroundProgressService : IBackgroundProgressReporter
 
     public void ReportError(string message)
     {
+        _logger.LogDebug("Background error: {Message}", message);
         MessageReported?.Invoke(this, new ProgressMessageEventArgs
         {
             Message = message,

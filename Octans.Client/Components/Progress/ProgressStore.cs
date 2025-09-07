@@ -1,17 +1,20 @@
+using System;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using Octans.Core.Progress;
 
 namespace Octans.Client.Components.Progress;
 
-public class ProgressStore : IDisposable
+public sealed class ProgressStore : IDisposable
 {
     private readonly IBackgroundProgressReporter _reporter;
-    private readonly Dictionary<Guid, ProgressEntry> _entries = new();
-    private readonly List<MessageEntry> _messages = new();
+    private readonly ConcurrentDictionary<Guid, ProgressEntry> _entries = new();
+    private readonly ConcurrentDictionary<Guid, MessageEntry> _messages = new();
 
-    public event Action? OnChange;
+    public event Func<Task>? OnChange;
 
-    public IReadOnlyCollection<ProgressEntry> Entries => _entries.Values;
-    public IReadOnlyCollection<MessageEntry> Messages => _messages;
+    public ICollection<ProgressEntry> Entries => _entries.Values;
+    public ICollection<MessageEntry> Messages => _messages.Values;
 
     public ProgressStore(IBackgroundProgressReporter reporter)
     {
@@ -20,36 +23,50 @@ public class ProgressStore : IDisposable
         _reporter.MessageReported += HandleMessageReported;
     }
 
-    private void HandleProgressChanged(object? sender, ProgressEventArgs e)
+    private async void HandleProgressChanged(object? sender, ProgressEventArgs e)
     {
         if (e.Completed)
         {
-            _entries.Remove(e.Id);
+            _entries.TryRemove(e.Id, out _);
         }
         else
         {
             _entries[e.Id] = new ProgressEntry(e.Id, e.Operation, e.Processed, e.TotalItems);
         }
 
-        OnChange?.Invoke();
+        var handler = OnChange;
+        if (handler != null)
+        {
+            await handler();
+        }
     }
 
-    private void HandleMessageReported(object? sender, ProgressMessageEventArgs e)
+    private async void HandleMessageReported(object? sender, ProgressMessageEventArgs e)
     {
-        _messages.Add(new MessageEntry(Guid.NewGuid(), e.Message, e.IsError));
-        OnChange?.Invoke();
+        var id = Guid.NewGuid();
+        _messages[id] = new MessageEntry(id, e.Message, e.IsError);
+        var handler = OnChange;
+        if (handler != null)
+        {
+            await handler();
+        }
     }
 
-    public void RemoveMessage(Guid id)
+    public async Task RemoveMessage(Guid id)
     {
-        _messages.RemoveAll(m => m.Id == id);
-        OnChange?.Invoke();
+        _messages.TryRemove(id, out _);
+        var handler = OnChange;
+        if (handler != null)
+        {
+            await handler();
+        }
     }
 
     public void Dispose()
     {
         _reporter.ProgressChanged -= HandleProgressChanged;
         _reporter.MessageReported -= HandleMessageReported;
+        GC.SuppressFinalize(this);
     }
 }
 

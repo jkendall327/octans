@@ -1,3 +1,4 @@
+@using System.Threading.Tasks
 @inject ProgressStore Store
 @implements IDisposable
 
@@ -37,13 +38,15 @@
 </style>
 
 @code {
+    private Task HandleChange() => InvokeAsync(StateHasChanged);
+
     protected override void OnInitialized()
     {
-        Store.OnChange += StateHasChanged;
+        Store.OnChange += HandleChange;
     }
 
     public void Dispose()
     {
-        Store.OnChange -= StateHasChanged;
+        Store.OnChange -= HandleChange;
     }
 }
