@@ -1,6 +1,7 @@
 @page "/gallery"
 @using Octans.Client.Components.Pages
 @inject GalleryViewmodel Viewmodel
+@using System.Collections.Generic
 @implements IAsyncDisposable
 
 <MudPopover
@@ -59,7 +60,7 @@
                                                 <ChildContent>
                                                     @foreach (var subItem in menuItem.SubItems!)
                                                     {
-                                                        <MudMenuItem Icon="@subItem.Icon" OnClick="@(() => subItem.Action!(url))">
+                                                        <MudMenuItem Icon="@subItem.Icon" OnClick="@(() => subItem.Action!(new List<string> { url }))">
                                                             @subItem.Text
                                                         </MudMenuItem>
                                                     }
@@ -68,10 +69,10 @@
                                         }
                                         else
                                         {
-                                            <MudMenuItem 
-                                                Icon="@menuItem.Icon" 
-                                                Disabled="@(menuItem.Action is null)" 
-                                                OnClick="@(() => menuItem.Action!(url))">
+                                            <MudMenuItem
+                                                Icon="@menuItem.Icon"
+                                                Disabled="@(menuItem.Action is null)"
+                                                OnClick="@(() => menuItem.Action!(new List<string> { url }))">
                                                 @menuItem.Text
                                             </MudMenuItem>
                                         }
