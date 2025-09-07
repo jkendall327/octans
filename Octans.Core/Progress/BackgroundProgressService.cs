@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Mediator;
 using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Progress;
@@ -7,16 +8,15 @@ public class BackgroundProgressService : IBackgroundProgressReporter
 {
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();
     private readonly ILogger<BackgroundProgressService> _logger;
+    private readonly IMediator _mediator;
 
-    public event EventHandler<ProgressEventArgs>? ProgressChanged;
-    public event EventHandler<ProgressMessageEventArgs>? MessageReported;
-
-    public BackgroundProgressService(ILogger<BackgroundProgressService> logger)
+    public BackgroundProgressService(ILogger<BackgroundProgressService> logger, IMediator mediator)
     {
         _logger = logger;
+        _mediator = mediator;
     }
 
-    public ProgressHandle Start(string operation, int totalItems)
+    public async Task<ProgressHandle> Start(string operation, int totalItems)
     {
         var status = new ProgressStatus
         {
@@ -27,54 +27,58 @@ public class BackgroundProgressService : IBackgroundProgressReporter
         };
 
         _operations[status.Id] = status;
-        _logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})", operation, totalItems, status.Id);
-        Raise(status);
+
+        _logger.LogDebug("Started background operation {Operation} with {TotalItems} items ({Id})",
+            operation,
+            totalItems,
+            status.Id);
+
+        await Raise(status);
+
         return new(status.Id, operation, totalItems);
     }
 
-    public void Report(Guid id, int processed)
+    public async Task Report(Guid id, int processed)
     {
         if (_operations.TryGetValue(id, out var status))
         {
             status.Processed = processed;
-            _logger.LogDebug("Progress for operation {Operation} ({Id}): {Processed}/{Total}", status.Operation, id, processed, status.TotalItems);
-            Raise(status);
+
+            _logger.LogDebug("Progress for operation {Operation} ({Id}): {Processed}/{Total}",
+                status.Operation,
+                id,
+                processed,
+                status.TotalItems);
+
+            await Raise(status);
         }
     }
 
-    public void Complete(Guid id)
+    public async Task Complete(Guid id)
     {
         if (_operations.TryRemove(id, out var status))
         {
             status.Processed = status.TotalItems;
             _logger.LogDebug("Completed operation {Operation} ({Id})", status.Operation, id);
-            Raise(status, true);
+            await Raise(status, true);
         }
     }
 
-    public void ReportMessage(string message)
+    public async Task ReportMessage(string message)
     {
         _logger.LogDebug("Background message: {Message}", message);
-        MessageReported?.Invoke(this, new()
-        {
-            Message = message,
-            IsError = false
-        });
+        await _mediator.Publish(new ProgressMessage(message, false));
     }
 
-    public void ReportError(string message)
+    public async Task ReportError(string message)
     {
         _logger.LogDebug("Background error: {Message}", message);
-        MessageReported?.Invoke(this, new()
-        {
-            Message = message,
-            IsError = true
-        });
+        await _mediator.Publish(new ProgressMessage(message, true));
     }
 
-    private void Raise(ProgressStatus status, bool completed = false)
+    private async Task Raise(ProgressStatus status, bool completed = false)
     {
-        ProgressChanged?.Invoke(this, new()
+        await _mediator.Publish(new ProgressStatus
         {
             Id = status.Id,
             Operation = status.Operation,
@@ -82,13 +86,5 @@ public class BackgroundProgressService : IBackgroundProgressReporter
             TotalItems = status.TotalItems,
             Completed = completed
         });
-    }
-
-    private class ProgressStatus
-    {
-        public Guid Id { get; init; }
-        public string Operation { get; init; } = string.Empty;
-        public int TotalItems { get; init; }
-        public int Processed { get; set; }
     }
 }
