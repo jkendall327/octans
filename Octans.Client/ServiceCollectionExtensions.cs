@@ -134,6 +134,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IFileSystem>(new FileSystem());
         services.AddScoped<IBrowserStorage, BrowserStorage>();
+        services.AddScoped<IClipboard, Clipboard>();
         services.AddScoped<ThemeService>();
         services.AddScoped<ShellService>();
 

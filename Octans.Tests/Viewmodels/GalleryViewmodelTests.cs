@@ -18,6 +18,7 @@ public class GalleryViewmodelTests
     private readonly IQueryService _service;
     private readonly GalleryViewmodel _sut;
     private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
+    private readonly IClipboard _clipboard = Substitute.For<IClipboard>();
     private readonly SpyChannelWriter<RepositoryChangeRequest> _repoChannel = new();
     private readonly ICustomCommandProvider _commandProvider = Substitute.For<ICustomCommandProvider>();
     private readonly IJSRuntime _js = Substitute.For<IJSRuntime>();
@@ -31,7 +32,15 @@ public class GalleryViewmodelTests
     public GalleryViewmodelTests()
     {
         _service = Substitute.For<IQueryService>();
-        _sut = new(_service, _storage, _status, _commandProvider, _repoChannel, _js, NullLogger<GalleryViewmodel>.Instance);
+
+        _sut = new(_service,
+            _storage,
+            _clipboard,
+            _status,
+            _commandProvider,
+            _repoChannel,
+            _js,
+            NullLogger<GalleryViewmodel>.Instance);
     }
 
     [Fact]
@@ -172,7 +181,10 @@ public class GalleryViewmodelTests
 
         _sut.ImageUrls.AddRange(Expected);
 
-        var toDelete = new List<string> { Expected[0] };
+        var toDelete = new List<string>
+        {
+            Expected[0]
+        };
 
         var deleteItem = _sut.ContextMenuItems.Single(i => i.Text == "Delete");
         await deleteItem.Action!(toDelete);
@@ -198,8 +210,9 @@ public class GalleryViewmodelTests
         var copyItem = _sut.ContextMenuItems.Single(i => i.Text == "Copy URL");
         await copyItem.Action!(toCopy);
 
-        await _js.Received(1)
-            .InvokeVoidAsync("navigator.clipboard.writeText", "/media/DEADBEEF\n/media/01234567");
+        await _clipboard
+            .ReceivedWithAnyArgs(1)
+            .CopyToClipboardAsync("/media/DEADBEEF\n/media/01234567");
 
         Assert.Equal("Copied 2 URL(s)", _status.GenericText);
     }

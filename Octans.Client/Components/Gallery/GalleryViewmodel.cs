@@ -20,6 +20,7 @@ public record GalleryContextMenuItem(string Text, string Icon, Func<List<string>
 public sealed class GalleryViewmodel(
     IQueryService service,
     IBrowserStorage storage,
+    IClipboard clipboard,
     StatusService status,
     ICustomCommandProvider customCommandProvider,
     ChannelWriter<RepositoryChangeRequest> repositoryChannel,
@@ -113,7 +114,7 @@ public sealed class GalleryViewmodel(
 
         try
         {
-            await _jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", joined);
+            await clipboard.CopyToClipboardAsync(joined);
             status.GenericText = $"Copied {imageUrls.Count} URL(s)";
         }
         catch (Exception e)
