@@ -38,7 +38,7 @@ public sealed class RepositoryChangeBackgroundService(
 
     private async Task ProcessBatch(List<RepositoryChangeRequest> batch, CancellationToken token)
     {
-        var handle = progressReporter.Start("Repository changes", batch.Count);
+        var handle = await progressReporter.Start("Repository changes", batch.Count);
 
         try
         {
@@ -56,20 +56,20 @@ public sealed class RepositoryChangeBackgroundService(
 
                 hashItem.RepositoryId = (int)req.Destination;
                 processed++;
-                progressReporter.Report(handle.Id, processed);
+                await progressReporter.Report(handle.Id, processed);
             }
 
             await db.SaveChangesAsync(token);
-            progressReporter.Complete(handle.Id);
+            await progressReporter.Complete(handle.Id);
         }
         catch (OperationCanceledException)
         {
-            progressReporter.Complete(handle.Id);
+            await progressReporter.Complete(handle.Id);
             // Swallow
         }
         catch (Exception ex)
         {
-            progressReporter.Complete(handle.Id);
+            await progressReporter.Complete(handle.Id);
             logger.LogError(ex, "Error processing repository changes");
         }
     }

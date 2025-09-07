@@ -47,7 +47,7 @@ public sealed class ImportFolderBackgroundService(
             }
         };
 
-        var handle = progressReporter.Start("Import folder scan", _importFolders.Length);
+        var handle = await progressReporter.Start("Import folder scan", _importFolders.Length);
         var processed = 0;
 
         foreach (var folder in _importFolders)
@@ -56,7 +56,8 @@ public sealed class ImportFolderBackgroundService(
             {
                 logger.LogWarning("Import folder does not exist: {Folder}", folder);
                 processed++;
-                progressReporter.Report(handle.Id, processed);
+                await progressReporter.Report(handle.Id, processed);
+
                 continue;
             }
 
@@ -72,10 +73,10 @@ public sealed class ImportFolderBackgroundService(
 
             request.Items.AddRange(imports);
             processed++;
-            progressReporter.Report(handle.Id, processed);
+            await progressReporter.Report(handle.Id, processed);
         }
 
-        progressReporter.Complete(handle.Id);
+        await progressReporter.Complete(handle.Id);
         await SendImportRequest(request, stoppingToken);
     }
 

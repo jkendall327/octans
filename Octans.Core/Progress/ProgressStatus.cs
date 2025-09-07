@@ -8,6 +8,7 @@ public class ProgressStatus : INotification
     public string Operation { get; init; } = string.Empty;
     public int TotalItems { get; init; }
     public int Processed { get; set; }
+    public bool Completed { get; set; }
 }
 
-public class ProgressMessage(string Message, bool IsError) : INotification;
+public record ProgressMessage(string Message, bool IsError) : INotification;

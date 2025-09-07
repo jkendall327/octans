@@ -27,7 +27,7 @@ public sealed class ProgressStore : INotificationHandler<ProgressStatus>, INotif
 
     public async ValueTask Handle(ProgressStatus e, CancellationToken cancellationToken)
     {
-        if (e.Processed == e.TotalItems)
+        if (e.Completed)
         {
             _entries.TryRemove(e.Id, out _);
         }
@@ -36,23 +36,21 @@ public sealed class ProgressStore : INotificationHandler<ProgressStatus>, INotif
             _entries[e.Id] = new(e.Id, e.Operation, e.Processed, e.TotalItems);
         }
 
-        var handler = OnChange;
-
-        if (handler != null)
+        if (OnChange != null)
         {
-            await handler();
+            await OnChange();
         }
     }
 
     public async ValueTask Handle(ProgressMessage e, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
+        
         _messages[id] = new(id, e.Message, e.IsError);
-        var handler = OnChange;
-
-        if (handler != null)
+        
+        if (OnChange != null)
         {
-            await handler();
+            await OnChange();
         }
     }
 }

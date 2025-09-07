@@ -25,7 +25,7 @@ public sealed class ThumbnailCreationBackgroundService(
             }
             catch (Exception ex)
             {
-                progressReporter.ReportError($"Error processing thumbnail request: {ex.Message}");
+                await progressReporter.ReportError($"Error processing thumbnail request: {ex.Message}");
                 logger.LogError(ex, "Error processing thumbnail request");
             }
         }

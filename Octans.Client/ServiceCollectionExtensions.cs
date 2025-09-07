@@ -142,6 +142,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ThemeService>();
         services.AddScoped<ShellService>();
 
+        services.AddMediator();
+
         return services;
     }
 
