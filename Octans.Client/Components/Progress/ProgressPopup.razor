@@ -1,0 +1,49 @@
+@inject ProgressStore Store
+@implements IDisposable
+
+@if (Store.Entries.Count > 0 || Store.Messages.Count > 0)
+{
+    <div class="progress-popup">
+        @foreach (var message in Store.Messages)
+        {
+            <MudAlert Severity="@(message.IsError ? Severity.Error : Severity.Info)" Dense="true" Closeable="true" OnClose="() => Store.RemoveMessage(message.Id)">
+                @message.Message
+            </MudAlert>
+        }
+        @foreach (var entry in Store.Entries)
+        {
+            <div class="progress-item">
+                <p>@entry.Operation (@entry.Processed/@entry.TotalItems)</p>
+                <MudProgressLinear Value="@(entry.TotalItems == 0 ? 0 : entry.Processed * 100.0 / entry.TotalItems)" />
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .progress-popup {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        width: 300px;
+        background-color: white;
+        padding: 0.5rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .progress-item {
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Store.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Store.OnChange -= StateHasChanged;
+    }
+}

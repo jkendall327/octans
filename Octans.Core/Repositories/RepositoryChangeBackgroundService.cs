@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Models;
+using Octans.Core.Progress;
 
 namespace Octans.Core.Repositories;
 
 public sealed class RepositoryChangeBackgroundService(
     ChannelReader<RepositoryChangeRequest> channel,
     IDbContextFactory<ServerDbContext> contextFactory,
+    IBackgroundProgressReporter progressReporter,
     ILogger<RepositoryChangeBackgroundService> logger) : BackgroundService
 {
     private const int BatchSize = 50;
@@ -36,10 +38,13 @@ public sealed class RepositoryChangeBackgroundService(
 
     private async Task ProcessBatch(List<RepositoryChangeRequest> batch, CancellationToken token)
     {
+        var handle = progressReporter.Start("Repository changes", batch.Count);
+
         try
         {
             await using var db = await contextFactory.CreateDbContextAsync(token);
 
+            var processed = 0;
             foreach (var req in batch)
             {
                 var bytes = Convert.FromHexString(req.Hash);
@@ -50,16 +55,21 @@ public sealed class RepositoryChangeBackgroundService(
                 }
 
                 hashItem.RepositoryId = (int)req.Destination;
+                processed++;
+                progressReporter.Report(handle.Id, processed);
             }
 
             await db.SaveChangesAsync(token);
+            progressReporter.Complete(handle.Id);
         }
         catch (OperationCanceledException)
         {
+            progressReporter.Complete(handle.Id);
             // Swallow
         }
         catch (Exception ex)
         {
+            progressReporter.Complete(handle.Id);
             logger.LogError(ex, "Error processing repository changes");
         }
     }

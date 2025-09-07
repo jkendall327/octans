@@ -8,6 +8,7 @@ using Octans.Client.Components.Gallery;
 using Octans.Client.Components.MainToolbar;
 using Octans.Client.Components.Pages;
 using Octans.Client.Components.StatusBar;
+using Octans.Client.Components.Progress;
 using Octans.Client.Options;
 using Octans.Core;
 using Octans.Core.Communication;
@@ -19,6 +20,7 @@ using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Octans.Core.Tags;
+using Octans.Core.Progress;
 using Octans.Server;
 using Octans.Server.Services;
 using Refit;
@@ -32,6 +34,8 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<ImportFolderBackgroundService>();
         services.AddHostedService<SubscriptionBackgroundService>();
         services.AddHostedService<RepositoryChangeBackgroundService>();
+
+        services.AddSingleton<IBackgroundProgressReporter, BackgroundProgressService>();
 
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<StorageService>();
@@ -163,6 +167,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();
         services.AddScoped<StatusService>();
+        services.AddScoped<ProgressStore>();
 
         return services;
     }
