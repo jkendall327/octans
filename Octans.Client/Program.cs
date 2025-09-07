@@ -5,6 +5,8 @@ using Octans.Client.Components;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Server;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +22,11 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 });
 
 builder.Services.AddMudServices();
+
+var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
+Directory.CreateDirectory(keysFolder);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysFolder));
 
 builder.Services.AddInfrastructure();
 builder.Services.AddHttpClients();
