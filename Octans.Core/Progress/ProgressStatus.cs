@@ -14,6 +14,8 @@ public class ProgressStatus : INotification
 
 public record ProgressMessage(string Message, bool IsError) : INotification;
 
+// TODO: figure out why this seems to break when not in the same file as the messages (!)
+// TODO: separate this from a ProgressPopupViewmodel?
 public sealed class ProgressStore : INotificationHandler<ProgressStatus>, INotificationHandler<ProgressMessage>
 {
     private readonly ConcurrentDictionary<Guid, ProgressEntry> _entries = new();
