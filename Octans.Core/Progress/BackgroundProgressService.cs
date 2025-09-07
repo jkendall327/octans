@@ -8,9 +8,6 @@ public class BackgroundProgressService : IBackgroundProgressReporter
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();
     private readonly ILogger<BackgroundProgressService> _logger;
 
-    public event EventHandler<ProgressEventArgs>? ProgressChanged;
-    public event EventHandler<ProgressMessageEventArgs>? MessageReported;
-
     public BackgroundProgressService(ILogger<BackgroundProgressService> logger)
     {
         _logger = logger;
@@ -82,13 +79,5 @@ public class BackgroundProgressService : IBackgroundProgressReporter
             TotalItems = status.TotalItems,
             Completed = completed
         });
-    }
-
-    private class ProgressStatus
-    {
-        public Guid Id { get; init; }
-        public string Operation { get; init; } = string.Empty;
-        public int TotalItems { get; init; }
-        public int Processed { get; set; }
     }
 }

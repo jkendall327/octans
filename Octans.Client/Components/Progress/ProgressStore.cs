@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
+using Mediator;
 using Octans.Core.Progress;
 
 namespace Octans.Client.Components.Progress;
 
-public sealed class ProgressStore : IDisposable
+public sealed class ProgressStore : INotificationHandler<ProgressStatus>, INotificationHandler<ProgressMessage>
 {
-    private readonly IBackgroundProgressReporter _reporter;
     private readonly ConcurrentDictionary<Guid, ProgressEntry> _entries = new();
     private readonly ConcurrentDictionary<Guid, MessageEntry> _messages = new();
 
@@ -14,18 +14,20 @@ public sealed class ProgressStore : IDisposable
     public ICollection<ProgressEntry> Entries => _entries.Values;
     public ICollection<MessageEntry> Messages => _messages.Values;
 
-    public ProgressStore(IBackgroundProgressReporter reporter)
+    public async Task RemoveMessage(Guid id)
     {
-        _reporter = reporter;
-        _reporter.ProgressChanged += HandleProgressChanged;
-        _reporter.MessageReported += HandleMessageReported;
+        _messages.TryRemove(id, out _);
+        var handler = OnChange;
+
+        if (handler != null)
+        {
+            await handler();
+        }
     }
 
-    // TODO: come up with a proper way to avoid 'async void' here.
-    // Do some proper message passing with Mediator or whatever?
-    private async void HandleProgressChanged(object? sender, ProgressEventArgs e)
+    public async ValueTask Handle(ProgressStatus e, CancellationToken cancellationToken)
     {
-        if (e.Completed)
+        if (e.Processed == e.TotalItems)
         {
             _entries.TryRemove(e.Id, out _);
         }
@@ -42,7 +44,7 @@ public sealed class ProgressStore : IDisposable
         }
     }
 
-    private async void HandleMessageReported(object? sender, ProgressMessageEventArgs e)
+    public async ValueTask Handle(ProgressMessage e, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
         _messages[id] = new(id, e.Message, e.IsError);
@@ -52,23 +54,6 @@ public sealed class ProgressStore : IDisposable
         {
             await handler();
         }
-    }
-
-    public async Task RemoveMessage(Guid id)
-    {
-        _messages.TryRemove(id, out _);
-        var handler = OnChange;
-
-        if (handler != null)
-        {
-            await handler();
-        }
-    }
-
-    public void Dispose()
-    {
-        _reporter.ProgressChanged -= HandleProgressChanged;
-        _reporter.MessageReported -= HandleMessageReported;
     }
 }
 
