@@ -1,4 +1,5 @@
 @using Octans.Client.Components.Gallery
+@using Octans.Client.Components.Importing
 <div class="manual-tag-input">
     <h3>@Title</h3>
     <div class="tag-listing">
@@ -26,7 +27,7 @@
 @code {
     [Parameter, EditorRequired] public required string Title { get; set; }
     [Parameter, EditorRequired] public required TagScope Scope { get; set; }
-    [Parameter, EditorRequired] public required TagAssignmentCollection Assignments { get; set; }
+    [Parameter, EditorRequired] public required TagAssignments Assignments { get; set; }
     [Parameter, EditorRequired] public required EventCallback TagsChanged { get; set; }
     [Parameter] public IEnumerable<string> SelectedPaths { get; set; } = [];
 

@@ -1,6 +1,6 @@
 using Octans.Client.Components.Gallery;
 
-namespace Octans.Client.Components.Imports;
+namespace Octans.Client.Components.Importing;
 
 public enum TagScope
 {
@@ -15,7 +15,7 @@ public sealed class TagAssignment
     public List<string> SpecificPaths { get; } = [];
 }
 
-public sealed class TagAssignmentCollection
+public sealed class TagAssignments
 {
     public List<TagAssignment> Assignments { get; } = [];
 

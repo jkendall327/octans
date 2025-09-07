@@ -1,4 +1,5 @@
 @using Octans.Client.Components.Gallery
+@using Octans.Client.Components.Importing
 <article class="tag-chooser">
     <section class="paths">
         <MudDataGrid
@@ -61,7 +62,7 @@
     [Parameter, EditorRequired] public EventCallback OnCancel { get; set; }
 
     public HashSet<PathItem> SelectedPaths { get; set; } = [];
-    public TagAssignmentCollection TagAssignments { get; set; } = new();
+    public TagAssignments TagAssignments { get; set; } = new();
     private MiscTagOptionsData MiscOptions { get; set; } = new();
 
     private void OnTagsChanged()
@@ -101,7 +102,7 @@
 
     public sealed class TagChooserResult
     {
-        public required TagAssignmentCollection ManualTagAssignments { get; set; }
+        public required TagAssignments ManualTagAssignments { get; set; }
         public required MiscTagOptionsData MiscTagOptions { get; set; }
         public required List<string> AllPaths { get; set; }
         

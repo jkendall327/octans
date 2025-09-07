@@ -1,4 +1,4 @@
-namespace Octans.Client.Components.Imports;
+namespace Octans.Client.Components.Importing;
 
 public enum MiscTagPurpose
 {
