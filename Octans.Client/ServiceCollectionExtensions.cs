@@ -22,6 +22,7 @@ using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Core.Progress;
+using Octans.Core.Subscriptions;
 using Octans.Server;
 using Octans.Server.Services;
 using Refit;
@@ -41,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SubfolderManager>();
         services.AddSingleton<StorageService>();
         services.AddScoped<StatsService>();
+        services.AddScoped<SubscriptionService>();
 
         return services;
     }
