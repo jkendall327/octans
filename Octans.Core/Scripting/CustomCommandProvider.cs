@@ -1,4 +1,6 @@
 using System.IO.Abstractions;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLua;
@@ -91,23 +93,23 @@ public sealed class CustomCommandProvider(
         return new ImageCommandMetadata(name, description, icon);
     }
 
-    private Func<string, Task> CreateExecuteAction(string scriptPath, string luaContent)
+    private Func<List<string>, Task> CreateExecuteAction(string scriptPath, string luaContent)
     {
-        return imageUrl =>
+        return imageUrls =>
         {
             try
             {
-                ExecuteLuaScript(scriptPath, luaContent, imageUrl);
+                ExecuteLuaScript(scriptPath, luaContent, imageUrls);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to execute Lua script {ScriptPath} for image {ImageUrl}", scriptPath, imageUrl);
+                logger.LogError(ex, "Failed to execute Lua script {ScriptPath} for images {@ImageUrls}", scriptPath, imageUrls);
             }
             return Task.CompletedTask;
         };
     }
 
-    private void ExecuteLuaScript(string scriptPath, string luaContent, string imageUrl)
+    private void ExecuteLuaScript(string scriptPath, string luaContent, List<string> imageUrls)
     {
         using var lua = new Lua();
 
@@ -122,8 +124,8 @@ public sealed class CustomCommandProvider(
                 return;
             }
 
-            logger.LogDebug("Executing Lua script {ScriptPath} with image URL {ImageUrl}", scriptPath, imageUrl);
-            executeFunction.Call(imageUrl);
+            logger.LogDebug("Executing Lua script {ScriptPath} with image URLs {@ImageUrls}", scriptPath, imageUrls);
+            executeFunction.Call(imageUrls);
         }
         catch (Exception ex)
         {

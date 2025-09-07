@@ -1,4 +1,7 @@
 using System.Threading.Channels;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using MudBlazor;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
@@ -8,7 +11,7 @@ using Octans.Core.Scripting;
 
 namespace Octans.Client.Components.Pages;
 
-public record GalleryContextMenuItem(string Text, string Icon, Func<string, Task>? Action = null, List<GalleryContextMenuItem>? SubItems = null)
+public record GalleryContextMenuItem(string Text, string Icon, Func<List<string>, Task>? Action = null, List<GalleryContextMenuItem>? SubItems = null)
 {
     public bool HasSubItems => SubItems is not null && SubItems.Count > 0;
 };
@@ -75,40 +78,40 @@ public sealed class GalleryViewmodel(
         ];
     }
 
-    private async Task OpenFilter(string imageUrl)
+    private async Task OpenFilter(List<string> imageUrls)
     {
-        CurrentImage = imageUrl;
+        CurrentImage = imageUrls.FirstOrDefault();
         FilterMode = true;
-        
+
         await Task.CompletedTask;
     }
 
-    
-    private async Task OnOpenInNewTab(string imageUrl)
+
+    private async Task OnOpenInNewTab(List<string> imageUrls)
     {
         // No-op for now
         await Task.CompletedTask;
     }
 
-    private async Task OnCopyUrl(string imageUrl)
+    private async Task OnCopyUrl(List<string> imageUrls)
     {
         // No-op for now
         await Task.CompletedTask;
     }
 
-    private async Task OnDownload(string imageUrl)
+    private async Task OnDownload(List<string> imageUrls)
     {
         // No-op for now
         await Task.CompletedTask;
     }
 
-    private async Task OnAddToFavorites(string imageUrl)
+    private async Task OnAddToFavorites(List<string> imageUrls)
     {
         // No-op for now
         await Task.CompletedTask;
     }
 
-    private async Task OnDelete(string imageUrl)
+    private async Task OnDelete(List<string> imageUrls)
     {
         // No-op for now
         await Task.CompletedTask;
