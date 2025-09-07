@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using Octans.Core.Repositories;
+using Octans.Core.Models.Ratings;
 
 namespace Octans.Core.Models;
 
@@ -12,6 +13,7 @@ public class HashItem
     public DateTime? DeletedAt { get; set; }
     public int RepositoryId { get; set; } = (int)RepositoryType.Inbox;
     public Repository? Repository { get; init; }
+    public ICollection<HashRating> Ratings { get; set; } = new List<HashRating>();
 
     public bool IsDeleted() => DeletedAt is not null;
 }

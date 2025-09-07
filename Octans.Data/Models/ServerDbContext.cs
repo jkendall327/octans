@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloaders;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Repositories;
+using Octans.Core.Models.Ratings;
 
 namespace Octans.Core.Models;
 
@@ -20,15 +21,30 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<DownloadStatus> DownloadStatuses { get; set; }
     public virtual DbSet<Provider> Providers { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<RatingSystem> RatingSystems { get; set; }
+    public virtual DbSet<HashRating> HashRatings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<HashRating>()
+            .HasOne(r => r.Hash)
+            .WithMany(h => h.Ratings);
+
+        modelBuilder.Entity<HashRating>()
+            .HasOne(r => r.RatingSystem)
+            .WithMany(s => s.HashRatings);
+
         modelBuilder.Entity<Repository>().HasData(
             new Repository { Id = (int)RepositoryType.Inbox, Name = "Inbox" },
             new Repository { Id = (int)RepositoryType.Archive, Name = "Archive" },
             new Repository { Id = (int)RepositoryType.Trash, Name = "Trash" }
+        );
+
+        modelBuilder.Entity<RatingSystem>().HasData(
+            new RatingSystem { Id = 1, Name = "Favourites", Type = RatingSystemType.Toggle, MaxValue = 1 },
+            new RatingSystem { Id = 2, Name = "Quality", Type = RatingSystemType.Range, MaxValue = 5 }
         );
     }
 }
