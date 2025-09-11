@@ -1,0 +1,49 @@
+@page "/downloaders"
+@inject DownloadersViewmodel Viewmodel
+@using Octans.Core.Downloaders
+
+<div class="downloaders-container">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Rescan">Rescan</MudButton>
+
+    <MudTable Items="Viewmodel.Downloaders">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Version</MudTh>
+            <MudTh>Creator</MudTh>
+            <MudTh>Homepage</MudTh>
+            <MudTh>Supported Operations</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>@context.Version</MudTd>
+            <MudTd>@context.Creator</MudTd>
+            <MudTd>
+                @if (!string.IsNullOrWhiteSpace(context.Homepage))
+                {
+                    <a href="@context.Homepage" target="_blank">@context.Homepage</a>
+                }
+            </MudTd>
+            <MudTd>
+                @foreach (var op in context.SupportedOperations)
+                {
+                    <MudChip T="string" Size="Size.Small" Style="margin-right:4px;">@op</MudChip>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (RendererInfo.IsInteractive)
+        {
+            await Viewmodel.Load();
+        }
+    }
+
+    private async Task Rescan()
+    {
+        await Viewmodel.Rescan();
+    }
+}
