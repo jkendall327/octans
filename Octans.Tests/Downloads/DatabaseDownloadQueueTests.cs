@@ -102,8 +102,8 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
         // Should get the higher priority one
-        Assert.NotNull(result);
-        Assert.Equal(download2.Id, result.Id);
+        Assert.NotNull(result.Download);
+        Assert.Equal(download2.Id, result.Download.Id);
 
         // Verify it was removed from the queue
         var remainingCount = await context.QueuedDownloads.CountAsync();
@@ -131,14 +131,55 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         // Set bandwidth limiter to reject this domain
         _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
 
+        _bandwidthLimiter.GetDelayForDomain("example.com").Returns(TimeSpan.FromSeconds(5));
+
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
-        // Should not dequeue anything
-        Assert.Null(result);
+        Assert.Null(result.Download);
+        Assert.Equal(TimeSpan.FromSeconds(5), result.SuggestedDelay);
 
-        // Verify it's still in the queue
         var remainingCount = await context.QueuedDownloads.CountAsync();
         Assert.Equal(1, remainingCount);
+    }
+
+    [Fact]
+    public async Task DequeueNextEligibleAsync_ShouldReturnMinimumDelay()
+    {
+        await using var context = CreateContext();
+
+        var download1 = new QueuedDownload
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file1.jpg",
+            DestinationPath = "/downloads/file1.jpg",
+            Domain = "example.com",
+            Priority = 5,
+            QueuedAt = DateTime.UtcNow
+        };
+
+        var download2 = new QueuedDownload
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://test.com/file2.jpg",
+            DestinationPath = "/downloads/file2.jpg",
+            Domain = "test.com",
+            Priority = 5,
+            QueuedAt = DateTime.UtcNow
+        };
+
+        context.QueuedDownloads.AddRange(download1, download2);
+        await context.SaveChangesAsync();
+
+        _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
+        _bandwidthLimiter.IsBandwidthAvailable("test.com").Returns(false);
+
+        _bandwidthLimiter.GetDelayForDomain("example.com").Returns(TimeSpan.FromSeconds(10));
+        _bandwidthLimiter.GetDelayForDomain("test.com").Returns(TimeSpan.FromSeconds(5));
+
+        var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
+
+        Assert.Null(result.Download);
+        Assert.Equal(TimeSpan.FromSeconds(5), result.SuggestedDelay);
     }
 
     [Fact]
@@ -243,10 +284,10 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
-        Assert.NotNull(result);
+        Assert.NotNull(result.Download);
 
         // Should get the older one
-        Assert.Equal(download1.Id, result.Id);
+        Assert.Equal(download1.Id, result.Download.Id);
     }
 
     public void Dispose() => _connection.Dispose();

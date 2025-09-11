@@ -10,7 +10,7 @@ namespace Octans.Core.Downloads;
 public interface IDownloadQueue
 {
     Task<Guid> EnqueueAsync(QueuedDownload download);
-    Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken);
+    Task<DownloadDequeueResult> DequeueNextEligibleAsync(CancellationToken cancellationToken);
     Task<int> GetQueuedCountAsync();
     Task RemoveAsync(Guid id);
 }
@@ -47,7 +47,7 @@ public class DatabaseDownloadQueue(
         return download.Id;
     }
 
-    public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)
+    public async Task<DownloadDequeueResult> DequeueNextEligibleAsync(CancellationToken cancellationToken)
     {
         logger.LogDebug("Attempting to dequeue next eligible download");
 
@@ -61,6 +61,8 @@ public class DatabaseDownloadQueue(
 
         logger.LogDebug("Found {Count} downloads in queue", queuedDownloads.Count);
 
+        TimeSpan? minDelay = null;
+
         foreach (var download in queuedDownloads)
         {
             using var scope = logger.BeginScope(new Dictionary<string, object?>
@@ -69,24 +71,29 @@ public class DatabaseDownloadQueue(
                 ["Domain"] = download.Domain
             });
 
-            // Check if bandwidth is available for this domain
             if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
             {
-                logger.LogDebug("Skipping download due to bandwidth limitations for domain {Domain}", download.Domain);
+                var delay = bandwidthLimiter.GetDelayForDomain(download.Domain);
+                logger.LogDebug("Skipping download due to bandwidth limitations for domain {Domain}. Delay: {Delay}", download.Domain, delay);
+
+                if (minDelay is null || delay < minDelay)
+                {
+                    minDelay = delay;
+                }
+
                 continue;
             }
 
             logger.LogInformation("Dequeuing download from {Domain}", download.Domain);
 
-            // Remove from queue
             db.QueuedDownloads.Remove(download);
             await db.SaveChangesAsync(cancellationToken);
 
-            return download;
+            return new(download, null);
         }
 
         logger.LogDebug("No eligible downloads found in queue");
-        return null;
+        return new(null, minDelay);
     }
 
     public async Task<int> GetQueuedCountAsync()

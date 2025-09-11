@@ -31,19 +31,18 @@ public sealed class DownloadManager(
                 await _concurrencyLimiter.WaitAsync(stoppingToken);
 
                 // Get next eligible download
-                var nextDownload = await downloadQueue.DequeueNextEligibleAsync(stoppingToken);
+                var result = await downloadQueue.DequeueNextEligibleAsync(stoppingToken);
 
-                if (nextDownload != null)
+                if (result.Download != null)
                 {
-                    // Start download in background
-                    _ = processor.ProcessDownloadAsync(nextDownload, stoppingToken)
+                    _ = processor.ProcessDownloadAsync(result.Download, stoppingToken)
                         .ContinueWith(_ => _concurrencyLimiter.Release(), TaskScheduler.Default);
                 }
                 else
                 {
-                    // No downloads ready, release semaphore and wait a bit
                     _concurrencyLimiter.Release();
-                    await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                    var delay = result.SuggestedDelay ?? TimeSpan.FromSeconds(1);
+                    await Task.Delay(delay, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
