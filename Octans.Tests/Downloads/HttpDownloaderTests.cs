@@ -8,18 +8,18 @@ using Octans.Core.Downloaders;
 
 namespace Octans.Tests.Downloads;
 
-public class DownloadProcessorTests
+public class HttpDownloaderTests
 {
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadService _downloadService = Substitute.For<IDownloadService>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
-    private readonly DownloadProcessor _sut;
+    private readonly HttpDownloader _sut;
     private readonly CancellationTokenSource _cts = new();
     private readonly TestHttpMessageHandler _messageHandler = new();
 
-    public DownloadProcessorTests()
+    public HttpDownloaderTests()
     {
         var factory = Substitute.For<IHttpClientFactory>();
 
@@ -37,7 +37,7 @@ public class DownloadProcessorTests
             factory,
             _fileSystem,
             _timeProvider,
-            NullLogger<DownloadProcessor>.Instance);
+            NullLogger<HttpDownloader>.Instance);
 
         // Setup download token
         _downloadService
@@ -86,11 +86,11 @@ public class DownloadProcessorTests
         Assert.Equal(testContent, fileContent);
 
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
 
         // Verify progress updates (at least 2 - initial and final)
-        _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
+        await _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
 
         // Verify bandwidth usage recorded
         _bandwidthLimiter.Received(1).RecordDownload("example.com", testBytes.Length);
@@ -120,8 +120,8 @@ public class DownloadProcessorTests
 
         // Assert
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(
             downloadId,
             DownloadState.Failed,
             Arg.Is<string>(s => s.Contains("404")));
@@ -169,8 +169,8 @@ public class DownloadProcessorTests
 
         // Assert
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
     }
 }
 

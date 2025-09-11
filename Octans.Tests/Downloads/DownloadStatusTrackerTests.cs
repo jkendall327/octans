@@ -5,17 +5,19 @@ using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
 using Octans.Core.Models;
 using System.Data.Common;
+using Mediator;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Octans.Tests.Downloads;
 
-public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
+public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 {
     private readonly DbConnection _connection;
     private readonly DbContextOptions<ServerDbContext> _contextOptions;
-    private readonly DownloadStateService _service;
+    private readonly DownloadStatusTracker _service;
+    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
 
-    public DownloadStateServiceTests()
+    public DownloadStatusTrackerTests()
     {
         // Create and open an in-memory SQLite database
         _connection = new SqliteConnection("Filename=:memory:");
@@ -39,7 +41,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             .CreateDbContextAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new(_contextOptions));
 
-        _service = new(NullLogger<DownloadStateService>.Instance, contextFactory);
+        _service = new(_publisher, contextFactory, NullLogger<DownloadStatusTracker>.Instance);
     }
 
     [Fact]
@@ -139,26 +141,23 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
-
-        var eventRaised = false;
-        _service.OnDownloadProgressChanged += (_, args) =>
-        {
-            eventRaised = true;
-            Assert.Equal(500, args.Status.BytesDownloaded);
-            Assert.Equal(1000, args.Status.TotalBytes);
-            Assert.Equal(100.0, args.Status.CurrentSpeed);
-        };
-
+        
         // Act
-        _service.UpdateProgress(download.Id, 500, 1000, 100.0);
-
+        await _service.UpdateProgress(download.Id, 500, 1000, 100.0);
+        
         // Assert
+        await _publisher
+            .Received()
+            .Publish(Arg.Is<DownloadStatusChanged>(ds => 
+                ds.Status.BytesDownloaded == 500
+                && ds.Status.TotalBytes == 1000
+                && ds.Status.CurrentSpeed == 100.0));
+        
         var updated = _service.GetDownloadById(download.Id);
         Assert.NotNull(updated);
         Assert.Equal(500, updated.BytesDownloaded);
         Assert.Equal(1000, updated.TotalBytes);
         Assert.Equal(100.0, updated.CurrentSpeed);
-        Assert.True(eventRaised);
     }
 
     [Fact]
@@ -178,37 +177,24 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
-
-        var progressEventRaised = false;
-        var downloadsChangedEventRaised = false;
-        Guid? affectedId = null;
-        DownloadChangeType? changeType = null;
-
-        _service.OnDownloadProgressChanged += (_, args) =>
-        {
-            progressEventRaised = true;
-            Assert.Equal(DownloadState.InProgress, args.Status.State);
-        };
-
-        _service.OnDownloadsChanged += (_, args) =>
-        {
-            downloadsChangedEventRaised = true;
-            affectedId = args.AffectedDownloadId;
-            changeType = args.ChangeType;
-        };
-
+        
         // Act
-        _service.UpdateState(download.Id, DownloadState.InProgress);
+        await _service.UpdateState(download.Id, DownloadState.InProgress);
 
         // Assert
+        await _publisher
+            .Received(2)
+            .Publish(Arg.Any<DownloadsChanged>());
+
+        await _publisher
+            .Received(1)
+            .Publish(Arg.Is<DownloadStatusChanged>(ds => ds.Status.State == DownloadState.InProgress));
+
         var updated = _service.GetDownloadById(download.Id);
+        
         Assert.NotNull(updated);
         Assert.Equal(DownloadState.InProgress, updated.State);
         Assert.NotNull(updated.StartedAt);
-        Assert.True(progressEventRaised);
-        Assert.True(downloadsChangedEventRaised);
-        Assert.Equal(download.Id, affectedId);
-        Assert.Equal(DownloadChangeType.Updated, changeType);
     }
 
     [Fact]
@@ -231,7 +217,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
-        _service.UpdateState(download.Id, DownloadState.Completed);
+        await _service.UpdateState(download.Id, DownloadState.Completed);
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);
@@ -259,7 +245,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
-        _service.UpdateState(download.Id, DownloadState.Failed, "Download failed due to network error");
+        await _service.UpdateState(download.Id, DownloadState.Failed, "Download failed due to network error");
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);
@@ -283,18 +269,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             CreatedAt = DateTime.UtcNow,
             LastUpdated = DateTime.UtcNow
         };
-
-        var eventRaised = false;
-        Guid? affectedId = null;
-        DownloadChangeType? changeType = null;
-
-        _service.OnDownloadsChanged += (_, args) =>
-        {
-            eventRaised = true;
-            affectedId = args.AffectedDownloadId;
-            changeType = args.ChangeType;
-        };
-
+        
         // Act
         await _service.AddOrUpdateDownloadAsync(download);
 
@@ -302,7 +277,10 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         var result = _service.GetDownloadById(download.Id);
         Assert.NotNull(result);
         Assert.Equal(download.Id, result.Id);
-        Assert.True(eventRaised);
+        
+        await _publisher
+            .Received(1)
+            .Publish(Arg.Any<DownloadsChanged>());
 
         // Verify it was added to the database
         await using var context = new ServerDbContext(_contextOptions);
@@ -386,25 +364,18 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         }
 
         await _service.AddOrUpdateDownloadAsync(download);
-
-        var eventRaised = false;
-        Guid? affectedId = null;
-        DownloadChangeType? changeType = null;
-
-        _service.OnDownloadsChanged += (_, args) =>
-        {
-            eventRaised = true;
-            affectedId = args.AffectedDownloadId;
-            changeType = args.ChangeType;
-        };
-
+        
         // Act
         await _service.RemoveDownloadAsync(download.Id);
 
         // Assert
         var result = _service.GetDownloadById(download.Id);
+        
         Assert.Null(result);
-        Assert.True(eventRaised);
+
+        await _publisher
+            .Received(2)
+            .Publish(Arg.Any<DownloadsChanged>());
 
         // Verify it was removed from the database
         await using (var context = new ServerDbContext(_contextOptions))

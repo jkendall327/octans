@@ -13,8 +13,8 @@ public static class DownloadServiceExtensions
         configure?.Invoke(options);
         services.AddSingleton(options);
 
-        services.AddSingleton<IDownloadStateService, DownloadStateService>();
-        services.AddSingleton<DownloadProcessor>();
+        services.AddSingleton<IDownloadStateService, DownloadStatusTracker>();
+        services.AddSingleton<HttpDownloader>();
         services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
 

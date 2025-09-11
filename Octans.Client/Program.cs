@@ -7,6 +7,7 @@ using Octans.Core.Models;
 using Octans.Server;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
+using Octans.Core.Downloads;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,13 +22,16 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-builder.Services.AddMudServices();
 
+// Setup keys
 var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
-Directory.CreateDirectory(keysFolder);
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keysFolder));
 
+Directory.CreateDirectory(keysFolder);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new(keysFolder));
+
+builder.Services.AddMudServices();
 builder.Services.AddInfrastructure();
 builder.Services.AddHttpClients();
 builder.Services.AddOctansServices();
@@ -35,6 +39,17 @@ builder.Services.AddViewmodels();
 builder.Services.AddBusinessServices();
 builder.Services.AddChannels();
 builder.Services.AddDatabase();
+
+builder.Services.AddBandwidthLimiter(options =>
+{
+    // 1 MB/s
+    options.DefaultBytesPerSecond = 1024 * 1024; 
+});
+
+builder.Services.AddDownloadManager(options =>
+{
+    options.MaxConcurrentDownloads = 5;
+});
 
 builder.SetupConfiguration();
 

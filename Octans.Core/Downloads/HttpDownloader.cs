@@ -7,14 +7,14 @@ namespace Octans.Core.Downloads;
 /// <summary>
 /// Handles the actual HTTP machinery of downloading content.
 /// </summary>
-public class DownloadProcessor(
+public class HttpDownloader(
     IBandwidthLimiter bandwidthLimiter,
     IDownloadStateService stateService,
     IDownloadService downloadService,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
     TimeProvider timeProvider,
-    ILogger<DownloadProcessor> logger)
+    ILogger<HttpDownloader> logger)
 {
     public async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
     {
@@ -33,18 +33,18 @@ public class DownloadProcessor(
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
             logger.LogInformation("Download canceled: {Url}", download.Url);
-            stateService.UpdateState(downloadId, DownloadState.Canceled);
+            await stateService.UpdateState(downloadId, DownloadState.Canceled);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
             logger.LogError(ex, "Download failed: {Url}", download.Url);
-            stateService.UpdateState(downloadId, DownloadState.Failed, ex.Message);
+            await stateService.UpdateState(downloadId, DownloadState.Failed, ex.Message);
         }
     }
 
     private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
     {
-        stateService.UpdateState(downloadId, DownloadState.InProgress);
+        await stateService.UpdateState(downloadId, DownloadState.InProgress);
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
         var directoryName = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??
@@ -63,7 +63,8 @@ public class DownloadProcessor(
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
+        
+        await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
         await using var fileStream = fileSystem.File.Create(download.DestinationPath,
@@ -94,7 +95,7 @@ public class DownloadProcessor(
             var bytesDelta = bytesDownloaded - lastReportBytes;
             var speed = bytesDelta / (timeDelta / 1000.0);
 
-            stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
+            await stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
 
             lastReportTime = currentElapsedMs;
             lastReportBytes = bytesDownloaded;
@@ -102,11 +103,13 @@ public class DownloadProcessor(
 
         // Final progress update and state change
         var totalElapsed = timeProvider.GetElapsedTime(startTime);
-        stateService.UpdateProgress(downloadId,
+        
+        await stateService.UpdateProgress(downloadId,
             bytesDownloaded,
             totalBytes,
             bytesDownloaded / totalElapsed.TotalSeconds);
-        stateService.UpdateState(downloadId, DownloadState.Completed);
+        
+        await stateService.UpdateState(downloadId, DownloadState.Completed);
 
         // Record bandwidth usage
         bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);

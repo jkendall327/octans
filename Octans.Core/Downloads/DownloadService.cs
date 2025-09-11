@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Octans.Core.Downloaders;
 using Microsoft.Extensions.Logging;
 
@@ -19,8 +20,7 @@ public sealed class DownloadService(
     ILogger<DownloadService> logger) : IDownloadService, IDisposable, IAsyncDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();
-    private readonly Dictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
-    private readonly Lock _cancellationLock = new();
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
 
     public async Task<Guid> QueueDownloadAsync(DownloadRequest request)
     {
@@ -79,7 +79,7 @@ public sealed class DownloadService(
         CancelDownloadToken(id);
 
         // Update state
-        stateService.UpdateState(id, DownloadState.Canceled);
+        await stateService.UpdateState(id, DownloadState.Canceled);
 
         logger.LogDebug("Download canceled");
     }
@@ -116,7 +116,7 @@ public sealed class DownloadService(
                 Domain = status.Domain
             });
 
-            stateService.UpdateState(id, DownloadState.Queued);
+            await stateService.UpdateState(id, DownloadState.Queued);
             logger.LogDebug("Download resumed and re-queued");
         }
         else
@@ -150,7 +150,7 @@ public sealed class DownloadService(
                 Domain = status.Domain
             });
 
-            stateService.UpdateState(id, DownloadState.Queued);
+            await stateService.UpdateState(id, DownloadState.Queued);
             logger.LogDebug("Download reset and re-queued");
         }
         else
@@ -161,49 +161,58 @@ public sealed class DownloadService(
 
     private void CancelDownloadToken(Guid id)
     {
-        lock (_cancellationLock)
+        if (!_downloadCancellations.TryGetValue(id, out var cts))
         {
-            if (!_downloadCancellations.TryGetValue(id, out var cts))
-            {
-                logger.LogDebug("No active cancellation token found for download {DownloadId}", id);
-                return;
-            }
-
-            logger.LogDebug("Canceling download token for {DownloadId}", id);
-            cts.Cancel();
-            _downloadCancellations.Remove(id);
+            logger.LogDebug("No active cancellation token found for download {DownloadId}", id);
+            return;
         }
+
+        logger.LogDebug("Canceling download token for {DownloadId}", id);
+        
+        cts.Cancel();
+        cts.Dispose();
+        
+        _downloadCancellations.Remove(id, out var _);
     }
 
     public CancellationToken GetDownloadToken(Guid downloadId)
     {
-        lock (_cancellationLock)
+        if (_downloadCancellations.TryGetValue(downloadId, out var cts))
         {
-            if (_downloadCancellations.TryGetValue(downloadId, out var cts))
-            {
-                logger.LogDebug("Reusing existing cancellation token for download {DownloadId}", downloadId);
-                return cts.Token;
-            }
-
-            logger.LogDebug("Creating new cancellation token for download {DownloadId}", downloadId);
-            cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
-            _downloadCancellations[downloadId] = cts;
-
+            logger.LogDebug("Reusing existing cancellation token for download {DownloadId}", downloadId);
             return cts.Token;
         }
+
+        logger.LogDebug("Creating new cancellation token for download {DownloadId}", downloadId);
+        
+        cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
+        
+        _downloadCancellations[downloadId] = cts;
+
+        return cts.Token;
     }
 
     public void Dispose()
     {
         logger.LogInformation("Disposing DownloadService and canceling all downloads");
-
+        
         _globalCancellation.Cancel();
         _globalCancellation.Dispose();
+        
+        foreach (var cts in _downloadCancellations.Values)
+        {
+            cts.Dispose();
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
         await _globalCancellation.CancelAsync();
         _globalCancellation.Dispose();
+        
+        foreach (var cts in _downloadCancellations.Values)
+        {
+            cts.Dispose();
+        }
     }
 }
