@@ -31,7 +31,7 @@ public interface IDownloadStateService
     Task InitializeFromDbAsync();
     IReadOnlyList<DownloadStatus> GetAllDownloads();
     DownloadStatus? GetDownloadById(Guid id);
-    void UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
+    Task UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
     Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
     Task AddOrUpdateDownloadAsync(DownloadStatus status);
     Task RemoveDownloadAsync(Guid id);
@@ -75,7 +75,7 @@ public class DownloadStateService(
         return _activeDownloads.TryGetValue(id, out var status) ? status : null;
     }
 
-    public void UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed)
+    public async Task UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed)
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 

@@ -150,7 +150,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         // Act
-        _service.UpdateProgress(download.Id, 500, 1000, 100.0);
+        await _service.UpdateProgress(download.Id, 500, 1000, 100.0);
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);

@@ -90,7 +90,7 @@ public class DownloadProcessorTests
         await _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
 
         // Verify progress updates (at least 2 - initial and final)
-        _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
+        await _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
 
         // Verify bandwidth usage recorded
         _bandwidthLimiter.Received(1).RecordDownload("example.com", testBytes.Length);

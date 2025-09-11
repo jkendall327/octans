@@ -63,7 +63,8 @@ public class DownloadProcessor(
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
+        
+        await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
         await using var fileStream = fileSystem.File.Create(download.DestinationPath,
@@ -94,7 +95,7 @@ public class DownloadProcessor(
             var bytesDelta = bytesDownloaded - lastReportBytes;
             var speed = bytesDelta / (timeDelta / 1000.0);
 
-            stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
+            await stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
 
             lastReportTime = currentElapsedMs;
             lastReportBytes = bytesDownloaded;
@@ -103,7 +104,7 @@ public class DownloadProcessor(
         // Final progress update and state change
         var totalElapsed = timeProvider.GetElapsedTime(startTime);
         
-        stateService.UpdateProgress(downloadId,
+        await stateService.UpdateProgress(downloadId,
             bytesDownloaded,
             totalBytes,
             bytesDownloaded / totalElapsed.TotalSeconds);
