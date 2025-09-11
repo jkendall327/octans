@@ -18,10 +18,10 @@ public interface IDownloadStateService
     Task RemoveDownloadAsync(Guid id);
 }
 
-public class DownloadStateService(
+public class DownloadStatusTracker(
     IPublisher publisher,
     IDbContextFactory<ServerDbContext> contextFactory,
-    ILogger<DownloadStateService> logger) : IDownloadStateService
+    ILogger<DownloadStatusTracker> logger) : IDownloadStateService
 {
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _activeDownloads = new();
 

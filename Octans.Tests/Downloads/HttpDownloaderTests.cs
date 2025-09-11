@@ -8,18 +8,18 @@ using Octans.Core.Downloaders;
 
 namespace Octans.Tests.Downloads;
 
-public class DownloadProcessorTests
+public class HttpDownloaderTests
 {
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadService _downloadService = Substitute.For<IDownloadService>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
-    private readonly DownloadProcessor _sut;
+    private readonly HttpDownloader _sut;
     private readonly CancellationTokenSource _cts = new();
     private readonly TestHttpMessageHandler _messageHandler = new();
 
-    public DownloadProcessorTests()
+    public HttpDownloaderTests()
     {
         var factory = Substitute.For<IHttpClientFactory>();
 
@@ -37,7 +37,7 @@ public class DownloadProcessorTests
             factory,
             _fileSystem,
             _timeProvider,
-            NullLogger<DownloadProcessor>.Instance);
+            NullLogger<HttpDownloader>.Instance);
 
         // Setup download token
         _downloadService

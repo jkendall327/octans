@@ -7,14 +7,14 @@ namespace Octans.Core.Downloads;
 /// <summary>
 /// Handles the actual HTTP machinery of downloading content.
 /// </summary>
-public class DownloadProcessor(
+public class HttpDownloader(
     IBandwidthLimiter bandwidthLimiter,
     IDownloadStateService stateService,
     IDownloadService downloadService,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
     TimeProvider timeProvider,
-    ILogger<DownloadProcessor> logger)
+    ILogger<HttpDownloader> logger)
 {
     public async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
     {

@@ -4,10 +4,10 @@ using Octans.Core.Downloads;
 
 namespace Octans.Server;
 
-public sealed class DownloadManager(
+public sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,
-    DownloadProcessor processor,
-    ILogger<DownloadManager> logger,
+    HttpDownloader processor,
+    ILogger<DownloadBackgroundService> logger,
     DownloadManagerOptions options) : BackgroundService
 {
     private readonly SemaphoreSlim _concurrencyLimiter = new(options.MaxConcurrentDownloads);

@@ -10,14 +10,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Octans.Tests.Downloads;
 
-public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
+public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 {
     private readonly DbConnection _connection;
     private readonly DbContextOptions<ServerDbContext> _contextOptions;
-    private readonly DownloadStateService _service;
+    private readonly DownloadStatusTracker _service;
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
 
-    public DownloadStateServiceTests()
+    public DownloadStatusTrackerTests()
     {
         // Create and open an in-memory SQLite database
         _connection = new SqliteConnection("Filename=:memory:");
@@ -41,7 +41,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
             .CreateDbContextAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new(_contextOptions));
 
-        _service = new(_publisher, contextFactory, NullLogger<DownloadStateService>.Instance);
+        _service = new(_publisher, contextFactory, NullLogger<DownloadStatusTracker>.Instance);
     }
 
     [Fact]
