@@ -40,7 +40,14 @@ public class MainToolbarViewmodel(NavigationManager nav)
             new()
             {
                 Name = "downloads",
-                Items = []
+                Items =
+                [
+                    new()
+                    {
+                        Name = "downloaders",
+                        Page = Page.Downloaders
+                    }
+                ]
             },
             new()
             {
@@ -78,6 +85,7 @@ public class MainToolbarViewmodel(NavigationManager nav)
         {
             Page.LocalFiles => "/imports",
             Page.WebUrls => "/imports",
+            Page.Downloaders => "/downloaders",
             Page.Settings => "/settings",
             _ => throw new ArgumentOutOfRangeException(nameof(page), page, null)
         };
@@ -92,6 +100,7 @@ public enum Page
 {
     LocalFiles,
     WebUrls,
+    Downloaders,
     Settings
 }
 
