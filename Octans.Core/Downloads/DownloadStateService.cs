@@ -3,31 +3,12 @@ using Microsoft.Extensions.Logging;
 using Octans.Core.Downloaders;
 using Octans.Core.Models;
 using System.Collections.Concurrent;
+using Mediator;
 
 namespace Octans.Core.Downloads;
 
-public class DownloadStatusChangedEventArgs : EventArgs
-{
-    public required DownloadStatus Status { get; init; }
-}
-
-public class DownloadsChangedEventArgs : EventArgs
-{
-    public Guid? AffectedDownloadId { get; init; }
-    public DownloadChangeType ChangeType { get; init; }
-}
-
-public enum DownloadChangeType
-{
-    Added,
-    Updated,
-    Removed
-}
-
 public interface IDownloadStateService
 {
-    event EventHandler<DownloadStatusChangedEventArgs>? OnDownloadProgressChanged;
-    event EventHandler<DownloadsChangedEventArgs>? OnDownloadsChanged;
     Task InitializeFromDbAsync();
     IReadOnlyList<DownloadStatus> GetAllDownloads();
     DownloadStatus? GetDownloadById(Guid id);
@@ -38,13 +19,11 @@ public interface IDownloadStateService
 }
 
 public class DownloadStateService(
-    ILogger<DownloadStateService> logger,
-    IDbContextFactory<ServerDbContext> contextFactory) : IDownloadStateService
+    IPublisher publisher,
+    IDbContextFactory<ServerDbContext> contextFactory,
+    ILogger<DownloadStateService> logger) : IDownloadStateService
 {
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _activeDownloads = new();
-
-    public event EventHandler<DownloadStatusChangedEventArgs>? OnDownloadProgressChanged;
-    public event EventHandler<DownloadsChangedEventArgs>? OnDownloadsChanged;
 
     public async Task InitializeFromDbAsync()
     {
@@ -59,7 +38,7 @@ public class DownloadStateService(
             _activeDownloads[status.Id] = status;
         }
 
-        OnDownloadsChanged?.Invoke(this, new()
+        await publisher.Publish(new DownloadsChanged
         {
             ChangeType = DownloadChangeType.Updated
         });
@@ -85,7 +64,7 @@ public class DownloadStateService(
         status.LastUpdated = DateTime.UtcNow;
 
         // Notify subscribers
-        OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
+        await publisher.Publish(new DownloadStatusChanged { Status = status});
     }
 
     public async Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null)
@@ -136,8 +115,9 @@ public class DownloadStateService(
         }
 
         // Notify subscribers
-        OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
-        OnDownloadsChanged?.Invoke(this, new()
+        await publisher.Publish(new DownloadStatusChanged { Status = status});
+        
+        await publisher.Publish(new DownloadsChanged
         {
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Updated
@@ -172,11 +152,12 @@ public class DownloadStateService(
         }
 
         // Notification occurs after all operations are complete
-        OnDownloadsChanged?.Invoke(this, new()
+        await publisher.Publish(new DownloadsChanged
         {
             AffectedDownloadId = status.Id,
             ChangeType = DownloadChangeType.Added
         });
+
     }
 
     public async Task RemoveDownloadAsync(Guid id)
@@ -202,7 +183,7 @@ public class DownloadStateService(
         }
 
         // Notify after everything is complete
-        OnDownloadsChanged?.Invoke(this, new()
+        await publisher.Publish(new DownloadsChanged
         {
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Removed
