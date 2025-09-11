@@ -1,4 +1,3 @@
-using System.Linq;
 using Octans.Core.Downloaders;
 
 namespace Octans.Client.Components.Downloads;
