@@ -52,6 +52,18 @@ public class DownloaderFactory(
         return _downloaders;
     }
 
+    public async Task<List<Downloader>> Rescan()
+    {
+        foreach (var downloader in _downloaders)
+        {
+            downloader.Dispose();
+        }
+
+        _downloaders.Clear();
+
+        return await GetDownloaders();
+    }
+
     private async Task<Downloader?> Create(List<IFileInfo> sources)
     {
         string[] names = ["metadata", "classifier", "parser", "gug", "api"];
