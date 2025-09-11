@@ -170,6 +170,7 @@ public sealed class DownloadService(
         logger.LogDebug("Canceling download token for {DownloadId}", id);
         
         cts.Cancel();
+        cts.Dispose();
         
         _downloadCancellations.Remove(id, out var _);
     }
@@ -194,14 +195,24 @@ public sealed class DownloadService(
     public void Dispose()
     {
         logger.LogInformation("Disposing DownloadService and canceling all downloads");
-
+        
         _globalCancellation.Cancel();
         _globalCancellation.Dispose();
+        
+        foreach (var cts in _downloadCancellations.Values)
+        {
+            cts.Dispose();
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
         await _globalCancellation.CancelAsync();
         _globalCancellation.Dispose();
+        
+        foreach (var cts in _downloadCancellations.Values)
+        {
+            cts.Dispose();
+        }
     }
 }
