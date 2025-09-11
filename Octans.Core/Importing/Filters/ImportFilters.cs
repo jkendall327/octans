@@ -51,10 +51,10 @@ public class FiletypeFilter : IImportFilter
 
         var type = bytes.DetectMimeType();
 
-        var extension = type.Extension.ToLower();
+        var extension = type.Extension.ToLowerInvariant();
 
         var valid = request.AllowedFileTypes
-            .Select(filetype => filetype.ToLower())
+            .Select(filetype => filetype.ToLowerInvariant())
             .Contains(extension);
 
         return Task.FromResult(valid);

@@ -73,7 +73,7 @@ public sealed class Downloader : IDisposable
 
         if (raw is not string s) return DownloaderUrlClassification.Unknown;
 
-        return s.ToLower() switch
+        return s.ToLowerInvariant() switch
         {
             "post" => DownloaderUrlClassification.Post,
             "gallery" => DownloaderUrlClassification.Gallery,

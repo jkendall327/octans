@@ -64,8 +64,8 @@ public class DownloaderFactory(
         {
             var file = sources.SingleOrDefault(s =>
             {
-                var clean = fileSystem.Path.GetFileNameWithoutExtension(s.Name).ToLower();
-                return string.Equals(clean, name, StringComparison.InvariantCultureIgnoreCase);
+                var clean = fileSystem.Path.GetFileNameWithoutExtension(s.Name).ToLowerInvariant();
+                return string.Equals(clean, name, StringComparison.OrdinalIgnoreCase);
             });
 
             if (file is null) continue;
