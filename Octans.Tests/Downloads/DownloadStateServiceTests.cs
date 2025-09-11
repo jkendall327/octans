@@ -198,7 +198,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         };
 
         // Act
-        _service.UpdateState(download.Id, DownloadState.InProgress);
+        await _service.UpdateState(download.Id, DownloadState.InProgress);
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);
@@ -231,7 +231,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
-        _service.UpdateState(download.Id, DownloadState.Completed);
+        await _service.UpdateState(download.Id, DownloadState.Completed);
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);
@@ -259,7 +259,7 @@ public sealed class DownloadStateServiceTests : IDisposable, IAsyncDisposable
         await _service.AddOrUpdateDownloadAsync(download);
 
         // Act
-        _service.UpdateState(download.Id, DownloadState.Failed, "Download failed due to network error");
+        await _service.UpdateState(download.Id, DownloadState.Failed, "Download failed due to network error");
 
         // Assert
         var updated = _service.GetDownloadById(download.Id);

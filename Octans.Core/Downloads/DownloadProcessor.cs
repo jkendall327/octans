@@ -33,18 +33,18 @@ public class DownloadProcessor(
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
             logger.LogInformation("Download canceled: {Url}", download.Url);
-            stateService.UpdateState(downloadId, DownloadState.Canceled);
+            await stateService.UpdateState(downloadId, DownloadState.Canceled);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
             logger.LogError(ex, "Download failed: {Url}", download.Url);
-            stateService.UpdateState(downloadId, DownloadState.Failed, ex.Message);
+            await stateService.UpdateState(downloadId, DownloadState.Failed, ex.Message);
         }
     }
 
     private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
     {
-        stateService.UpdateState(downloadId, DownloadState.InProgress);
+        await stateService.UpdateState(downloadId, DownloadState.InProgress);
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
         var directoryName = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??
@@ -102,11 +102,13 @@ public class DownloadProcessor(
 
         // Final progress update and state change
         var totalElapsed = timeProvider.GetElapsedTime(startTime);
+        
         stateService.UpdateProgress(downloadId,
             bytesDownloaded,
             totalBytes,
             bytesDownloaded / totalElapsed.TotalSeconds);
-        stateService.UpdateState(downloadId, DownloadState.Completed);
+        
+        await stateService.UpdateState(downloadId, DownloadState.Completed);
 
         // Record bandwidth usage
         bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);

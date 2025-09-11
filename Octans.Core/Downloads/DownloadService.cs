@@ -79,7 +79,7 @@ public sealed class DownloadService(
         CancelDownloadToken(id);
 
         // Update state
-        stateService.UpdateState(id, DownloadState.Canceled);
+        await stateService.UpdateState(id, DownloadState.Canceled);
 
         logger.LogDebug("Download canceled");
     }
@@ -116,7 +116,7 @@ public sealed class DownloadService(
                 Domain = status.Domain
             });
 
-            stateService.UpdateState(id, DownloadState.Queued);
+            await stateService.UpdateState(id, DownloadState.Queued);
             logger.LogDebug("Download resumed and re-queued");
         }
         else
@@ -150,7 +150,7 @@ public sealed class DownloadService(
                 Domain = status.Domain
             });
 
-            stateService.UpdateState(id, DownloadState.Queued);
+            await stateService.UpdateState(id, DownloadState.Queued);
             logger.LogDebug("Download reset and re-queued");
         }
         else

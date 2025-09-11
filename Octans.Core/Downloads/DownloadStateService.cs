@@ -32,7 +32,7 @@ public interface IDownloadStateService
     IReadOnlyList<DownloadStatus> GetAllDownloads();
     DownloadStatus? GetDownloadById(Guid id);
     void UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
-    void UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
+    Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
     Task AddOrUpdateDownloadAsync(DownloadStatus status);
     Task RemoveDownloadAsync(Guid id);
 }
@@ -88,7 +88,7 @@ public class DownloadStateService(
         OnDownloadProgressChanged?.Invoke(this, new() { Status = status });
     }
 
-    public void UpdateState(Guid id, DownloadState newState, string? errorMessage = null)
+    public async Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null)
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 
@@ -109,34 +109,31 @@ public class DownloadStateService(
         }
 
         // Persist state change to database
-        Task.Run(async () =>
+        await using var db = await contextFactory.CreateDbContextAsync();
+
+        await using var scope = await db.Database.BeginTransactionAsync();
+
+        try
         {
-            await using var db = await contextFactory.CreateDbContextAsync();
-
-            await using var scope = await db.Database.BeginTransactionAsync();
-
-            try
+            var dbStatus = await db.DownloadStatuses.FindAsync(id);
+            if (dbStatus != null)
             {
-                var dbStatus = await db.DownloadStatuses.FindAsync(id);
-                if (dbStatus != null)
-                {
-                    dbStatus.State = status.State;
-                    dbStatus.BytesDownloaded = status.BytesDownloaded;
-                    dbStatus.TotalBytes = status.TotalBytes;
-                    dbStatus.LastUpdated = status.LastUpdated;
-                    dbStatus.StartedAt = status.StartedAt;
-                    dbStatus.CompletedAt = status.CompletedAt;
-                    dbStatus.ErrorMessage = status.ErrorMessage;
+                dbStatus.State = status.State;
+                dbStatus.BytesDownloaded = status.BytesDownloaded;
+                dbStatus.TotalBytes = status.TotalBytes;
+                dbStatus.LastUpdated = status.LastUpdated;
+                dbStatus.StartedAt = status.StartedAt;
+                dbStatus.CompletedAt = status.CompletedAt;
+                dbStatus.ErrorMessage = status.ErrorMessage;
 
-                    await db.SaveChangesAsync();
-                    await scope.CommitAsync();
-                }
+                await db.SaveChangesAsync();
+                await scope.CommitAsync();
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to persist download state change");
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist download state change");
+        }
 
         // Notify subscribers
         OnDownloadProgressChanged?.Invoke(this, new() { Status = status });

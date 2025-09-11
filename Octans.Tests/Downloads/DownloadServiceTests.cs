@@ -55,7 +55,7 @@ public class DownloadServiceTests
         await _service.CancelDownloadAsync(id);
 
         await _mockQueue.Received(1).RemoveAsync(id);
-        _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class DownloadServiceTests
 
         await _service.PauseDownloadAsync(id);
 
-        _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class DownloadServiceTests
             qd.Url == status.Url &&
             qd.DestinationPath == status.DestinationPath));
 
-        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class DownloadServiceTests
         await _service.ResumeDownloadAsync(id);
 
         await _mockQueue.DidNotReceiveWithAnyArgs().EnqueueAsync(null!);
-        _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
+        await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class DownloadServiceTests
             qd.Url == status.Url &&
             qd.DestinationPath == status.DestinationPath));
 
-        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public class DownloadServiceTests
         await _service.RetryDownloadAsync(id);
 
         await _mockQueue.Received(1).EnqueueAsync(Arg.Any<QueuedDownload>());
-        _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Queued);
     }
 
     [Fact]
@@ -195,7 +195,7 @@ public class DownloadServiceTests
         await _service.RetryDownloadAsync(id);
 
         await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
-        _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
+        await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
     [Fact]

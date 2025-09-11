@@ -86,8 +86,8 @@ public class DownloadProcessorTests
         Assert.Equal(testContent, fileContent);
 
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
 
         // Verify progress updates (at least 2 - initial and final)
         _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
@@ -120,8 +120,8 @@ public class DownloadProcessorTests
 
         // Assert
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(
             downloadId,
             DownloadState.Failed,
             Arg.Is<string>(s => s.Contains("404")));
@@ -169,8 +169,8 @@ public class DownloadProcessorTests
 
         // Assert
         // Verify state updates
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
+        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
     }
 }
 
