@@ -14,6 +14,8 @@ public class DownloaderFactory(
 
     private readonly List<Downloader> _downloaders = new();
 
+    public string DownloaderDirectory => fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
+
     public async Task<List<Downloader>> GetDownloaders()
     {
         if (_downloaders.Any())
@@ -21,8 +23,7 @@ public class DownloaderFactory(
             return _downloaders;
         }
 
-        var path = fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
-        var downloaders = fileSystem.DirectoryInfo.New(path);
+        var downloaders = fileSystem.DirectoryInfo.New(DownloaderDirectory);
 
         if (!downloaders.Exists)
         {

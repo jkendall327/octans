@@ -1,9 +1,14 @@
 @page "/downloaders"
 @inject DownloadersViewmodel Viewmodel
+@inject IDialogService DialogService
 @using Octans.Core.Downloaders
 
 <div class="downloaders-container">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Rescan">Rescan</MudButton>
+    <div class="actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Rescan">Rescan</MudButton>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Help" OnClick="ShowHelp">Help</MudButton>
+    </div>
+    <MudText Typo="Typo.body2">Looking for downloaders in: @Viewmodel.DownloaderDirectory</MudText>
 
     <MudTable Items="Viewmodel.Downloaders">
         <HeaderContent>
@@ -46,4 +51,19 @@
     {
         await Viewmodel.Rescan();
     }
+
+    private async Task ShowHelp()
+    {
+        const string content = "Downloaders are bundles of Lua files that provide site-specific parsing and downloading functionality.<br/><br/>To add one, create a folder inside the directory shown above and include your Lua files.";
+
+        await DialogService.ShowMessageBox("Downloaders", (MarkupString)content, yesText: "Close");
+    }
 }
+
+<style>
+    .downloaders-container .actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+</style>

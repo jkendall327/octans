@@ -9,6 +9,8 @@ public class DownloadersViewmodel(DownloaderFactory factory)
 
     public List<DownloaderMetadata> Downloaders { get; private set; } = [];
 
+    public string DownloaderDirectory => _factory.DownloaderDirectory;
+
     public async Task Load()
     {
         var downloaders = await _factory.GetDownloaders();
