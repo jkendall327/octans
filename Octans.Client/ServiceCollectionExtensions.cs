@@ -10,6 +10,7 @@ using Octans.Client.Components.MainToolbar;
 using Octans.Client.Components.Pages;
 using Octans.Client.Components.StatusBar;
 using Octans.Client.Components.Progress;
+using Octans.Client.Downloads;
 using Octans.Client.Components.Downloads;
 using Octans.Client.Options;
 using Octans.Core;
@@ -176,6 +177,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<StatusService>();
         services.AddSingleton<ProgressStore>();
         services.AddScoped<DownloadersViewmodel>();
+        services.AddScoped<DownloadsViewmodel>();
 
         return services;
     }

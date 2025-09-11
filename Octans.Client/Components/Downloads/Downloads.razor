@@ -1,0 +1,52 @@
+@page "/downloads"
+@inject Octans.Client.Downloads.DownloadsViewmodel Viewmodel
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Octans - Downloads</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Active Downloads</MudText>
+
+@if (Viewmodel.ActiveDownloads.Count == 0)
+{
+    <MudText>No active downloads.</MudText>
+}
+else
+{
+    <MudTable Items="@Viewmodel.ActiveDownloads" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Domain</MudTh>
+            <MudTh>File</MudTh>
+            <MudTh>Progress</MudTh>
+            <MudTh>Transferred</MudTh>
+            <MudTh>Speed</MudTh>
+            <MudTh>Status</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Domain">@context.Domain</MudTd>
+            <MudTd DataLabel="File">@context.Filename</MudTd>
+            <MudTd DataLabel="Progress">
+                <MudProgressLinear Value="@context.ProgressPercentage" />
+                <MudText Typo="Typo.caption">@($"{context.ProgressPercentage:F1}%")</MudText>
+            </MudTd>
+            <MudTd DataLabel="Transferred">@Formatting.FormatBytes(context.BytesDownloaded) / @Formatting.FormatBytes(context.TotalBytes)</MudTd>
+            <MudTd DataLabel="Speed">@Formatting.FormatBytes((long)context.CurrentSpeed)/s</MudTd>
+            <MudTd DataLabel="Status">@context.State</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Viewmodel.StateChanged += Refresh;
+        await Viewmodel.InitializeAsync();
+    }
+
+    private Task Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Viewmodel.StateChanged -= Refresh;
+    }
+}

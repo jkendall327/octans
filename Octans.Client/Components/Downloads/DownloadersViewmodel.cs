@@ -1,11 +1,15 @@
-using System.Linq;
 using Octans.Core.Downloaders;
 
 namespace Octans.Client.Components.Downloads;
 
-public class DownloadersViewmodel(DownloaderFactory factory)
+public class DownloadersViewmodel
 {
-    private readonly DownloaderFactory _factory = factory;
+    private readonly DownloaderFactory _factory;
+
+    public DownloadersViewmodel(DownloaderFactory factory)
+    {
+        _factory = factory;
+    }
 
     public List<DownloaderMetadata> Downloaders { get; private set; } = [];
 
