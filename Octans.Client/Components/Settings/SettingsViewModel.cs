@@ -1,13 +1,11 @@
-using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
-using Octans.Core;
+using Octans.Client.Settings;
 
 namespace Octans.Client.Components.Settings;
 
 public sealed class SettingsViewModel(
-    IOptions<GlobalSettings> globalSettings,
+    ISettingsService settingsService,
     ILogger<SettingsViewModel> logger,
-    IConfiguration configuration,
     IJSRuntime jsRuntime,
     ThemeService themeService) : IAsyncDisposable
 {
@@ -29,28 +27,24 @@ public sealed class SettingsViewModel(
     public async Task InitializeAsync()
     {
         themeService.OnThemeChanged += ApplyTheme;
+
+        var loaded = await settingsService.LoadAsync();
+
+        Settings.Theme = loaded.Theme;
+        Settings.AppRoot = loaded.AppRoot;
+        Settings.LogLevel = loaded.LogLevel;
+        Settings.AspNetCoreLogLevel = loaded.AspNetCoreLogLevel;
+        Settings.ImportSource = loaded.ImportSource;
+        Settings.TagColor = loaded.TagColor;
+
         var savedTheme = await jsRuntime.InvokeAsync<string>("themeManager.loadThemePreference");
         if (!string.IsNullOrEmpty(savedTheme))
         {
             Settings.Theme = savedTheme;
-            await themeService.SetTheme(savedTheme);
-        }
-        else
-        {
-            Settings.Theme = themeService.CurrentTheme;
         }
 
+        await themeService.SetTheme(Settings.Theme);
         await ApplyTheme();
-        LoadConfiguration();
-    }
-
-    private void LoadConfiguration()
-    {
-        Settings.AppRoot = globalSettings.Value.AppRoot;
-        Settings.LogLevel = configuration.GetValue<string>("Logging:LogLevel:Default") ?? "Information";
-        Settings.AspNetCoreLogLevel = configuration.GetValue<string>("Logging:LogLevel:Microsoft.AspNetCore") ?? "Warning";
-        Settings.ImportSource = configuration.GetValue<string>("ImportSource") ?? string.Empty;
-        Settings.TagColor = configuration.GetValue<string>("TagColor") ?? "#000000";
     }
 
     public async Task ThemeChanged()
@@ -76,20 +70,21 @@ public sealed class SettingsViewModel(
         {
             logger.LogInformation("Saving configuration settings");
             
-            await Task.Delay(500);
-            
+            await settingsService.SaveAsync(Settings);
+
             SaveSuccess = true;
 
             await OnStateChanged();
-            
+
             await Task.Delay(3000);
-            
+
             SaveSuccess = false;
         }
         catch (Exception ex)
         {
             SaveError = true;
             ErrorMessage = ex.Message;
+            logger.LogError(ex, "Error saving configuration");
         }
         finally
         {

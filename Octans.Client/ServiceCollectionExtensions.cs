@@ -14,6 +14,7 @@ using Octans.Client.Components.Progress;
 using Octans.Client.Downloads;
 using Octans.Client.Components.Downloads;
 using Octans.Client.Options;
+using Octans.Client.Settings;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Downloaders;
@@ -166,6 +167,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClipboard, Clipboard>();
         services.AddScoped<ThemeService>();
         services.AddScoped<ShellService>();
+        services.AddScoped<ISettingsService, SettingsService>();
 
         services.AddMediator();
 
@@ -207,6 +209,7 @@ public static class ServiceCollectionExtensions
     public static void SetupConfiguration(this WebApplicationBuilder builder)
     {
         builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection(nameof(GlobalSettings)));
+        builder.Services.Configure<UserSettings>(builder.Configuration.GetSection(nameof(UserSettings)));
 
         builder
             .Services

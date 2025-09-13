@@ -12,6 +12,8 @@ using Octans.Core.Downloads;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("usersettings.json", optional: true, reloadOnChange: true);
+
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
