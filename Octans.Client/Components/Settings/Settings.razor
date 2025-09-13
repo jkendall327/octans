@@ -1,6 +1,8 @@
 @page "/settings"
+@using Microsoft.EntityFrameworkCore.Metadata.Internal
 @rendermode InteractiveServer
 @inject SettingsViewModel ViewModel
+@implements IDisposable
 
 <CascadingValue Value="ViewModel.Context">
     <div class="settings-layout">
@@ -132,6 +134,17 @@
 
 @code {
 
+    protected override Task OnInitializedAsync()
+    {
+        ViewModel.NotifyStateChanged += OnStateChanged;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -167,4 +180,10 @@
     {
         await ViewModel.ThemeChanged();
     }
+
+    public void Dispose()
+    {
+        ViewModel.NotifyStateChanged -= OnStateChanged;
+    }
+
 }

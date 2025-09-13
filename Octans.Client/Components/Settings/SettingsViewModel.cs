@@ -4,7 +4,7 @@ using Octans.Core;
 
 namespace Octans.Client.Components.Settings;
 
-public class SettingsViewModel(
+public sealed class SettingsViewModel(
     IOptions<GlobalSettings> globalSettings,
     ILogger<SettingsViewModel> logger,
     IConfiguration configuration,
@@ -23,6 +23,8 @@ public class SettingsViewModel(
     public bool SaveSuccess { get; private set; }
     public bool SaveError { get; private set; }
     public string ErrorMessage { get; private set; } = string.Empty;
+
+    public Func<Task>? NotifyStateChanged { get; set; }
 
     public async Task InitializeAsync()
     {
@@ -67,12 +69,21 @@ public class SettingsViewModel(
         IsSaving = true;
         SaveSuccess = false;
         SaveError = false;
+
+        await OnStateChanged();
+        
         try
         {
             logger.LogInformation("Saving configuration settings");
+            
             await Task.Delay(500);
+            
             SaveSuccess = true;
+
+            await OnStateChanged();
+            
             await Task.Delay(3000);
+            
             SaveSuccess = false;
         }
         catch (Exception ex)
@@ -86,20 +97,17 @@ public class SettingsViewModel(
         }
     }
 
+    private async Task OnStateChanged()
+    {
+        if (NotifyStateChanged is not null)
+        {
+            await NotifyStateChanged.Invoke();
+        }
+    }
+
     public ValueTask DisposeAsync()
     {
         themeService.OnThemeChanged -= ApplyTheme;
         return ValueTask.CompletedTask;
     }
 }
-
-public class SettingsModel
-{
-    public string Theme { get; set; } = "light";
-    public string AppRoot { get; set; } = string.Empty;
-    public string LogLevel { get; set; } = "Information";
-    public string AspNetCoreLogLevel { get; set; } = "Warning";
-    public string ImportSource { get; set; } = string.Empty;
-    public string TagColor { get; set; } = "#000000";
-}
-
