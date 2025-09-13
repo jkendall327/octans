@@ -16,6 +16,7 @@ using Octans.Client.Options;
 using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Downloaders;
+using Octans.Core.Downloads;
 using Octans.Core.Importing;
 using Octans.Core.Infrastructure;
 using Octans.Core.Models;
@@ -91,6 +92,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddBandwidthLimiter();
+        services.AddDownloadManager();
+        services.AddMediator();
 
         // Queries
         services.AddScoped<IQueryService, QueryService>();
