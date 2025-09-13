@@ -76,6 +76,8 @@ Instead of mocking out `IFilesystem`, create a new `MockFileSystem` instead.
 
 Name the variable for the system under test as `_sut` (if a field) or `sut` (a local variable).
 
+Do not make assertions based on log message output.
+
 ## Comments
 Avoid pointless comments that simply explain what the code is doing.
 
