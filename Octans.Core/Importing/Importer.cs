@@ -1,12 +1,14 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Octans.Server;
+using Octans.Core.Progress;
 
 namespace Octans.Core.Importing;
 
 public interface IImporter
 {
     Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default);
+    Task<ImportResult> ProcessImport(ImportRequest request, Guid progressId, CancellationToken cancellationToken = default);
 }
 
 public class Importer(
@@ -18,11 +20,19 @@ public class Importer(
     FileImporter file,
     PostImporter post,
     SimpleImporter simple,
+    IBackgroundProgressReporter progress,
     ILogger<Importer> logger) : IImporter
 {
-    public async Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default)
+    public Task<ImportResult> ProcessImport(ImportRequest request, CancellationToken cancellationToken = default) =>
+        ProcessImportInternal(request, null, cancellationToken);
+
+    public Task<ImportResult> ProcessImport(ImportRequest request, Guid progressId, CancellationToken cancellationToken = default) =>
+        ProcessImportInternal(request, progressId, cancellationToken);
+
+    private async Task<ImportResult> ProcessImportInternal(ImportRequest request, Guid? progressId, CancellationToken cancellationToken)
     {
         var results = new List<ImportItemResult>();
+        var processed = 0;
 
         foreach (var item in request.Items)
         {
@@ -42,6 +52,12 @@ public class Importer(
                     Ok = false,
                     Message = e.Message
                 });
+            }
+
+            processed++;
+            if (progressId.HasValue)
+            {
+                await progress.Report(progressId.Value, processed);
             }
         }
 

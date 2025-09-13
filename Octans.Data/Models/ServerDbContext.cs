@@ -3,6 +3,7 @@ using Octans.Core.Downloaders;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Repositories;
 using Octans.Core.Models.Ratings;
+using Octans.Core.Importing.Jobs;
 
 namespace Octans.Core.Models;
 
@@ -23,6 +24,8 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<RatingSystem> RatingSystems { get; set; }
     public virtual DbSet<HashRating> HashRatings { get; set; }
+    public virtual DbSet<ImportJob> ImportJobs { get; set; }
+    public virtual DbSet<ImportItem> ImportItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

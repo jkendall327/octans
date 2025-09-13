@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddOctansServices(this IServiceCollection services)
     {
         services.AddHostedService<ImportFolderBackgroundService>();
+        services.AddHostedService<ImportProcessorService>();
         services.AddHostedService<SubscriptionBackgroundService>();
         services.AddHostedService<RepositoryChangeBackgroundService>();
 
