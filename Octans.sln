@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{4B0EF49D
 		README.md = README.md
 		Directory.Packages.props = Directory.Packages.props
 		Directory.Build.props = Directory.Build.props
-		CONVENTIONS.md = CONVENTIONS.md
+		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Global
