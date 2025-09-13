@@ -30,6 +30,7 @@ using Octans.Core.Subscriptions;
 using Octans.Server;
 using Octans.Server.Services;
 using Refit;
+using Octans.Client.Components.Settings;
 
 namespace Octans.Client;
 
@@ -192,7 +193,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<QueryBuilderViewmodel>();
-        services.AddScoped<Config.ConfigViewModel>();
+        services.AddScoped<SettingsViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();
         services.AddScoped<StatusService>();
