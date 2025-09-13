@@ -1,14 +1,10 @@
-@page "/config"
 @using Microsoft.Extensions.Localization
 @using Octans.Client.Config
 @inject ConfigViewModel ViewModel
 @inject IJSRuntime JsRuntime
 @inject ThemeService ThemeService
 @inject IStringLocalizer<Config> L
-@rendermode InteractiveServer
 @implements IDisposable
-
-<PageTitle>Octans - Configuration</PageTitle>
 
 <div class="config-container">
     <div class="header">
