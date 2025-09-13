@@ -1,10 +1,12 @@
+using System.Linq;
+
 namespace Octans.Core.Downloaders;
 
 public class DownloaderService(
     IHttpClientFactory clientFactory,
     DownloaderFactory downloaderFactory)
 {
-    public async Task<byte[]> Download(Uri uri)
+    public async Task<IReadOnlyList<Uri>> ResolveAsync(Uri uri)
     {
         var downloaders = await downloaderFactory.GetDownloaders();
 
@@ -12,7 +14,7 @@ public class DownloaderService(
 
         if (matching is null)
         {
-            return [];
+            return Array.Empty<Uri>();
         }
 
 #pragma warning disable CA2000
@@ -25,7 +27,7 @@ public class DownloaderService(
 
         if (classification is DownloaderUrlClassification.Unknown)
         {
-            return [];
+            return Array.Empty<Uri>();
         }
 
         if (classification is DownloaderUrlClassification.Gallery)
@@ -33,8 +35,11 @@ public class DownloaderService(
             raw = matching.GenerateGalleryHtml(uri.AbsoluteUri, 0);
         }
 
-        var url = matching.ParseHtml(raw).First();
+        var urls = matching
+            .ParseHtml(raw)
+            .Select(u => new Uri(u))
+            .ToList();
 
-        return await client.GetByteArrayAsync(new Uri(url));
+        return urls;
     }
 }

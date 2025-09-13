@@ -76,11 +76,15 @@ public class Importer(
             throw new ArgumentException("Import item had both a URL and a filepath specified.", nameof(item));
         }
 
+        if (request.ImportType is ImportType.Post)
+        {
+            return await post.Import(item);
+        }
+
         var task = request.ImportType switch
         {
             ImportType.File => file.GetRawBytes(item),
             ImportType.RawUrl => simple.GetRawBytes(item),
-            ImportType.Post => post.GetRawBytes(item),
             ImportType.Gallery => throw new NotImplementedException(),
             ImportType.Watchable => throw new NotImplementedException(),
             _ => throw new ArgumentOutOfRangeException()
