@@ -7,6 +7,7 @@ using Octans.Core.Models;
 using Octans.Server;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
+using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +22,6 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
-
 
 // Setup keys
 var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
@@ -92,7 +92,7 @@ manager.MakeSubfolders();
 // Ensure database is initialised.
 var scope = app.Services.CreateScope();
 var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-await db.Database.EnsureCreatedAsync();
+await db.Database.MigrateAsync();
 scope.Dispose();
 
 await app.RunAsync();
