@@ -6,6 +6,7 @@ using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Microsoft.JSInterop;
+using Octans.Core.Communication;
 
 namespace Octans.Client.Components.Pages;
 
@@ -26,7 +27,7 @@ public sealed class GalleryViewmodel(
     ICustomCommandProvider customCommandProvider,
     ChannelWriter<RepositoryChangeRequest> repositoryChannel,
     IJSRuntime jsRuntime,
-    ILogger<GalleryViewmodel> logger) : IAsyncDisposable
+    ILogger<GalleryViewmodel> logger) : IAsyncDisposable, INotifyStateChanged
 {
     private CancellationTokenSource _cts = new();
 

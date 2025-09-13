@@ -1,5 +1,6 @@
 using Microsoft.JSInterop;
 using Octans.Client.Settings;
+using Octans.Core.Communication;
 
 namespace Octans.Client.Components.Settings;
 
@@ -7,7 +8,7 @@ public sealed class SettingsViewModel(
     ISettingsService settingsService,
     ILogger<SettingsViewModel> logger,
     IJSRuntime jsRuntime,
-    ThemeService themeService) : IAsyncDisposable
+    ThemeService themeService) : IAsyncDisposable, INotifyStateChanged
 {
     public SettingsContext Context { get; } = new();
     public SettingsModel Settings { get; } = new();
@@ -22,7 +23,7 @@ public sealed class SettingsViewModel(
     public bool SaveError { get; private set; }
     public string ErrorMessage { get; private set; } = string.Empty;
 
-    public Func<Task>? NotifyStateChanged { get; set; }
+    public Func<Task>? StateChanged { get; set; }
 
     public async Task InitializeAsync()
     {
@@ -94,9 +95,9 @@ public sealed class SettingsViewModel(
 
     private async Task OnStateChanged()
     {
-        if (NotifyStateChanged is not null)
+        if (StateChanged is not null)
         {
-            await NotifyStateChanged.Invoke();
+            await StateChanged.Invoke();
         }
     }
 

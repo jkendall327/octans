@@ -1,10 +1,11 @@
 using Octans.Client.Components.Pages;
+using Octans.Core.Communication;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
 
 namespace Octans.Client.Components.Gallery;
 
-public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder) : IDisposable
+public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder) : IDisposable, INotifyStateChanged
 {
     private CancellationTokenSource? _debounceCts;
     private CancellationTokenSource? _requestCts;
@@ -14,7 +15,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     private readonly List<QueryParameter> _parameters = [];
     private readonly List<Tag> _suggestions = [];
 
-    public Func<Task>? StateHasChanged { get; set; }
+    public Func<Task>? StateChanged { get; set; }
     public Func<List<QueryParameter>, Task>? QueryChanged { get; set; }
 
     public IReadOnlyList<QueryParameter> Parameters => _parameters;
@@ -185,9 +186,9 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
     private async Task InvokeStateHasChanged()
     {
-        if (StateHasChanged is not null)
+        if (StateChanged is not null)
         {
-            await StateHasChanged.Invoke();
+            await StateChanged.Invoke();
         }
     }
 

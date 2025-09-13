@@ -170,7 +170,7 @@
 
     protected override Task OnInitializedAsync()
     {
-        ViewModel.NotifyStateChanged += OnStateChanged;
+        ViewModel.StateChanged += OnStateChanged;
         return Task.CompletedTask;
     }
 
@@ -217,7 +217,7 @@
 
     public void Dispose()
     {
-        ViewModel.NotifyStateChanged -= OnStateChanged;
+        ViewModel.StateChanged -= OnStateChanged;
     }
 
 }

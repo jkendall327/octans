@@ -65,7 +65,7 @@
   {
     if (RendererInfo.IsInteractive)
     {
-      ViewModel.StateHasChanged += OnStateChanged;
+      ViewModel.StateChanged += OnStateChanged;
       ViewModel.QueryChanged += OnViewModelOnQueryChanged;
     }
   }
@@ -97,7 +97,7 @@
       return;
     }
 
-    ViewModel.StateHasChanged -= OnStateChanged;
+    ViewModel.StateChanged -= OnStateChanged;
     ViewModel.QueryChanged -= OnViewModelOnQueryChanged;
     ViewModel.Dispose();
   }
