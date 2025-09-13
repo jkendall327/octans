@@ -10,6 +10,7 @@ using Octans.Client;
 using Octans.Core;
 using Octans.Core.Models;
 using Octans.Server;
+using Octans.Core.Progress;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
@@ -32,6 +33,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
         services.AddBusinessServices();
+        services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
 
         services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
             optionsLifetime: ServiceLifetime.Singleton);
@@ -49,6 +51,20 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         _provider = services.BuildServiceProvider();
 
         _sut = _provider.GetRequiredService<IImporter>();
+    }
+
+    private sealed class NoOpProgressReporter : IBackgroundProgressReporter
+    {
+        public Task<ProgressHandle> Start(string operation, int totalItems) =>
+            Task.FromResult(new ProgressHandle(Guid.NewGuid(), operation, totalItems));
+
+        public Task Report(Guid id, int processed) => Task.CompletedTask;
+
+        public Task Complete(Guid id) => Task.CompletedTask;
+
+        public Task ReportMessage(string message) => Task.CompletedTask;
+
+        public Task ReportError(string message) => Task.CompletedTask;
     }
 
     [Fact]
