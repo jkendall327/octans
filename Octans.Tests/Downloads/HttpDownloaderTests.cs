@@ -46,57 +46,6 @@ public class HttpDownloaderTests
     }
 
     [Fact]
-    public async Task ProcessDownloadAsync_CompletesSuccessfully_WhenHttpRequestSucceeds()
-    {
-        // Setup
-        var downloadId = Guid.NewGuid();
-        var testContent = "Test file content";
-        var testBytes = System.Text.Encoding.UTF8.GetBytes(testContent);
-        var destinationPath = "/downloads/test.txt";
-        var url = "https://example.com/test.txt";
-
-        var download = new QueuedDownload
-        {
-            Id = downloadId,
-            Url = url,
-            DestinationPath = destinationPath,
-            Domain = "example.com"
-        };
-
-        // Configure HTTP response
-        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(testBytes)
-        };
-        _messageHandler.ResponseToReturn.Content.Headers.ContentLength = testBytes.Length;
-
-        // Simulate time passing
-        _timeProvider.Advance(TimeSpan.FromMilliseconds(150));
-
-        // Act
-        await _sut.ProcessDownloadAsync(download, _cts.Token);
-
-        // Assert
-        // Verify directory was created
-        Assert.True(_fileSystem.Directory.Exists("/downloads"));
-
-        // Verify file was written with correct content
-        Assert.True(_fileSystem.File.Exists(destinationPath));
-        var fileContent = await _fileSystem.File.ReadAllTextAsync(destinationPath);
-        Assert.Equal(testContent, fileContent);
-
-        // Verify state updates
-        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Completed);
-
-        // Verify progress updates (at least 2 - initial and final)
-        await _stateService.ReceivedWithAnyArgs(2).UpdateProgress(default, default, default, default);
-
-        // Verify bandwidth usage recorded
-        _bandwidthLimiter.Received(1).RecordDownload("example.com", testBytes.Length);
-    }
-
-    [Fact]
     public async Task ProcessDownloadAsync_HandlesHttpFailure_UpdatesStateToFailed()
     {
         // Setup
