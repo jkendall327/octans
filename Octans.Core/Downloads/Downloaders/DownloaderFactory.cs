@@ -96,7 +96,7 @@ public class DownloaderFactory(
                 continue;
             }
 
-            using var lua = new Lua();
+            var lua = new Lua();
 
             try
             {
@@ -105,6 +105,7 @@ public class DownloaderFactory(
             catch (Exception e)
             {
                 logger.LogError(e, "Error loading raw Lua string");
+                lua.Dispose();
                 return null;
             }
 

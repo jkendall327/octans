@@ -28,10 +28,13 @@ public sealed class Downloader : IDisposable
     private readonly LuaFunction _parseHtml;
     private readonly LuaFunction? _generateGalleryUrl;
     private readonly LuaFunction? _processApiQuery;
+    private readonly List<Lua> _luaContexts;
 
     public Downloader(Dictionary<string, Lua> functions, DownloaderMetadata metadata)
     {
         Metadata = metadata;
+
+        _luaContexts = functions.Values.ToList();
 
         var classifier = functions["classifier"];
 
@@ -89,7 +92,7 @@ public sealed class Downloader : IDisposable
         return result?.Values.Cast<string>().ToList() ?? new List<string>();
     }
 
-    public string GenerateGalleryHtml(string input, int page)
+    public string GenerateGalleryUrl(string input, int page)
     {
         if (_generateGalleryUrl is null)
         {
@@ -110,7 +113,17 @@ public sealed class Downloader : IDisposable
 
         var result = _processApiQuery.Call(query)?.FirstOrDefault() as LuaTable;
 
-        return string.Empty;
+        if (result is null)
+        {
+            return string.Empty;
+        }
+
+        var pairs = result.Keys
+            .Cast<object>()
+            .Select(k =>
+                $"{Uri.EscapeDataString(k.ToString()!)}={Uri.EscapeDataString(result[k]?.ToString() ?? string.Empty)}");
+
+        return string.Join("&", pairs);
     }
 
     public void Dispose()
@@ -120,5 +133,9 @@ public sealed class Downloader : IDisposable
         _parseHtml.Dispose();
         _generateGalleryUrl?.Dispose();
         _processApiQuery?.Dispose();
+        foreach (var lua in _luaContexts)
+        {
+            lua.Dispose();
+        }
     }
 }

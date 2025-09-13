@@ -32,7 +32,8 @@ public class DownloaderService(
 
         if (classification is DownloaderUrlClassification.Gallery)
         {
-            raw = matching.GenerateGalleryHtml(uri.AbsoluteUri, 0);
+            var galleryUrl = matching.GenerateGalleryUrl(uri.AbsoluteUri, 0);
+            raw = await client.GetStringAsync(new Uri(galleryUrl));
         }
 
         var urls = matching
