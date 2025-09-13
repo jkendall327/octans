@@ -42,6 +42,10 @@ Run `dotnet test` on the `Octans.Tests` project to run automated tests.
 - SixLabors.ImageSharp for image processing
 - Lua for extensible downloaders
 
+## SBOM
+
+The continuous integration workflow generates a Software Bill of Materials (SBOM) using Anchore's SBOM action. An SPDX document (`sbom.spdx.json`) is produced for each build and uploaded as a workflow artifact to help track project dependencies.
+
 ## License
 
 MIT license.
