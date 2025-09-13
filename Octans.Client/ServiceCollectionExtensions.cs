@@ -223,43 +223,45 @@ public static class ServiceCollectionExtensions
         builder.Services.Configure<GlobalSettings>(configuration);
     }
 
-    public static IEndpointRouteBuilder MapStaticAssets(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapStaticAssets(this WebApplication app)
     {
-        var serviceProvider = app.ServiceProvider;
+        var serviceProvider = app.Services;
 
         var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>()
             .Value;
 
-        if (!string.IsNullOrEmpty(globalSettings.AppRoot) && Directory.Exists(globalSettings.AppRoot))
+        if (string.IsNullOrEmpty(globalSettings.AppRoot) || !Directory.Exists(globalSettings.AppRoot))
         {
-            app.MapGet("/approot/{**path}",
-                async (string path, HttpContext context) =>
-                {
-                    var fullPath = Path.Combine(globalSettings.AppRoot, path);
-
-                    if (File.Exists(fullPath))
-                    {
-                        var contentType = GetContentType(Path.GetExtension(fullPath));
-                        context.Response.ContentType = contentType;
-                        await context.Response.SendFileAsync(fullPath);
-
-                        return;
-                    }
-
-                    context.Response.StatusCode = 404;
-                });
-
-            // Also serve static files directly
-            var fileProvider = new PhysicalFileProvider(globalSettings.AppRoot);
-
-            var staticFileOptions = new StaticFileOptions
-            {
-                FileProvider = fileProvider,
-                RequestPath = "/approot"
-            };
-
-            ((IApplicationBuilder) app).UseStaticFiles(staticFileOptions);
+            return app;
         }
+
+        app.MapGet("/approot/{**path}",
+            async (string path, HttpContext context) =>
+            {
+                var fullPath = Path.Combine(globalSettings.AppRoot, path);
+
+                if (File.Exists(fullPath))
+                {
+                    var contentType = GetContentType(Path.GetExtension(fullPath));
+                    context.Response.ContentType = contentType;
+                    await context.Response.SendFileAsync(fullPath);
+
+                    return;
+                }
+
+                context.Response.StatusCode = 404;
+            });
+
+        // Also serve static files directly
+        var fileProvider = new PhysicalFileProvider(globalSettings.AppRoot);
+
+        var staticFileOptions = new StaticFileOptions
+        {
+            FileProvider = fileProvider,
+            RequestPath = "/approot"
+        };
+
+        app.UseStaticFiles(staticFileOptions);
 
         return app;
     }
