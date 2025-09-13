@@ -1,5 +1,6 @@
 @page "/settings"
 @rendermode InteractiveServer
+@using Octans.Client.Components.Config
 
 <CascadingValue Value="_context">
     <div class="settings-layout">
@@ -8,6 +9,10 @@
             <SettingsSidebar Pages="_context.Pages" ActivePage="_activePage" OnSelectPage="SelectPage" />
             <div class="settings-content">
                 <CascadingValue Value="_activePage">
+                    <SettingsPage Title="Configuration" Icon="⚙️">
+                        <Config />
+                    </SettingsPage>
+
                     <SettingsPage Title="Import">
                         <SettingItem Name="Import Source" Tags=@(new[] { "import" })>
                             <Control>
