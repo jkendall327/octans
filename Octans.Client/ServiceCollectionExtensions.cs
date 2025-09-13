@@ -119,6 +119,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<HashSearcher>();
         services.AddScoped<QuerySuggestionFinder>();
         services.AddScoped<TagSplitter>();
+        services.AddScoped<TagSiblingService>();
 
         // Stats
         services.AddScoped<StatsService>();
