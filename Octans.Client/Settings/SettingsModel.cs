@@ -1,4 +1,4 @@
-namespace Octans.Client.Components.Settings;
+namespace Octans.Client.Settings;
 
 public class SettingsModel
 {
