@@ -7,6 +7,7 @@ using Octans.Core.Models;
 using Octans.Server;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
+using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloads;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,14 +23,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-
-// Setup keys
-var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
-
-Directory.CreateDirectory(keysFolder);
-
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new(keysFolder));
+builder.AddKeyProtection();
 
 builder.Services.AddMudServices();
 builder.Services.AddInfrastructure();
@@ -72,28 +66,14 @@ app.UseAntiforgery();
 app.UseStaticFiles();
 app.MapStaticAssets();
 
-var supportedCultures = new[] { "en-US" };
-var localizationOptions = new RequestLocalizationOptions()
-    .SetDefaultCulture(supportedCultures[0])
-    .AddSupportedCultures(supportedCultures)
-    .AddSupportedUICultures(supportedCultures);
-
-app.UseRequestLocalization(localizationOptions);
+app.SetupLocalisation();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.AddEndpoints();
 app.MapImageEndpoints();
 
-// Ensure subfolders are initialised.
-var manager = app.Services.GetRequiredService<SubfolderManager>();
-manager.MakeSubfolders();
-
-// Ensure database is initialised.
-var scope = app.Services.CreateScope();
-var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-await db.Database.EnsureCreatedAsync();
-scope.Dispose();
+await app.PerformAppInitialisation();
 
 await app.RunAsync();
 

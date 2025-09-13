@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using System.Threading.Channels;
 using Mediator;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
@@ -34,6 +35,16 @@ namespace Octans.Client;
 
 public static class ServiceCollectionExtensions
 {
+    public static void AddKeyProtection(this WebApplicationBuilder builder)
+    {
+        var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
+
+        Directory.CreateDirectory(keysFolder);
+
+        builder.Services.AddDataProtection()
+            .PersistKeysToFileSystem(new(keysFolder));
+    }
+    
     public static IServiceCollection AddOctansServices(this IServiceCollection services)
     {
         services.AddHostedService<ImportFolderBackgroundService>();
@@ -136,7 +147,8 @@ public static class ServiceCollectionExtensions
 
         var root = config.Value.AppRoot;
 
-        var path = s.GetRequiredService<IFileSystem>().Path;
+        var path = s.GetRequiredService<IFileSystem>()
+            .Path;
 
         var dbFolder = path.Join(root, "db");
 
@@ -161,11 +173,13 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddHttpClients(this IServiceCollection services)
     {
-        services.AddRefitClient<IOctansApi>().ConfigureHttpClient(client =>
-        {
-            var port = CommunicationConstants.OctansServerPort;
-            client.BaseAddress = new($"http://localhost:{port}/");
-        });
+        services
+            .AddRefitClient<IOctansApi>()
+            .ConfigureHttpClient(client =>
+            {
+                var port = CommunicationConstants.OctansServerPort;
+                client.BaseAddress = new($"http://localhost:{port}/");
+            });
 
         return services;
     }
@@ -191,14 +205,17 @@ public static class ServiceCollectionExtensions
 
     public static void SetupConfiguration(this WebApplicationBuilder builder)
     {
-        builder.Services.Configure<GlobalSettings>(
-            builder.Configuration.GetSection(nameof(GlobalSettings)));
+        builder.Services.Configure<GlobalSettings>(builder.Configuration.GetSection(nameof(GlobalSettings)));
 
-        builder.Services.AddOptions<ThumbnailOptions>()
+        builder
+            .Services
+            .AddOptions<ThumbnailOptions>()
             .BindConfiguration(ThumbnailOptions.ConfigurationSectionName)
             .ValidateDataAnnotations();
 
-        builder.Services.AddOptions<ImportFolderOptions>()
+        builder
+            .Services
+            .AddOptions<ImportFolderOptions>()
             .BindConfiguration(ImportFolderOptions.ConfigurationSectionName)
             .ValidateDataAnnotations();
 
@@ -206,38 +223,75 @@ public static class ServiceCollectionExtensions
         builder.Services.Configure<GlobalSettings>(configuration);
     }
 
-    public static IEndpointRouteBuilder MapStaticAssets(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapStaticAssets(this WebApplication app)
     {
-        var serviceProvider = app.ServiceProvider;
-        var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>().Value;
+        var serviceProvider = app.Services;
 
-        if (!string.IsNullOrEmpty(globalSettings.AppRoot) && Directory.Exists(globalSettings.AppRoot))
+        var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>()
+            .Value;
+
+        if (string.IsNullOrEmpty(globalSettings.AppRoot) || !Directory.Exists(globalSettings.AppRoot))
         {
-            app.MapGet("/approot/{**path}", async (string path, HttpContext context) =>
+            return app;
+        }
+
+        app.MapGet("/approot/{**path}",
+            async (string path, HttpContext context) =>
             {
                 var fullPath = Path.Combine(globalSettings.AppRoot, path);
+
                 if (File.Exists(fullPath))
                 {
                     var contentType = GetContentType(Path.GetExtension(fullPath));
                     context.Response.ContentType = contentType;
                     await context.Response.SendFileAsync(fullPath);
+
                     return;
                 }
+
                 context.Response.StatusCode = 404;
             });
 
-            // Also serve static files directly
-            var fileProvider = new PhysicalFileProvider(globalSettings.AppRoot);
-            var staticFileOptions = new StaticFileOptions
-            {
-                FileProvider = fileProvider,
-                RequestPath = "/approot"
-            };
+        // Also serve static files directly
+        var fileProvider = new PhysicalFileProvider(globalSettings.AppRoot);
 
-            ((IApplicationBuilder)app).UseStaticFiles(staticFileOptions);
-        }
+        var staticFileOptions = new StaticFileOptions
+        {
+            FileProvider = fileProvider,
+            RequestPath = "/approot"
+        };
+
+        app.UseStaticFiles(staticFileOptions);
 
         return app;
+    }
+
+    public static void SetupLocalisation(this WebApplication app)
+    {
+        var supportedCultures = new[]
+        {
+            "en-US"
+        };
+
+        var localizationOptions = new RequestLocalizationOptions()
+            .SetDefaultCulture(supportedCultures[0])
+            .AddSupportedCultures(supportedCultures)
+            .AddSupportedUICultures(supportedCultures);
+
+        app.UseRequestLocalization(localizationOptions);
+    }
+
+    public static async Task PerformAppInitialisation(this WebApplication app)
+    {
+        // Ensure subfolders are initialised.
+        var manager = app.Services.GetRequiredService<SubfolderManager>();
+        manager.MakeSubfolders();
+
+        // Ensure database is initialised.
+        var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        await db.Database.MigrateAsync();
+        scope.Dispose();
     }
 
     private static string GetContentType(string extension)
