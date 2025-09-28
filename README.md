@@ -35,6 +35,8 @@ Run `dotnet test` on the `Octans.Tests` project to run automated tests.
    dotnet run --project HydrusReplacement.Client
    ```
 
+A Dockerfile is provided for easy containerized setup.
+
 ## Tech used
 
 - Blazor for the UI
