@@ -20,6 +20,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" VersionOverride="9.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Binder" VersionOverride="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" VersionOverride="9.0.9" />
         <PackageReference Include="MudBlazor" />
         <PackageReference Include="Refit.HttpClientFactory"/>
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"/>
