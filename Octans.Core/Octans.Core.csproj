@@ -19,6 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" VersionOverride="9.0.10" />
         <ProjectReference Include="..\Octans.Data\Octans.Data.csproj"/>
     </ItemGroup>
 </Project>
