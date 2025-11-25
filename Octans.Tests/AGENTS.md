@@ -1,0 +1,3 @@
+- No reflection if possible.
+- No sync-over-async hacks.
+- Add tests for new code if viable.
