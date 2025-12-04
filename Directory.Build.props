@@ -1,6 +1,6 @@
 <Project>
    <PropertyGroup>
-        <ProjectTargetFramework>net9.0</ProjectTargetFramework>
+        <ProjectTargetFramework>net10.0</ProjectTargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <NoWarn>CA1707;CA2007;CA1848;CA1860;CA1062;CA1822;CA1002;CA1515;CA1812;CA1031;CA1822;CA1056;CA1003;CA1308</NoWarn>
