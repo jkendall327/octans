@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
@@ -31,27 +32,50 @@ public class TagUpdater(ServerDbContext context)
 
     private async Task RemoveTags(IEnumerable<TagModel> tagsToRemove, HashItem hash)
     {
-        var all = context.Mappings
-            .Include(m => m.Tag)
-            .ThenInclude(t => t.Namespace)
-            .Include(m => m.Tag)
-            .ThenInclude(t => t.Subtag);
-
-        // TODO: this is probably bad when we have lots of mappings for a given hash.
-        // But trying to do it against an IQueryable makes EF Core explode as it can't translate it.
-        var forThisHash = await all.Where(m => m.Hash.Id == hash.Id).ToListAsync();
-
-        var mappingsToRemove = forThisHash.Where(m =>
+        var tagsList = tagsToRemove.ToList();
+        if (tagsList.Count == 0)
         {
-            return tagsToRemove.Any(t =>
-            {
-                var namespacesMatch =
-                    (t.Namespace == null && string.IsNullOrEmpty(m.Tag.Namespace.Value)) ||
-                    (t.Namespace != null && m.Tag.Namespace.Value == t.Namespace);
+            return;
+        }
 
-                return namespacesMatch && m.Tag.Subtag.Value == t.Subtag;
-            });
-        });
+        var parameter = Expression.Parameter(typeof(Mapping), "m");
+
+        // m.Hash.Id == hash.Id
+        var hashIdProperty = Expression.Property(Expression.Property(parameter, nameof(Mapping.Hash)), nameof(HashItem.Id));
+        var hashIdValue = Expression.Constant(hash.Id);
+        var hashCheck = Expression.Equal(hashIdProperty, hashIdValue);
+
+        Expression? tagCheck = null;
+
+        foreach (var tag in tagsList)
+        {
+            var nsValue = tag.Namespace ?? string.Empty;
+            var subValue = tag.Subtag;
+
+            // m.Tag.Namespace.Value == nsValue
+            var tagProp = Expression.Property(parameter, nameof(Mapping.Tag));
+            var nsProp = Expression.Property(Expression.Property(tagProp, nameof(Tag.Namespace)), nameof(Namespace.Value));
+            var subProp = Expression.Property(Expression.Property(tagProp, nameof(Tag.Subtag)), nameof(Subtag.Value));
+
+            var nsCheck = Expression.Equal(nsProp, Expression.Constant(nsValue));
+            var subCheck = Expression.Equal(subProp, Expression.Constant(subValue));
+
+            var combined = Expression.AndAlso(nsCheck, subCheck);
+
+            tagCheck = tagCheck == null ? combined : Expression.OrElse(tagCheck, combined);
+        }
+
+        if (tagCheck == null)
+        {
+            return;
+        }
+
+        var finalBody = Expression.AndAlso(hashCheck, tagCheck);
+        var lambda = Expression.Lambda<Func<Mapping, bool>>(finalBody, parameter);
+
+        var mappingsToRemove = await context.Mappings
+            .Where(lambda)
+            .ToListAsync();
 
         context.Mappings.RemoveRange(mappingsToRemove);
     }
