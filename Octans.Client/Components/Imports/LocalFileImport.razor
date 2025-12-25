@@ -43,7 +43,7 @@
 
 <MudButton
     Class="send-button"
-    OnClick="@Viewmodel.SendLocalFilesToServer"
+    OnClick="@ImportFiles"
     Disabled="@(Viewmodel.LocalFiles.Count == 0)">
     Import
 </MudButton>
@@ -62,6 +62,22 @@
 
 @code {
     private TagChooser.TagChooserResult? TagChooserResult { get; set; }
+
+    private async Task ImportFiles()
+    {
+        Dictionary<string, IEnumerable<Octans.Core.TagModel>>? tags = null;
+        if (TagChooserResult is not null)
+        {
+            tags = TagChooserResult
+                .GenerateTagsForPaths()
+                .ToDictionary(
+                    k => k.Path,
+                    v => v.Tags.Select(t => new Octans.Core.TagModel(t.Namespace, t.Subtag))
+                );
+        }
+
+        await Viewmodel.SendLocalFilesToServer(tags);
+    }
 
     private async Task OpenTagChooser()
     {
@@ -83,7 +99,6 @@
         if (result is {Canceled: false, Data: TagChooser.TagChooserResult tagResult})
         {
             TagChooserResult = tagResult;
-            // TODO: Store tag result for use during import
         }
     }
 }

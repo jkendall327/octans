@@ -19,7 +19,7 @@ public interface IRawUrlImportViewmodel
 public interface ILocalFileImportViewmodel
 {
     ImportResult? Result { get; }
-    Task SendLocalFilesToServer();
+    Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null);
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
 }
 
@@ -33,7 +33,7 @@ public class LocalFileImportViewmodel(
 
     public ImportResult? Result { get; private set; }
 
-    public async Task SendLocalFilesToServer()
+    public async Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null)
     {
         if (!LocalFiles.Any()) return;
 
@@ -54,7 +54,17 @@ public class LocalFileImportViewmodel(
             await using var source = file.OpenReadStream();
             await source.CopyToAsync(stream);
 
-            items.Add(new() { Filepath = filePath });
+            var item = new ImportItem { Filepath = filePath };
+            if (tags is not null && tags.TryGetValue(file.Name, out var fileTags))
+            {
+                item = new ImportItem
+                {
+                    Filepath = filePath,
+                    Tags = fileTags.ToList()
+                };
+            }
+
+            items.Add(item);
         }
 
         var request = new ImportRequest
