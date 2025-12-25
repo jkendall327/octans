@@ -22,6 +22,7 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<DownloadStatus> DownloadStatuses { get; set; }
     public virtual DbSet<Provider> Providers { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<SubscriptionExecution> SubscriptionExecutions { get; set; }
     public virtual DbSet<RatingSystem> RatingSystems { get; set; }
     public virtual DbSet<HashRating> HashRatings { get; set; }
     public virtual DbSet<ImportJob> ImportJobs { get; set; }

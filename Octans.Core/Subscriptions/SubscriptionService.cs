@@ -30,9 +30,15 @@ public sealed class SubscriptionService(
         foreach (var subscription in subscriptions)
         {
             var result = await executor.ExecuteAsync(subscription, stoppingToken);
-            
-            // TODO: persist the result somewhere for auditing, determining trajectory, etc.
-            
+
+            var execution = new SubscriptionExecution
+            {
+                SubscriptionId = subscription.Id,
+                ExecutedAt = now,
+                ItemsFound = result.ItemsFound
+            };
+            db.SubscriptionExecutions.Add(execution);
+
             subscription.NextCheck = now.Add(subscription.CheckPeriod);
             
             logger.LogInformation("Executed subscription {Name}", subscription.Name);
