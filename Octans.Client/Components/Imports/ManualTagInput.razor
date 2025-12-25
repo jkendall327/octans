@@ -1,6 +1,8 @@
 @using Octans.Client.Components.Gallery
 @using Octans.Client.Components.Importing
+@using Octans.Core.Tags
 @inject IClipboard Clipboard
+@inject TagSplitter TagSplitter
 <div class="manual-tag-input">
     <h3>@Title</h3>
     <div class="tag-listing">
@@ -52,19 +54,67 @@
 
     private async Task OnPasteClick()
     {
-        Current = await Clipboard.ReadFromClipboardAsync();
-        await AddCurrentTag();
+        var text = await Clipboard.ReadFromClipboardAsync();
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        var parts = text.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries);
+        var addedAny = false;
+
+        foreach (var part in parts)
+        {
+            if (TryCreateTag(part, out var tag))
+            {
+                AddTag(tag);
+                addedAny = true;
+            }
+        }
+
+        if (addedAny)
+        {
+            await TagsChanged.InvokeAsync();
+        }
+        else if (parts.Length == 1)
+        {
+            // If we couldn't parse it as a tag but it's a single item, let the user edit it
+            Current = text;
+            // Optionally try to add it again via AddCurrentTag logic if it matches simple format?
+            // But TryCreateTag already tried. So it's invalid. Just let user edit.
+        }
     }
 
     private async Task AddCurrentTag()
     {
         if (string.IsNullOrWhiteSpace(Current)) return;
 
-        var parts = Current.Split(':');
-        if (parts.Length != 2) return;
+        if (TryCreateTag(Current, out var tag))
+        {
+            AddTag(tag);
+            Current = null;
+            await TagsChanged.InvokeAsync();
+        }
+    }
 
-        var tag = new TagViewer.Tag(parts[0].Trim(), parts[1].Trim(), 1);
-        
+    private bool TryCreateTag(string input, out TagViewer.Tag tag)
+    {
+        tag = null!;
+        try
+        {
+            var (ns, sub) = TagSplitter.SplitTag(input.Trim());
+            if (!string.IsNullOrEmpty(ns) && !string.IsNullOrEmpty(sub))
+            {
+                tag = new TagViewer.Tag(ns, sub, 1);
+                return true;
+            }
+        }
+        catch
+        {
+            // Invalid tag format
+        }
+        return false;
+    }
+
+    private void AddTag(TagViewer.Tag tag)
+    {
         if (Scope == TagScope.AllPaths)
         {
             Assignments.AddTagForAllPaths(tag);
@@ -73,9 +123,6 @@
         {
             Assignments.AddTagForSelectedPaths(tag, SelectedPaths);
         }
-
-        Current = null;
-        await TagsChanged.InvokeAsync();
     }
 
     private async Task RemoveTag(TagViewer.Tag tag)
