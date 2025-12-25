@@ -1,5 +1,8 @@
 @inject ShellService ShellService
 @inject IDialogService DialogService
+@inject ITagService TagService
+@using Octans.Core
+@using Octans.Core.Tags
 @implements IDisposable
 
 <div class="image-viewer"
@@ -55,15 +58,17 @@
 
     <section class="media-plane" @ondblclick="@OnClose">
         <div class="tag-list">
-            <!-- TODO: get actual tags. -->
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
-            <p>foo</p>
+            @if (_tags is null)
+            {
+                <p>Loading...</p>
+            }
+            else
+            {
+                @foreach (var tag in _tags)
+                {
+                    <p>@tag.Namespace:@tag.Subtag</p>
+                }
+            }
         </div>
         <div class="image-display" @onmousedown="@OnImageMouseDown" @oncontextmenu:preventDefault>
             @if (CurrentImage is null)
@@ -97,8 +102,9 @@
 
     private string? CurrentImage { get; set; }
     private Dictionary<string, FilterChoice> _choices = [];
+    private List<TagModel>? _tags;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         CurrentImage = StartingImage ?? ImageUrls.First();
         _shouldFocus = true;
@@ -109,6 +115,8 @@
         }
 
         ShellService.HideShell();
+
+        await LoadTagsAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -154,6 +162,7 @@
         CurrentImage = IsValidIndex(ImageUrls, prev) ? ImageUrls[prev] : ImageUrls.Last();
 
         await CurrentImageChanged.InvokeAsync(CurrentImage);
+        await LoadTagsAsync();
     }
 
     private async Task NextAsync()
@@ -170,6 +179,32 @@
         CurrentImage = IsValidIndex(ImageUrls, next) ? ImageUrls[next] : ImageUrls.First();
 
         await CurrentImageChanged.InvokeAsync(CurrentImage);
+        await LoadTagsAsync();
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        if (CurrentImage is null)
+        {
+            return;
+        }
+
+        _tags = null;
+        StateHasChanged();
+
+        try
+        {
+            // URL format: /media/{hex}
+            var path = CurrentImage.Split('?')[0];
+            var segment = path.Split('/').Last();
+            var hex = segment.Contains('.') ? segment[..segment.LastIndexOf('.')] : segment;
+
+            _tags = await TagService.GetTagsForHashAsync(hex);
+        }
+        catch (Exception)
+        {
+            _tags = [];
+        }
     }
 
     private async Task ArchiveAsync()
