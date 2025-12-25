@@ -43,7 +43,6 @@ public sealed class GalleryViewmodel(
 
     private int _total;
     private int _processed;
-    public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
 
     private readonly IJSRuntime _jsRuntime = jsRuntime;
 
@@ -161,6 +160,7 @@ public sealed class GalleryViewmodel(
         ResetState();
 
         status.WorkingText = "loading...";
+        status.IsSearching = true;
 
         await NotifyStateChanged();
 
@@ -184,6 +184,7 @@ public sealed class GalleryViewmodel(
                 ImageUrls.Add(url);
 
                 _processed++;
+                status.ProgressPercent = _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
 
                 if (ImageUrls.Count % 8 == 0)
                 {
@@ -208,6 +209,7 @@ public sealed class GalleryViewmodel(
         finally
         {
             Searching = false;
+            status.IsSearching = false;
             status.WorkingText = null;
             await NotifyStateChanged();
         }
@@ -217,6 +219,7 @@ public sealed class GalleryViewmodel(
     {
         LastError = null;
         Searching = true;
+        status.ProgressPercent = 0;
         ImageUrls = [];
         _total = 0;
         _processed = 0;
