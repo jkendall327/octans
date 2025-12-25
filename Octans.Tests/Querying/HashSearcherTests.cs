@@ -99,6 +99,52 @@ public class HashSearcherTests : IAsyncLifetime
         results.Single().Should().Be(item, "it is the only item with this namespace/tag pairing");
     }
 
+    [Fact]
+    public async Task CountAsync_ReturnsCorrectCount_WhenExactTagUsed()
+    {
+        await SeedData();
+
+        var items = await GetRandomItems(2);
+
+        await AddMappings("character", "mario", items.ToArray());
+
+        var request = new DecomposedQuery()
+        {
+            TagsToInclude = [new("character", "mario")]
+        };
+
+        var count = await _sut.CountAsync(request);
+
+        count.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CountAsync_ReturnsZero_WhenNoMatch()
+    {
+        await SeedData();
+
+        var request = new DecomposedQuery()
+        {
+            TagsToInclude = [new("character", "luigi")]
+        };
+
+        var count = await _sut.CountAsync(request);
+
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CountAsync_ReturnsAll_WhenEmptyQuery()
+    {
+        await SeedData();
+        var total = await _db.Hashes.CountAsync();
+
+        var request = new DecomposedQuery();
+        var count = await _sut.CountAsync(request);
+
+        count.Should().Be(total);
+    }
+
     [Fact(Skip = "Not implemented yet")]
     public void ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
     {

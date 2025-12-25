@@ -9,6 +9,25 @@ namespace Octans.Core.Querying;
 /// </summary>
 public class HashSearcher(ServerDbContext context)
 {
+    public async Task<int> CountAsync(DecomposedQuery request, CancellationToken cancellationToken = default)
+    {
+        if (request.IsEmpty() || request.SystemPredicates.OfType<EverythingPredicate>().Any())
+        {
+            return await context.Hashes.CountAsync(cancellationToken);
+        }
+
+        var matching = await GetMatchingTags(request, cancellationToken);
+        var matchingIds = matching.Select(x => x.Id).ToList();
+
+        var count = await context.Mappings
+            .Where(m => matchingIds.Contains(m.Tag.Id))
+            .Select(m => m.Hash.Id)
+            .Distinct()
+            .CountAsync(cancellationToken);
+
+        return count;
+    }
+
     public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
         if (request.IsEmpty())
@@ -23,6 +42,24 @@ public class HashSearcher(ServerDbContext context)
             return allHashes.ToHashSet();
         }
 
+        var matching = await GetMatchingTags(request, cancellationToken);
+
+        var allMappings = await context.Mappings
+            .Include(m => m.Hash)
+            .Include(mapping => mapping.Tag)
+            .ToListAsync(cancellationToken);
+
+        allMappings = allMappings
+            .Join(matching, m => m.Tag.Id, t => t.Id, (m, t) => m)
+            .ToList();
+
+        var hashes = allMappings.Select(x => x.Hash).ToHashSet();
+
+        return hashes;
+    }
+
+    private async Task<List<Tag>> GetMatchingTags(DecomposedQuery request, CancellationToken cancellationToken)
+    {
         var tags = context.Tags
             .Include(tag => tag.Namespace)
             .Include(tag => tag.Subtag);
@@ -55,19 +92,7 @@ public class HashSearcher(ServerDbContext context)
         }
 
         matching = matching.Except(toExclude).ToList();
-
-        var allMappings = await context.Mappings
-            .Include(m => m.Hash)
-            .Include(mapping => mapping.Tag)
-            .ToListAsync(cancellationToken);
-
-        allMappings = allMappings
-            .Join(matching, m => m.Tag.Id, t => t.Id, (m, t) => m)
-            .ToList();
-
-        var hashes = allMappings.Select(x => x.Hash).ToHashSet();
-
-        return hashes;
+        return matching;
     }
 
     private Tag ToTagDto(TagModel s)
