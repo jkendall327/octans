@@ -1,5 +1,6 @@
 @using Octans.Client.Components.Gallery
 @using Octans.Client.Components.Importing
+@inject IClipboard Clipboard
 <div class="manual-tag-input">
     <h3>@Title</h3>
     <div class="tag-listing">
@@ -51,7 +52,7 @@
 
     private async Task OnPasteClick()
     {
-        // TODO: Implement clipboard paste functionality
+        Current = await Clipboard.ReadFromClipboardAsync();
         await AddCurrentTag();
     }
 
