@@ -111,7 +111,7 @@ public class Importer(
                 hashed.MimeType
             });
 
-        var existing = await reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted);
+        var existing = await reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted, bytes);
 
         if (existing is not null)
         {
