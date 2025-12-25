@@ -112,22 +112,27 @@
             
             foreach (var path in AllPaths)
             {
-                var tags = new List<TagViewer.Tag>();
-                
-                // Add manual tag assignments
-                tags.AddRange(ManualTagAssignments.GetTagsForPath(path, AllPaths));
-                
-                // Add misc tags based on file path
-                tags.AddRange(GenerateMiscTags(path));
-                
                 result.Add(new()
                 {
                     Path = path,
-                    Tags = tags
+                    Tags = GetTagsSinglePath(path)
                 });
             }
             
             return result;
+        }
+
+        public List<TagViewer.Tag> GetTagsSinglePath(string path)
+        {
+            var tags = new List<TagViewer.Tag>();
+
+            // Add manual tag assignments
+            tags.AddRange(ManualTagAssignments.GetTagsForPath(path, AllPaths));
+
+            // Add misc tags based on file path
+            tags.AddRange(GenerateMiscTags(path));
+
+            return tags;
         }
         
         private List<TagViewer.Tag> GenerateMiscTags(string filePath)

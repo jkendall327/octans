@@ -34,8 +34,6 @@
 </MudButton>
 
 @code {
-    private TagChooser.TagChooserResult? TagChooserResult { get; set; }
-
     private async Task OpenTagChooser()
     {
         var urls = GetUrlsFromInput();
@@ -57,8 +55,7 @@
 
         if (result is {Canceled: false, Data: TagChooser.TagChooserResult tagResult})
         {
-            TagChooserResult = tagResult;
-            // TODO: Store tag result for use during import
+            Viewmodel.TagResult = tagResult;
         }
     }
 
