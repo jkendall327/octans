@@ -16,7 +16,7 @@
             }
         </MudSelect>
 
-        <MudSelect T="GroupingMode" Disabled="true" Label="grouping" Dense="true" @bind-Value="Grouping">
+        <MudSelect T="GroupingMode" Label="grouping" Dense="true" @bind-Value="Grouping">
             @foreach (var v in Enum.GetValues<GroupingMode>())
             {
                 <MudSelectItem Value="v">@v.ToString()</MudSelectItem>
@@ -32,13 +32,28 @@
             SelectedValues="SelectedTags"
             SelectedValuesChanged="SelectedTagsChanged"
         >
-            @foreach (var tag in Ordered)
+            @if (GroupedTags != null)
             {
-                <MudListItem Value="@tag" Class="tag-list-item">
-                    <MudText Typo="Typo.body2">@tag</MudText>
-                </MudListItem>
+                @foreach (var group in GroupedTags)
+                {
+                    <MudListSubheader>@group.Key</MudListSubheader>
+                    @foreach (var tag in group)
+                    {
+                        <MudListItem Value="@tag" Class="tag-list-item">
+                            <MudText Typo="Typo.body2">@tag</MudText>
+                        </MudListItem>
+                    }
+                }
             }
-
+            else
+            {
+                @foreach (var tag in Ordered)
+                {
+                    <MudListItem Value="@tag" Class="tag-list-item">
+                        <MudText Typo="Typo.body2">@tag</MudText>
+                    </MudListItem>
+                }
+            }
         </MudList>
     </MudPaper>
 </div>
@@ -50,28 +65,57 @@
     [Parameter] public EventCallback<IReadOnlyCollection<string>?> SelectedTagsChanged { get; set; }
 
     private List<Tag> Ordered { get; set; } = [];
+    private IEnumerable<IGrouping<string, Tag>>? GroupedTags { get; set; }
 
     protected override void OnParametersSet()
     {
         var tags = Tags.ToList();
 
-        tags = Sort switch
+        // 1. Sort items
+        if (Sort == SortMode.ByTag)
         {
-            SortMode.ByTag => tags
-                .OrderBy(s => s.Namespace + s.Subtag)
-                .ToList(),
-            SortMode.BySubtag => tags
-                .OrderBy(s => s.Subtag)
-                .ToList(),
-            SortMode.ByCount => tags
-                .OrderBy(s => s.Count)
-                .ToList(),
-            _ => throw new ArgumentOutOfRangeException()
-        };
+            tags = tags.OrderBy(s => s.Namespace).ThenBy(s => s.Subtag).ToList();
+        }
+        else if (Sort == SortMode.BySubtag)
+        {
+            tags = tags.OrderBy(s => s.Subtag).ToList();
+        }
+        else if (Sort == SortMode.ByCount)
+        {
+            tags = tags.OrderBy(s => s.Count).ToList();
+        }
 
-        // TODO: implement the rest of this
+        // 2. Apply Ordering (Reverse if needed)
+        if (Ordering == AlphabeticOrdering.Reversed)
+        {
+            tags.Reverse();
+        }
 
-        Ordered = tags;
+        // 3. Grouping
+        if (Grouping == GroupingMode.None)
+        {
+            Ordered = tags;
+            GroupedTags = null;
+        }
+        else
+        {
+            // Group by Namespace
+            // We use the already sorted/reversed list 'tags', so items within groups preserve their relative order.
+            var groups = tags.GroupBy(t => t.Namespace);
+
+            if (Grouping == GroupingMode.NamespaceAlphabetic)
+            {
+                // Sort groups by Key (Namespace)
+                if (Ordering == AlphabeticOrdering.Reversed)
+                    groups = groups.OrderByDescending(g => g.Key);
+                else
+                    groups = groups.OrderBy(g => g.Key);
+            }
+            // NamespaceUser: We don't have user order, so we rely on the implicit order (order of appearance).
+
+            GroupedTags = groups.ToList();
+            Ordered = [];
+        }
     }
 
     public SortMode Sort { get; set; }
