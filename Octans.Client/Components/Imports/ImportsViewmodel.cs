@@ -1,15 +1,19 @@
 using System.IO.Abstractions;
 using Microsoft.AspNetCore.Components.Forms;
+using Octans.Core;
 using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
+
+using Octans.Client.Components.Imports;
 
 public interface IRawUrlImportViewmodel
 {
     Task SendUrlsToServer();
     string RawInputs { get; set; }
     bool AllowReimportDeleted { get; set; }
+    TagChooser.TagChooserResult? TagResult { get; set; }
 }
 
 public interface ILocalFileImportViewmodel
@@ -72,6 +76,7 @@ public class RawUrlImportViewmodel(
 {
     public string RawInputs { get; set; } = string.Empty;
     public bool AllowReimportDeleted { get; set; }
+    public TagChooser.TagChooserResult? TagResult { get; set; }
 
     public async Task SendUrlsToServer()
     {
@@ -88,9 +93,23 @@ public class RawUrlImportViewmodel(
         {
             logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, ImportType.RawUrl);
 
-            var importItems = urls
-                .Select(url => new ImportItem { Url = new(url) })
-                .ToList();
+            var importItems = new List<ImportItem>();
+            foreach (var url in urls)
+            {
+                ICollection<TagModel>? tags = null;
+                if (TagResult is not null)
+                {
+                    var viewTags = TagResult.GetTagsSinglePath(url);
+                    tags = viewTags.Select(t => new TagModel(t.Namespace, t.Subtag)).ToList();
+                }
+
+                var item = new ImportItem
+                {
+                    Url = new(url),
+                    Tags = tags
+                };
+                importItems.Add(item);
+            }
 
             var request = new ImportRequest
             {
