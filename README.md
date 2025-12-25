@@ -21,18 +21,18 @@ I'm developing it because:
 - Local and remote image import and management
 - Namespaced tag-based organization system
 - Support for tag relationships (siblings/parents) [WIP]
-- Lua-based extensibility to work with custom sites [WIP]
+- Lua-based extensibility to work with custom sites
 
 ## Project structure & getting started
 
-- `Octans.Server`: lower-level API project that manages the database, filesystem etc.
-- `Octans.Client`: User interface in Blazor, rather janky and bare at present.
+- `Octans.Client`: Blazor-based UI and application server.
+- `Octans.Core`: Core business logic and domain models.
+- `Octans.Data`: Database context, migrations, and data access.
 
 Run `dotnet test` on the `Octans.Tests` project to run automated tests.
 
    ```bash
-   dotnet run --project HydrusReplacement.Server
-   dotnet run --project HydrusReplacement.Client
+   dotnet run --project Octans.Client
    ```
 
 A Dockerfile is provided for easy containerized setup.
