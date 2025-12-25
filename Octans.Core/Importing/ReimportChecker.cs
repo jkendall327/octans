@@ -4,9 +4,16 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Importing;
 
-public class ReimportChecker(ServerDbContext context, ILogger<ReimportChecker> logger)
+public class ReimportChecker(
+    ServerDbContext context,
+    SubfolderManager subfolderManager,
+    FilesystemWriter filesystemWriter,
+    ILogger<ReimportChecker> logger)
 {
-    public async Task<ImportItemResult?> CheckIfPreviouslyDeleted(HashedBytes hashed, bool allowReimportDeleted)
+    public async Task<ImportItemResult?> CheckIfPreviouslyDeleted(
+        HashedBytes hashed,
+        bool allowReimportDeleted,
+        byte[] bytes)
     {
         var existingHash = await context.Hashes
             .FirstOrDefaultAsync(h => h.Hash == hashed.Bytes);
@@ -27,7 +34,13 @@ public class ReimportChecker(ServerDbContext context, ILogger<ReimportChecker> l
 
         logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
 
-        // TODO: still need to copy the actual content back in if it's not there.
+        var existingFile = subfolderManager.GetFilepath(hashed);
+        if (existingFile is null)
+        {
+            logger.LogInformation("Restoring content for previously deleted hash: {HashId}", existingHash.Id);
+            await filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
+        }
+
         return new()
         {
             Ok = true,
