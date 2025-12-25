@@ -11,7 +11,6 @@ public interface IQueryService
 
 public class QueryService(QueryParser parser, QueryPlanner planner, QueryTagConverter converter, HashSearcher searcher) : IQueryService
 {
-    // TODO: World's worst form of optimisation, just doing the entire operation
     public async Task<int> CountAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default)
     {
         var predicates = parser.Parse(queries);
@@ -20,9 +19,7 @@ public class QueryService(QueryParser parser, QueryPlanner planner, QueryTagConv
 
         var query = converter.Reduce(plan);
 
-        var items = await searcher.Search(query, cancellationToken);
-
-        return items.Count;
+        return await searcher.CountAsync(query, cancellationToken);
     }
 
     public async IAsyncEnumerable<HashItem> Query(IEnumerable<string> queries,
