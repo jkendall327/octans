@@ -5,10 +5,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Octans Development Guide
 
 ## Commands
+
+### Validation (run after any change)
+- **Full validation**: `./validate.sh` (Linux/Mac) or `./validate.ps1` (Windows)
+- This runs build + tests and confirms all checks pass with exit code 0
+
+### Individual Commands
 - Build: `dotnet build`
 - Run tests: `dotnet test`
 - Run single test: `dotnet test --filter "FullyQualifiedName=Octans.Tests.YourTestNamespace.YourTestClass.YourTestMethod"`
+- Run tests for a class: `dotnet test --filter "FullyQualifiedName~YourTestClass"`
 - Run client: `dotnet run --project Octans.Client`
+
+### Validation Expectations
+- Build must complete with zero warnings (warnings are errors)
+- All tests must pass
+- No nullable reference warnings (CS8600-CS8625 are errors)
 
 ## Project Architecture
 
@@ -49,3 +61,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use xUnit with FluentAssertions and NSubstitute
 - Name SUT as `_sut` (field) or `sut` (local)
 - Use test helpers instead of mocks for common dependencies
+
+### When to Add Tests
+- New public methods/classes in Octans.Core require unit tests
+- Bug fixes should include a regression test
+- Changes to query parsing require tests in `Octans.Tests/Querying/`
+- Changes to import logic require tests in `Octans.Tests/Importing/`
+- Changes to download logic require tests in `Octans.Tests/Downloads/`
+
+### Test Helpers (use instead of mocking)
+- `MockFileSystem` for filesystem operations
+- `FakeTimeProvider` for time-dependent code
+- `NullLogger<T>.Instance` for logging
+- `DatabaseFixture` for in-memory SQLite
+- `SpyChannelWriter<T>` for channel-based assertions
+
+### Test File Location
+Tests mirror the source structure:
+- `Octans.Core/Importing/Importer.cs` → `Octans.Tests/Importing/ImporterTests.cs`
+- `Octans.Core/Downloads/DownloadService.cs` → `Octans.Tests/Downloads/DownloadServiceTests.cs`
