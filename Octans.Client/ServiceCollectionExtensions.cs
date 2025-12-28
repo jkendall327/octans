@@ -120,6 +120,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<QuerySuggestionFinder>();
         services.AddScoped<TagSplitter>();
         services.AddScoped<TagSiblingService>();
+        services.AddScoped<TagParentService>();
         services.AddScoped<ITagService, TagService>();
 
         // Stats
