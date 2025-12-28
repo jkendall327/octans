@@ -1,28 +1,26 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Client;
-using Octans.Core.Communication;
 using Octans.Core.Importing;
-using Refit;
 
 namespace Octans.Tests.Viewmodels;
 
 public class RawUrlImportViewmodelTests
 {
-    private readonly IOctansApi _api;
+    private readonly IImporter _importer;
     private readonly RawUrlImportViewmodel _sut;
 
     public RawUrlImportViewmodelTests()
     {
-        _api = Substitute.For<IOctansApi>();
+        _importer = Substitute.For<IImporter>();
 
-        var apiResponse = Substitute.For<IApiResponse<ImportResult>>();
+        var importResult = new ImportResult(Guid.NewGuid(), []);
 
-        _api
+        _importer
             .ProcessImport(Arg.Any<ImportRequest>())
-            .Returns(Task.FromResult(apiResponse));
+            .Returns(Task.FromResult(importResult));
 
-        _sut = new(_api, NullLogger<RawUrlImportViewmodel>.Instance);
+        _sut = new(_importer, NullLogger<RawUrlImportViewmodel>.Instance);
     }
 
     [Fact]
@@ -33,7 +31,7 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _api
+        await _importer
             .Received(1)
             .ProcessImport(Arg.Is<ImportRequest>(r =>
                 r.ImportType == ImportType.RawUrl && r.DeleteAfterImport == false && r.AllowReimportDeleted &&
@@ -49,7 +47,7 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _api
+        await _importer
             .DidNotReceive()
             .ProcessImport(Arg.Any<ImportRequest>());
     }

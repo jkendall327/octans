@@ -22,7 +22,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Clean architecture with dependency injection throughout
 - Blazor Server components with viewmodel pattern
 - Background services for import folders, downloads, subscriptions, and thumbnail creation
-- Refit for API client generation (IOctansApi interface)
 - Channel-based queuing for background processing
 - Entity Framework Core with SQLite for data persistence
 

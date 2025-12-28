@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.AspNetCore.Components.Forms;
 using Octans.Core;
-using Octans.Core.Communication;
 using Octans.Core.Importing;
 
 namespace Octans.Client;
@@ -81,7 +80,7 @@ public class LocalFileImportViewmodel(
 }
 
 public class RawUrlImportViewmodel(
-    IOctansApi client,
+    IImporter importer,
     ILogger<RawUrlImportViewmodel> logger) : IRawUrlImportViewmodel
 {
     public string RawInputs { get; set; } = string.Empty;
@@ -129,7 +128,7 @@ public class RawUrlImportViewmodel(
                 AllowReimportDeleted = AllowReimportDeleted
             };
 
-            await client.ProcessImport(request);
+            await importer.ProcessImport(request);
 
             RawInputs = string.Empty;
         }

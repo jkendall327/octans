@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Octans.Core\Octans.Core.csproj"/>
+        <ProjectReference Include="..\Octans.Core\Octans.Core.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -21,10 +21,9 @@
 
     <ItemGroup>
         <PackageReference Include="MudBlazor" />
-        <PackageReference Include="Refit.HttpClientFactory"/>
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore"/>
-        <PackageReference Include="Swashbuckle.AspNetCore"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+        <PackageReference Include="Swashbuckle.AspNetCore" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Toolbelt.Blazor.SplitContainer" />
         <PackageReference Include="Mediator.SourceGenerator">
           <PrivateAssets>all</PrivateAssets>
