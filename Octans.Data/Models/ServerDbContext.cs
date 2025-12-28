@@ -27,6 +27,7 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<HashRating> HashRatings { get; set; }
     public virtual DbSet<ImportJob> ImportJobs { get; set; }
     public virtual DbSet<ImportItem> ImportItems { get; set; }
+    public virtual DbSet<Note> Notes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
