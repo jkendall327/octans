@@ -67,7 +67,7 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         deletedHash.DeletedAt.Should().NotBeNull();
     }
 
-    private async Task<int> AddFileToDatabase(HashedBytes hashed, ServerDbContext db)
+    private static async Task<int> AddFileToDatabase(HashedBytes hashed, ServerDbContext db)
     {
         var hashItem = new HashItem { Hash = hashed.Bytes };
 
@@ -103,7 +103,7 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
 
         var folders = _provider.GetRequiredService<SubfolderManager>();
 

@@ -35,8 +35,7 @@ internal static class Endpoints
                     return success is TagUpdateResult.TagsUpdated ? Results.Ok() : Results.BadRequest();
                 })
             .WithName("UpdateTags")
-            .WithDescription("Add and remove tags for a specific image")
-            .WithOpenApi();
+            .WithDescription("Add and remove tags for a specific image");
     }
 
     private static void MapDownloaderEndpoints(WebApplication app)
@@ -72,15 +71,13 @@ internal static class Endpoints
 
                     return file is null ? Results.NotFound() : Results.Ok(file);
                 })
-            .WithDescription("Get a single file by its ID")
-            .WithOpenApi();
+            .WithDescription("Get a single file by its ID");
 
         app
             .MapPost("/files/query",
                 ([FromBody] IEnumerable<string> queries, [FromServices] QueryService service) => service.Query(queries))
             .WithName("Search by Query")
-            .WithDescription("Retrieve files found by a tag query search")
-            .WithOpenApi();
+            .WithDescription("Retrieve files found by a tag query search");
 
         app
             .MapPost("/files",
@@ -88,8 +85,7 @@ internal static class Endpoints
                     [FromServices] IImporter service,
                     CancellationToken token) => await service.ProcessImport(request, token))
             .WithName("Import")
-            .WithDescription("Processes an import request")
-            .WithOpenApi();
+            .WithDescription("Processes an import request");
 
         app
             .MapPost("/files/deletion",
@@ -99,8 +95,7 @@ internal static class Endpoints
 
                     return new DeleteResponse(results);
                 })
-            .WithDescription("Delete one or more files and their associated data")
-            .WithOpenApi();
+            .WithDescription("Delete one or more files and their associated data");
     }
 
     private static void MapInfrastructureEndpoints(WebApplication app)
@@ -109,8 +104,7 @@ internal static class Endpoints
             .MapPost("/subscriptions",
                 () => { throw new NotImplementedException("Subscription endpoint not yet implemented"); })
             .WithName("SubmitSubscription")
-            .WithDescription("Submits a subscription request for automated queries")
-            .WithOpenApi();
+            .WithDescription("Submits a subscription request for automated queries");
 
         app.MapPost("/clearAllData",
             async ([FromServices] ServerDbContext db) =>
@@ -140,8 +134,7 @@ internal static class Endpoints
         app
             .MapGet("/stats", async ([FromServices] StatsService statsService) => await statsService.GetHomeStats())
             .WithName("GetHomeStats")
-            .WithDescription("Returns statistics for the homepage")
-            .WithOpenApi();
+            .WithDescription("Returns statistics for the homepage");
 
         app
             .MapGet("/version",
@@ -150,8 +143,7 @@ internal static class Endpoints
                     Version = "1.0.0"
                 })
             .WithName("GetVersion")
-            .WithDescription("Returns the current API version")
-            .WithOpenApi();
+            .WithDescription("Returns the current API version");
     }
 
     public static void MapImageEndpoints(this WebApplication app)

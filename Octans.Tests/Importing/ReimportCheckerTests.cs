@@ -51,7 +51,7 @@ public class ReimportCheckerTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

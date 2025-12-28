@@ -34,7 +34,7 @@ public class TagParentServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
     public async Task InitializeAsync()
     {
-        await _fixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

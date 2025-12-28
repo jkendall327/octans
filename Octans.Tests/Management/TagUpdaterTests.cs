@@ -87,7 +87,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
             .Be(TagUpdateResult.HashNotFound);
     }
 
-    private async Task<HashItem> SetupInitialData(ServerDbContext db)
+    private static async Task<HashItem> SetupInitialData(ServerDbContext db)
     {
         var hash = new HashItem { Hash = [1, 2, 3, 4] };
 
@@ -114,7 +114,7 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
 
         var folders = _provider.GetRequiredService<SubfolderManager>();
 

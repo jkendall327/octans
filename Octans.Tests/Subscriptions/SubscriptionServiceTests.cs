@@ -64,11 +64,11 @@ public class SubscriptionServiceTests
         var now = new DateTimeOffset(2023, 10, 1, 12, 0, 0, TimeSpan.Zero);
         _timeProvider.SetUtcNow(now);
 
-        using (var context = await _factory.CreateDbContextAsync())
+        await using (var context = await _factory.CreateDbContextAsync())
         {
             var provider = new Provider { Name = "TestProvider" };
             context.Providers.Add(provider);
-            context.SaveChanges();
+            await context.SaveChangesAsync();
 
             var subscription = new Subscription
             {
@@ -79,7 +79,7 @@ public class SubscriptionServiceTests
                 NextCheck = now.UtcDateTime.AddMinutes(-1) // Should be checked
             };
             context.Subscriptions.Add(subscription);
-            context.SaveChanges();
+            await context.SaveChangesAsync();
         }
 
         _executor.ExecuteAsync(Arg.Any<Subscription>(), Arg.Any<CancellationToken>())

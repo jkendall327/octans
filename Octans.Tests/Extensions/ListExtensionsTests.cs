@@ -5,10 +5,10 @@ namespace Octans.Tests.Extensions;
 
 public class ListExtensionsTests
 {
-    private class PredicateA : IPredicate;
-    private class PredicateB : IPredicate;
-    private class PredicateC : IPredicate;
-    private class PredicateD : IPredicate;
+    private sealed class PredicateA : IPredicate;
+    private sealed class PredicateB : IPredicate;
+    private sealed class PredicateC : IPredicate;
+    private sealed class PredicateD : IPredicate;
 
     [Fact]
     public void Partition_SplitsPredicatesByType()

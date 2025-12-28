@@ -22,7 +22,7 @@ public class DatabaseFixture : IAsyncLifetime
         services.AddDbContextFactory<ServerDbContext>();
     }
 
-    public async Task ResetAsync(IServiceProvider provider)
+    public static async Task ResetAsync(IServiceProvider provider)
     {
         await using var scope = provider.CreateAsyncScope();
 

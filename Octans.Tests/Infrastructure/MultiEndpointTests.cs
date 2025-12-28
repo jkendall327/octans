@@ -97,10 +97,21 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
 
         var result = await _importer.ProcessImport(request);
 
-        result.Should().NotBeNull();
-        result.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
+        result
+            .Should()
+            .NotBeNull();
 
-        _fileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
+        result
+            .Results
+            .Single()
+            .Ok
+            .Should()
+            .BeTrue("this import has no reason to fail");
+
+        _fileSystem
+            .FileExists(expectedFilePath)
+            .Should()
+            .BeTrue("we write the bytes to the hex bucket on import");
     }
 
     private async Task UpdateTags(int hashId, ServerDbContext context)
@@ -115,9 +126,14 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
 
         await _tagUpdater.UpdateTags(updateTagsRequest);
 
-        var tags = await context.Mappings
+        var tags = await context
+            .Mappings
             .Where(m => m.Hash.Id == hashId)
-            .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
+            .Select(m => new
+            {
+                Namespace = m.Tag.Namespace.Value,
+                Subtag = m.Tag.Subtag.Value
+            })
             .ToListAsync();
 
         tags
@@ -133,38 +149,56 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
 
     private async Task DeleteItem(int hashId, string expectedFilepath, ServerDbContext context)
     {
-        var mappings = await context.Mappings
+        var mappings = await context
+            .Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 
         var result = await _fileDeleter.ProcessDeletion([hashId]);
 
-        result.Single().Success.Should().BeTrue();
+        result
+            .Single()
+            .Success
+            .Should()
+            .BeTrue();
 
         // Verify deletion in database
         // We have to reload the item so EF doesn't give us the version in its cache
         // which doesn't reflect the SUT setting the DeletedAt flag.
         var hash = await context.Hashes.FindAsync(hashId);
-        await context.Entry(hash!).ReloadAsync();
 
-        hash.Should().NotBeNull("we soft-delete hashes to prevent them being reimported later");
-        hash!.DeletedAt.Should().NotBeNull("we soft-delete items by setting this value to something non-null");
+        await context
+            .Entry(hash!)
+            .ReloadAsync();
+
+        hash
+            .Should()
+            .NotBeNull("we soft-delete hashes to prevent them being reimported later");
+
+        hash!
+            .DeletedAt
+            .Should()
+            .NotBeNull("we soft-delete items by setting this value to something non-null");
 
         // Verify removal from filesystem
-        _fileSystem.FileExists(expectedFilepath)
+        _fileSystem
+            .FileExists(expectedFilepath)
             .Should()
             .BeFalse("we remove the physical file even for soft-deletes");
 
-        var mappingsAfterDeletion = await context.Mappings
+        var mappingsAfterDeletion = await context
+            .Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 
-        mappingsAfterDeletion.Should().BeEquivalentTo(mappings, "we don't remove mappings for deleted items");
+        mappingsAfterDeletion
+            .Should()
+            .BeEquivalentTo(mappings, "we don't remove mappings for deleted items");
     }
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
 
         var folders = _provider.GetRequiredService<SubfolderManager>();
 
@@ -174,19 +208,5 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
     public Task DisposeAsync()
     {
         return Task.CompletedTask;
-    }
-
-    private sealed class NoOpProgressReporter : IBackgroundProgressReporter
-    {
-        public Task<ProgressHandle> Start(string operation, int totalItems) =>
-            Task.FromResult(new ProgressHandle(Guid.NewGuid(), operation, totalItems));
-
-        public Task Report(Guid id, int processed) => Task.CompletedTask;
-
-        public Task Complete(Guid id) => Task.CompletedTask;
-
-        public Task ReportMessage(string message) => Task.CompletedTask;
-
-        public Task ReportError(string message) => Task.CompletedTask;
     }
 }

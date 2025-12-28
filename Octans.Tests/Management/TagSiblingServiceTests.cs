@@ -80,7 +80,7 @@ public class TagSiblingServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixt
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

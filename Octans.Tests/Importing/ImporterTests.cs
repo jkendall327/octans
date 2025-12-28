@@ -53,20 +53,6 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         _sut = _provider.GetRequiredService<IImporter>();
     }
 
-    private sealed class NoOpProgressReporter : IBackgroundProgressReporter
-    {
-        public Task<ProgressHandle> Start(string operation, int totalItems) =>
-            Task.FromResult(new ProgressHandle(Guid.NewGuid(), operation, totalItems));
-
-        public Task Report(Guid id, int processed) => Task.CompletedTask;
-
-        public Task Complete(Guid id) => Task.CompletedTask;
-
-        public Task ReportMessage(string message) => Task.CompletedTask;
-
-        public Task ReportError(string message) => Task.CompletedTask;
-    }
-
     [Fact]
     public async Task Import_ValidRequest_ReturnsSuccessResult()
     {
@@ -175,16 +161,31 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var result = await _sut.ProcessImport(request);
 
-        result.Should().NotBeNull();
-        result.Results.Single().Ok.Should().BeFalse("we tried to reimport a deleted file when that wasn't allowed");
+        result
+            .Should()
+            .NotBeNull();
+
+        result
+            .Results
+            .Single()
+            .Ok
+            .Should()
+            .BeFalse("we tried to reimport a deleted file when that wasn't allowed");
 
         var dbHash = await db.Hashes.FindAsync(hash.Id);
 
-        dbHash.Should().NotBeNull("hashes for deleted files remain in the DB to prevent reimports");
+        dbHash
+            .Should()
+            .NotBeNull("hashes for deleted files remain in the DB to prevent reimports");
 
-        await db.Entry(dbHash).ReloadAsync();
+        await db
+            .Entry(dbHash)
+            .ReloadAsync();
 
-        dbHash!.DeletedAt.Should().NotBeNull("reimporting wasn't allowed, so it should still be marked as deleted");
+        dbHash!
+            .DeletedAt
+            .Should()
+            .NotBeNull("reimporting wasn't allowed, so it should still be marked as deleted");
     }
 
     [Fact]
@@ -201,24 +202,40 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var result = await _sut.ProcessImport(request);
 
-        result.Should().NotBeNull();
-        result.Results.Single().Ok.Should().BeTrue("reimporting the deleted hash was specifically requested");
+        result
+            .Should()
+            .NotBeNull();
+
+        result
+            .Results
+            .Single()
+            .Ok
+            .Should()
+            .BeTrue("reimporting the deleted hash was specifically requested");
 
         var dbHash = await db.Hashes.FindAsync(hash.Id);
 
-        dbHash.Should().NotBeNull();
+        dbHash
+            .Should()
+            .NotBeNull();
 
         // Make sure we don't use the one in the change tracker, as that won't reflect the changes from the API.
-        await db.Entry(dbHash).ReloadAsync();
+        await db
+            .Entry(dbHash)
+            .ReloadAsync();
 
-        dbHash.DeletedAt.Should().BeNull("reimporting was allowed, so its soft-deletion mark should be gone");
+        dbHash
+            .DeletedAt
+            .Should()
+            .BeNull("reimporting was allowed, so its soft-deletion mark should be gone");
     }
 
-    private async Task<HashItem> SetupDeletedImage(ServerDbContext db)
+    private static async Task<HashItem> SetupDeletedImage(ServerDbContext db)
     {
         var hash = new HashItem
         {
-            Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg).Bytes,
+            Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg)
+                .Bytes,
             DeletedAt = DateTime.UtcNow.AddDays(-1)
         };
 
@@ -286,7 +303,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
     public async Task InitializeAsync()
     {
-        await _databaseFixture.ResetAsync(_provider);
+        await DatabaseFixture.ResetAsync(_provider);
 
         var folders = _provider.GetRequiredService<SubfolderManager>();
 
