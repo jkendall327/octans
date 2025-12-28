@@ -55,7 +55,7 @@ public class DuplicateService(
 
     public async Task<int> FindDuplicates(CancellationToken cancellationToken = default)
     {
-        // Simple O(N^2) comparison for now, can be optimized with BK-tree or similar later.
+        // TODO: Simple O(N^2) comparison for now, can be optimized with BK-tree or similar later.
         // We only compare items that have a PerceptualHash.
 
         var items = await context.Hashes

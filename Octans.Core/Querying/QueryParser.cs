@@ -42,7 +42,8 @@ public class QueryParser
             return new();
         }
 
-        throw new NotImplementedException();
+        // TODO: Implement parsing for other system predicates beyond 'everything'.
+        throw new NotImplementedException("Only 'system:everything' is currently supported.");
     }
 
     private OrPredicate ParseOrPredicate(RawQuery query)
