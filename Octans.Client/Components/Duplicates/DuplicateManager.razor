@@ -1,0 +1,56 @@
+@page "/duplicates"
+@using Octans.Core.Models.Duplicates
+@inject DuplicateManagerViewmodel ViewModel
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Duplicate Management</MudText>
+
+    <MudToolBar>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@ViewModel.TriggerCheck"
+                   Disabled="@ViewModel.IsCalculating">
+            @if (ViewModel.IsCalculating)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Checking...</MudText>
+            }
+            else
+            {
+                <MudText>Check for Duplicates</MudText>
+            }
+        </MudButton>
+        <MudSpacer />
+        <MudText>Found: @ViewModel.Candidates.Count candidates</MudText>
+    </MudToolBar>
+
+    @if (ViewModel.IsLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4"/>
+    }
+    else if (ViewModel.Candidates.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mt-4">No duplicate candidates found.</MudAlert>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-4 mt-4">
+            @foreach (var candidate in ViewModel.Candidates)
+            {
+                <DuplicatePair Candidate="@candidate" OnResolution="@HandleResolution" />
+            }
+        </div>
+    }
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.Initialize();
+    }
+
+    private async Task HandleResolution((int CandidateId, DuplicateResolution Resolution, int? KeepHashId) args)
+    {
+        await ViewModel.Resolve(args.CandidateId, args.Resolution, args.KeepHashId);
+    }
+}

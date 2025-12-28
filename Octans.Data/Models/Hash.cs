@@ -16,5 +16,7 @@ public class HashItem
     public ICollection<HashRating> Ratings { get; } = new List<HashRating>();
     public ICollection<Note> Notes { get; } = new List<Note>();
 
+    public ulong? PerceptualHash { get; set; }
+
     public bool IsDeleted() => DeletedAt is not null;
 }

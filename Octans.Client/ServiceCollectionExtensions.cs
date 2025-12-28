@@ -32,6 +32,8 @@ using Octans.Core.Notes;
 using Octans.Server;
 using Octans.Server.Services;
 using Octans.Client.Components.Settings;
+using Octans.Core.Duplicates;
+using Octans.Client.Components.Duplicates;
 using Octans.Client.Services;
 
 namespace Octans.Client;
@@ -107,6 +109,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
         services.AddScoped<INoteService, NoteService>();
+
+        // Duplicates
+        services.AddScoped<IPerceptualHashProvider, PerceptualHashProvider>();
+        services.AddScoped<DuplicateService>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddBandwidthLimiter();
@@ -195,6 +201,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ProgressStore>();
         services.AddScoped<DownloadersViewmodel>();
         services.AddScoped<DownloadsViewmodel>();
+        services.AddScoped<DuplicateManagerViewmodel>();
 
         return services;
     }

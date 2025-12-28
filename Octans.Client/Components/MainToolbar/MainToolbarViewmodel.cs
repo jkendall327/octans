@@ -57,7 +57,14 @@ public class MainToolbarViewmodel(NavigationManager nav)
             new()
             {
                 Name = "database",
-                Items = []
+                Items =
+                [
+                    new()
+                    {
+                        Name = "duplicates",
+                        Page = Page.Duplicates
+                    }
+                ]
             },
             new()
             {
@@ -95,6 +102,7 @@ public class MainToolbarViewmodel(NavigationManager nav)
             Page.Downloaders => "/downloaders",
             Page.Settings => "/settings",
             Page.Downloads => "/downloads",
+            Page.Duplicates => "/duplicates",
             _ => throw new ArgumentOutOfRangeException(nameof(page), page, null)
         };
 
@@ -112,7 +120,8 @@ public enum Page
     Watchable,
     Settings,
     Downloads,
-    Downloaders
+    Downloaders,
+    Duplicates
 }
 
 public class MenuItem
