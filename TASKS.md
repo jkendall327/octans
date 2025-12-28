@@ -32,7 +32,7 @@ Network.
         - Manage Siblings (Merge tags).
         - Manage Parents (Add/Remove parent-child links).
 
-- [ ] **Subscription UI**
+- [x] **Subscription UI**
     - **Task:** Create a "Subscriptions" page.
         - Add new subscription (Select Downloader, Enter Query/URL, Set Frequency).
         - View status of subscriptions (Last run, new items found).

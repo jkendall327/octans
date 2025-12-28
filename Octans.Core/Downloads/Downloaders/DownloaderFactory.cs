@@ -16,7 +16,7 @@ public class DownloaderFactory(
 
     public string DownloaderDirectory => fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
 
-    public async Task<List<Downloader>> GetDownloaders()
+    public virtual async Task<List<Downloader>> GetDownloaders()
     {
         if (_downloaders.Any())
         {

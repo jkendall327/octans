@@ -205,6 +205,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ProgressStore>();
         services.AddScoped<DownloadersViewmodel>();
         services.AddScoped<DownloadsViewmodel>();
+        services.AddScoped<Octans.Client.Components.Subscriptions.SubscriptionsViewmodel>();
 
         return services;
     }
