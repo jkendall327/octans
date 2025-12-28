@@ -35,7 +35,9 @@
                 <div class="image-grid">
                     @foreach (var url in Viewmodel.ImageUrls)
                     {
-                        <div class="image-card" @ondblclick="@(() => Viewmodel.CurrentImage = url)">
+                        <div class="image-card"
+                             @ondblclick="@(() => Viewmodel.CurrentImage = url)"
+                             @onclick="@(() => SetSelectedImage(url))">
                             <MudMenu ActivationEvent="MouseEvent.RightClick" PositionAtCursor="true">
                                 <ActivatorContent>
                                     <img src="@url"
@@ -128,6 +130,17 @@
     private async Task OnViewmodelOnStateChanged()
     {
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetSelectedImage(string url)
+    {
+        // Extract hex from url: /media/{hex}
+        var hex = url[(url.LastIndexOf('/') + 1)..];
+        Viewmodel.SelectedImageHash = hex;
+        // Trigger state change so sidebar updates
+        await Viewmodel.NotifyStateChanged();
+        // Trigger local state change to highlight selection if implemented (or just to be safe)
+        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()

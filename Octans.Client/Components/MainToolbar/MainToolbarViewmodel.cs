@@ -23,17 +23,17 @@ public class MainToolbarViewmodel(NavigationManager nav)
                     new()
                     {
                         Name = "web urls",
-                        Page = Page.LocalFiles
+                        Page = Page.WebUrls
                     },
                     new()
                     {
                         Name = "gallery",
-                        Page = Page.LocalFiles
+                        Page = Page.Gallery
                     },
                     new()
                     {
                         Name = "watchable",
-                        Page = Page.LocalFiles
+                        Page = Page.Watchable
                     },
                 ]
             },
@@ -95,8 +95,10 @@ public class MainToolbarViewmodel(NavigationManager nav)
     {
         var url = page switch
         {
-            Page.LocalFiles => "/imports",
-            Page.WebUrls => "/imports",
+            Page.LocalFiles => "/imports?tab=files",
+            Page.WebUrls => "/imports?tab=url",
+            Page.Gallery => "/imports?tab=gallery",
+            Page.Watchable => "/imports?tab=watchable",
             Page.Downloaders => "/downloaders",
             Page.Settings => "/settings",
             Page.Downloads => "/downloads",
@@ -114,6 +116,8 @@ public enum Page
 {
     LocalFiles,
     WebUrls,
+    Gallery,
+    Watchable,
     Settings,
     Downloads,
     Downloaders,

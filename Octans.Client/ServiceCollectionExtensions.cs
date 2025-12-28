@@ -28,11 +28,13 @@ using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
+using Octans.Core.Notes;
 using Octans.Server;
 using Octans.Server.Services;
 using Octans.Client.Components.Settings;
 using Octans.Core.Duplicates;
 using Octans.Client.Components.Duplicates;
+using Octans.Client.Services;
 
 namespace Octans.Client;
 
@@ -106,6 +108,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
+        services.AddScoped<INoteService, NoteService>();
 
         // Duplicates
         services.AddScoped<IPerceptualHashProvider, PerceptualHashProvider>();
@@ -190,6 +193,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<QueryBuilderViewmodel>();
+        services.AddScoped<IKeybindingService, KeybindingService>();
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();

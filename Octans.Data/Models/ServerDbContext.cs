@@ -30,6 +30,7 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<ImportItem> ImportItems { get; set; }
     public virtual DbSet<DuplicateCandidate> DuplicateCandidates { get; set; }
     public virtual DbSet<DuplicateDecision> DuplicateDecisions { get; set; }
+    public virtual DbSet<Note> Notes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
