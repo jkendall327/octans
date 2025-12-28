@@ -28,6 +28,7 @@ using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
+using Octans.Core.Notes;
 using Octans.Server;
 using Octans.Server.Services;
 using Octans.Client.Components.Settings;
@@ -104,6 +105,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
+        services.AddScoped<INoteService, NoteService>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddBandwidthLimiter();
