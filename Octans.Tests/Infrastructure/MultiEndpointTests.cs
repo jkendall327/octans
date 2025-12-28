@@ -1,21 +1,67 @@
+using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
+using System.Threading.Channels;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Octans.Client;
 using Octans.Core;
 using Octans.Core.Importing;
+using Octans.Core.Models;
+using Octans.Core.Progress;
+using Octans.Core.Tags;
+using Octans.Server;
+using Octans.Server.Services;
 using Xunit.Abstractions;
 
 namespace Octans.Tests;
 
-public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factory, ITestOutputHelper helper) : EndpointTest(factory, helper)
+public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    // Disabled for now because XUnit's TestOutputHelper is broken and I can't be bothered fixing it.
+    private const string AppRoot = "/app";
+    private readonly DatabaseFixture _databaseFixture;
+    private readonly IServiceProvider _provider;
+    private readonly MockFileSystem _fileSystem = new();
+    private readonly IImporter _importer;
+    private readonly TagUpdater _tagUpdater;
+    private readonly FileDeleter _fileDeleter;
+    private readonly SpyChannelWriter<ThumbnailCreationRequest> _spy = new();
+
+    public MultiEndpointIntegrationTests(ITestOutputHelper helper, DatabaseFixture databaseFixture)
+    {
+        _databaseFixture = databaseFixture;
+        var services = new ServiceCollection();
+
+        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(helper)));
+
+        services.AddBusinessServices();
+
+        // Register services not covered by AddBusinessServices or needing mocks
+        services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
+        services.AddSingleton<IFileSystem>(_fileSystem);
+        services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);
+        services.AddHttpClient();
+
+        services.Configure<GlobalSettings>(s => s.AppRoot = AppRoot);
+
+        // Register Database
+        databaseFixture.RegisterDbContext(services);
+
+        _provider = services.BuildServiceProvider();
+
+        _importer = _provider.GetRequiredService<IImporter>();
+        _tagUpdater = _provider.GetRequiredService<TagUpdater>();
+        _fileDeleter = _provider.GetRequiredService<FileDeleter>();
+    }
+
+    [Fact]
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {
         var imagePath = "C:/test_image.jpg";
-        FileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
+        _fileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
-        var expectedFilePath = FileSystem.Path.Join(AppRoot,
+        var expectedFilePath = _fileSystem.Path.Join(AppRoot,
             "db",
             "files",
             "f61",
@@ -23,12 +69,15 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
 
         await ImportFile(imagePath, expectedFilePath);
 
-        var hashItem = await Context.Hashes.SingleAsync();
+        await using var scope = _provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+        var hashItem = await context.Hashes.SingleAsync();
         var hashId = hashItem.Id;
 
-        await UpdateTags(hashId);
+        await UpdateTags(hashId, context);
 
-        await DeleteItem(hashId, expectedFilePath);
+        await DeleteItem(hashId, expectedFilePath, context);
     }
 
     private async Task ImportFile(string imagePath, string expectedFilePath)
@@ -46,15 +95,15 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
             DeleteAfterImport = false
         };
 
-        var result = await Api.ProcessImport(request);
+        var result = await _importer.ProcessImport(request);
 
-        result.Content.Should().NotBeNull();
-        result.Content!.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
+        result.Should().NotBeNull();
+        result.Results.Single().Ok.Should().BeTrue("this import has no reason to fail");
 
-        FileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
+        _fileSystem.FileExists(expectedFilePath).Should().BeTrue("we write the bytes to the hex bucket on import");
     }
 
-    private async Task UpdateTags(int hashId)
+    private async Task UpdateTags(int hashId, ServerDbContext context)
     {
         var updateTagsRequest = new UpdateTagsRequest(hashId,
             [
@@ -64,9 +113,9 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
                 new("category", "test")
             ]);
 
-        await Api.UpdateTags(updateTagsRequest);
+        await _tagUpdater.UpdateTags(updateTagsRequest);
 
-        var tags = await Context.Mappings
+        var tags = await context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .Select(m => new { Namespace = m.Tag.Namespace.Value, Subtag = m.Tag.Subtag.Value })
             .ToListAsync();
@@ -82,35 +131,62 @@ public class MultiEndpointIntegrationTests(WebApplicationFactory<Program> factor
                 "we should have removed this tag/mapping");
     }
 
-    private async Task DeleteItem(int hashId, string expectedFilepath)
+    private async Task DeleteItem(int hashId, string expectedFilepath, ServerDbContext context)
     {
-        var mappings = await Context.Mappings
+        var mappings = await context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 
-        var result = await Api.DeleteFiles(new([hashId]));
+        var result = await _fileDeleter.ProcessDeletion([hashId]);
 
-        result.Content.Should().NotBeNull();
-        result.Content!.Results.Single().Success.Should().BeTrue();
+        result.Single().Success.Should().BeTrue();
 
         // Verify deletion in database
         // We have to reload the item so EF doesn't give us the version in its cache
         // which doesn't reflect the SUT setting the DeletedAt flag.
-        var hash = await Context.Hashes.FindAsync(hashId);
-        await Context.Entry(hash!).ReloadAsync();
+        var hash = await context.Hashes.FindAsync(hashId);
+        await context.Entry(hash!).ReloadAsync();
 
         hash.Should().NotBeNull("we soft-delete hashes to prevent them being reimported later");
         hash!.DeletedAt.Should().NotBeNull("we soft-delete items by setting this value to something non-null");
 
         // Verify removal from filesystem
-        FileSystem.FileExists(expectedFilepath)
+        _fileSystem.FileExists(expectedFilepath)
             .Should()
             .BeFalse("we remove the physical file even for soft-deletes");
 
-        var mappingsAfterDeletion = await Context.Mappings
+        var mappingsAfterDeletion = await context.Mappings
             .Where(m => m.Hash.Id == hashId)
             .ToListAsync();
 
         mappingsAfterDeletion.Should().BeEquivalentTo(mappings, "we don't remove mappings for deleted items");
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _databaseFixture.ResetAsync(_provider);
+
+        var folders = _provider.GetRequiredService<SubfolderManager>();
+
+        folders.MakeSubfolders();
+    }
+
+    public Task DisposeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    private sealed class NoOpProgressReporter : IBackgroundProgressReporter
+    {
+        public Task<ProgressHandle> Start(string operation, int totalItems) =>
+            Task.FromResult(new ProgressHandle(Guid.NewGuid(), operation, totalItems));
+
+        public Task Report(Guid id, int processed) => Task.CompletedTask;
+
+        public Task Complete(Guid id) => Task.CompletedTask;
+
+        public Task ReportMessage(string message) => Task.CompletedTask;
+
+        public Task ReportError(string message) => Task.CompletedTask;
     }
 }
