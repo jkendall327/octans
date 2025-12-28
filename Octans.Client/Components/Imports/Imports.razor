@@ -1,10 +1,11 @@
 @page "/imports"
+@inject NavigationManager NavigationManager
 
 <div class="imports-container">
     <h3>Import Content</h3>
 
     <div class="import-tabs">
-        <MudTabs>
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex">
             <MudTabPanel Text="Files">
                 <div class="upload-section">
                     <LocalFileImport/>
@@ -27,3 +28,24 @@
         </MudTabs>
     </div>
 </div>
+
+@code {
+    private int _activeTabIndex;
+
+    [SupplyParameterFromQuery]
+    public string? Tab { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Tab is null) return;
+
+        _activeTabIndex = Tab switch
+        {
+            "files" => 0,
+            "url" => 1,
+            "gallery" => 3,
+            "watchable" => 4,
+            _ => 0
+        };
+    }
+}
