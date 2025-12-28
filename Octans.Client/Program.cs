@@ -29,7 +29,6 @@ builder.AddKeyProtection();
 
 builder.Services.AddMudServices();
 builder.Services.AddInfrastructure();
-builder.Services.AddHttpClients();
 builder.Services.AddOctansServices();
 builder.Services.AddViewmodels();
 builder.Services.AddBusinessServices();

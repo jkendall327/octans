@@ -30,7 +30,6 @@ using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
 using Octans.Server;
 using Octans.Server.Services;
-using Refit;
 using Octans.Client.Components.Settings;
 
 namespace Octans.Client;
@@ -173,19 +172,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISettingsService, SettingsService>();
 
         services.AddMediator();
-
-        return services;
-    }
-
-    public static IServiceCollection AddHttpClients(this IServiceCollection services)
-    {
-        services
-            .AddRefitClient<IOctansApi>()
-            .ConfigureHttpClient(client =>
-            {
-                var port = CommunicationConstants.OctansServerPort;
-                client.BaseAddress = new($"http://localhost:{port}/");
-            });
 
         return services;
     }
