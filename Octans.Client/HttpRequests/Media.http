@@ -1,0 +1,3 @@
+### Get Media by Hash
+GET {{host}}/media/1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF
+Accept: application/octet-stream
