@@ -1,9 +1,17 @@
+@using MudBlazor
 @inject StatusBarViewmodel Viewmodel
+@inject StatusService Service
+@implements IDisposable
 
 <div class="status-bar">
     <p class="left">@Viewmodel.MediaInfo</p>
 
     <div class="right">
+        @if (Viewmodel.IsSearching)
+        {
+             <MudProgressCircular Color="Color.Primary" Value="@Viewmodel.ProgressPercent" Size="Size.Small">
+             </MudProgressCircular>
+        }
         <p>@Viewmodel.GenericText</p>
         <p>@Viewmodel.WorkingText</p>
     </div>
@@ -17,6 +25,7 @@
         padding: 0.5em;
         border: 1px solid black;
         height: 1.5rem;
+        align-items: center;
     }
 
     .left {
@@ -26,5 +35,18 @@
     .right {
         display: flex;
         gap: 1em;
+        align-items: center;
     }
 </style>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Service.StateChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Service.StateChanged -= StateHasChanged;
+    }
+}
