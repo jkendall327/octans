@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
+using Octans.Core.Tags;
 
 namespace Octans.Tests;
 
@@ -12,6 +13,7 @@ public class HashSearcherTests : IAsyncLifetime
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private ServerDbContext _db = null!;
     private HashSearcher _sut = null!;
+    private TagParentService _tagParentService = null!;
 
     public async Task InitializeAsync()
     {
@@ -25,7 +27,8 @@ public class HashSearcherTests : IAsyncLifetime
 
         await _db.Database.EnsureCreatedAsync();
 
-        _sut = new(_db);
+        _tagParentService = new TagParentService(_db);
+        _sut = new(_db, _tagParentService);
     }
 
     public async Task DisposeAsync()
