@@ -25,7 +25,6 @@ public class MainToolbarViewmodelTests
     [InlineData(Page.Downloaders, "/downloaders")]
     [InlineData(Page.Settings, "/settings")]
     [InlineData(Page.Downloads, "/downloads")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "URL strings are sufficient for this test.")]
     public async Task Navigate_ShouldNavigateToCorrectUrl(Page page, string expectedUrl)
     {
         // Act
@@ -35,7 +34,6 @@ public class MainToolbarViewmodelTests
         _navigationManager.Uri.Should().EndWith(expectedUrl);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1054:Uri parameters should not be strings", Justification = "URL strings are sufficient for this test.")]
     private sealed class FakeNavigationManager : NavigationManager
     {
         public FakeNavigationManager()
