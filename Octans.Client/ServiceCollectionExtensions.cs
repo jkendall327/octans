@@ -32,6 +32,7 @@ using Octans.Core.Notes;
 using Octans.Server;
 using Octans.Server.Services;
 using Octans.Client.Components.Settings;
+using Octans.Client.Services;
 
 namespace Octans.Client;
 
@@ -186,6 +187,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<QueryBuilderViewmodel>();
+        services.AddScoped<IKeybindingService, KeybindingService>();
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();
