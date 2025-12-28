@@ -1,0 +1,7 @@
+### Get All Downloaders
+GET {{host}}/downloaders
+Accept: application/json
+
+### Get Downloader by Name
+GET {{host}}/downloaders/Danbooru
+Accept: application/json

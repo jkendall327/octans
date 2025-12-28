@@ -1,0 +1,55 @@
+### Get All Files
+GET {{host}}/files
+Accept: application/json
+
+### Get File by ID
+GET {{host}}/files/1
+Accept: application/json
+
+### Search by Query
+POST {{host}}/files/query
+Content-Type: application/json
+Accept: application/json
+
+[
+  "character:mario",
+  "series:super mario bros"
+]
+
+### Import Files
+POST {{host}}/files
+Content-Type: application/json
+Accept: application/json
+
+{
+  "importType": 1,
+  "items": [
+    {
+      "url": "https://example.com/image.jpg",
+      "tags": [
+        {
+          "namespace": "example",
+          "subtag": "test"
+        }
+      ]
+    }
+  ],
+  "deleteAfterImport": false,
+  "allowReimportDeleted": false,
+  "filterData": {
+    "minFileSize": 1024
+  }
+}
+
+### Delete Files
+POST {{host}}/files/deletion
+Content-Type: application/json
+Accept: application/json
+
+{
+  "ids": [
+    1,
+    2,
+    3
+  ]
+}
