@@ -14,13 +14,19 @@ Network.
 - [ ] **Duplicate Detection & Management**
     - The backend (`IPerceptualHashProvider`, `ReimportChecker`) exists but needs a proper management UI.
     - **Task:** Create a service to find potential duplicates using PHash distance.
+    - **Task:** Finalize duplicate resolution logic in `DuplicateService` (handling Keep A vs Keep B vs Merge vs Delete).
     - **Task:** Create a UI to present duplicate candidates side-by-side for user resolution (Keep A, Keep B, Merge,
       Ignore).
 
 - [ ] **Subscription System**
     - `SubscriptionService` and background workers exist.
     - **Task:** Implement `Subscription` entity management (CRUD).
+    - **Task:** Implement `POST /subscriptions` endpoint (currently throws `NotImplementedException`).
     - **Task:** Implement the actual logic to fetch data from different downloaders (Galleries/Queries) periodically.
+
+- [ ] **Search & Querying**
+    - **Task:** Implement search limits/pagination in `HashSearcher` (currently skipped test in `HashSearcherTests`).
+    - **Task:** Implement parsing for other `system:` predicates in `QueryParser` (e.g. `system:inbox`, `system:archive`, etc.). Only `system:everything` is currently supported.
 
 ## 2. User Interface (Client)
 
@@ -46,6 +52,9 @@ Network.
     - Hydrus allows rich notes and metadata editing.
     - **Task:** Add a "Details" pane in the Gallery view to show all metadata, file info, and allow adding text notes.
 
+- [ ] **Gallery UI**
+    - **Task:** Implement a status bar in the layout to show background operations (e.g. import progress).
+
 ## 3. Extensibility
 
 - [ ] **Lua Downloader UI**
@@ -58,6 +67,11 @@ Network.
 - [ ] **Database Optimization**
     - Ensure indexes exist on foreign keys in `TagParents`, `TagSiblings`.
     - Monitor search performance with large tag sets.
+    - **Task:** Optimize `DuplicateService` comparison algorithm (currently O(N^2)). Use BK-tree or similar.
+
+- [ ] **Code Refactoring**
+    - **Task:** Review `TagSibling` and `TagParent` 'Status' property necessity (Hydrus legacy).
+    - **Task:** Convert DTO types in `ImportModels.cs` to `record`s.
 
 ## 5. Testing
 
