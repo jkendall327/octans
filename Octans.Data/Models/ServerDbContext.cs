@@ -4,6 +4,7 @@ using Octans.Core.Models.Tagging;
 using Octans.Core.Repositories;
 using Octans.Core.Models.Ratings;
 using Octans.Core.Importing.Jobs;
+using Octans.Core.Models.Duplicates;
 
 namespace Octans.Core.Models;
 
@@ -27,10 +28,37 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<HashRating> HashRatings { get; set; }
     public virtual DbSet<ImportJob> ImportJobs { get; set; }
     public virtual DbSet<ImportItem> ImportItems { get; set; }
+    public virtual DbSet<DuplicateCandidate> DuplicateCandidates { get; set; }
+    public virtual DbSet<DuplicateDecision> DuplicateDecisions { get; set; }
+    public virtual DbSet<Note> Notes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<DuplicateCandidate>()
+            .HasOne(c => c.Hash1)
+            .WithMany()
+            .HasForeignKey(c => c.HashId1)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DuplicateCandidate>()
+            .HasOne(c => c.Hash2)
+            .WithMany()
+            .HasForeignKey(c => c.HashId2)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DuplicateDecision>()
+            .HasOne(d => d.Hash1)
+            .WithMany()
+            .HasForeignKey(d => d.HashId1)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DuplicateDecision>()
+            .HasOne(d => d.Hash2)
+            .WithMany()
+            .HasForeignKey(d => d.HashId2)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<HashRating>()
             .HasOne(r => r.Hash)

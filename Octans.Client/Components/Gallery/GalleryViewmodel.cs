@@ -36,6 +36,7 @@ public sealed class GalleryViewmodel(
     public string? LastError { get; private set; }
     public Func<Task>? StateChanged { get; set; }
     public string? CurrentImage { get; set; }
+    public string? SelectedImageHash { get; set; }
     public bool FilterMode { get; set; }
     public List<QueryParameter> CurrentQuery { get; private set; } = [];
 
@@ -229,7 +230,7 @@ public sealed class GalleryViewmodel(
         _cts = new();
     }
 
-    private async Task NotifyStateChanged()
+    public async Task NotifyStateChanged()
     {
         if (StateChanged is not null)
         {

@@ -28,10 +28,13 @@ using Octans.Core.Scripting;
 using Octans.Core.Tags;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
+using Octans.Core.Notes;
 using Octans.Server;
 using Octans.Server.Services;
-using Refit;
 using Octans.Client.Components.Settings;
+using Octans.Core.Duplicates;
+using Octans.Client.Components.Duplicates;
+using Octans.Client.Services;
 
 namespace Octans.Client;
 
@@ -105,6 +108,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
+        services.AddScoped<INoteService, NoteService>();
+
+        // Duplicates
+        services.AddScoped<IPerceptualHashProvider, PerceptualHashProvider>();
+        services.AddScoped<DuplicateService>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddBandwidthLimiter();
@@ -177,19 +185,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddHttpClients(this IServiceCollection services)
-    {
-        services
-            .AddRefitClient<IOctansApi>()
-            .ConfigureHttpClient(client =>
-            {
-                var port = CommunicationConstants.OctansServerPort;
-                client.BaseAddress = new($"http://localhost:{port}/");
-            });
-
-        return services;
-    }
-
     public static IServiceCollection AddViewmodels(this IServiceCollection services)
     {
         // Imports
@@ -198,6 +193,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GalleryViewmodel>();
         services.AddScoped<QueryBuilderViewmodel>();
+        services.AddScoped<IKeybindingService, KeybindingService>();
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();
@@ -206,6 +202,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DownloadersViewmodel>();
         services.AddScoped<DownloadsViewmodel>();
         services.AddScoped<Octans.Client.Components.Subscriptions.SubscriptionsViewmodel>();
+        services.AddScoped<DuplicateManagerViewmodel>();
 
         return services;
     }

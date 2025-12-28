@@ -21,14 +21,14 @@
                         CanCancel="@Viewmodel.Searching"/>
                 </section>
                 <section class="selection-tags">
-                    <TagViewer Tags="@(new List<TagViewer.Tag>())"/>
+
                 </section>
             </div>
         </FirstPane>
 
         <SecondPane>
-            <section class="selected-image">
-                <img src="images/octans-logo.svg" alt="Selected image"/>
+            <section class="details-pane-container">
+                <DetailsPane SelectedHash="@Viewmodel.SelectedImageHash" />
             </section>
         </SecondPane>
     </SplitContainer>
@@ -54,8 +54,8 @@
         min-height: 0; /* prevents overflow issues in nested flex items */
     }
 
-    .selected-image img {
-        width: 100%;
-        height: auto;
+    .details-pane-container {
+        height: 100%;
+        overflow: hidden;
     }
 </style>

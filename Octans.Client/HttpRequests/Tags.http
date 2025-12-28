@@ -1,0 +1,24 @@
+### Update Tags
+POST {{host}}/tags
+Content-Type: application/json
+Accept: application/json
+
+{
+  "hashId": 123,
+  "tagsToAdd": [
+    {
+      "namespace": "character",
+      "subtag": "mario"
+    },
+    {
+      "namespace": "",
+      "subtag": "hero"
+    }
+  ],
+  "tagsToRemove": [
+    {
+      "namespace": "series",
+      "subtag": "unknown"
+    }
+  ]
+}

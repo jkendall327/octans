@@ -15,7 +15,7 @@ namespace Octans.Server.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
 
             modelBuilder.Entity("Octans.Core.Downloaders.DownloadStatus", b =>
                 {
@@ -147,6 +147,60 @@ namespace Octans.Server.Migrations
                     b.ToTable("ImportJobs");
                 });
 
+            modelBuilder.Entity("Octans.Core.Models.Duplicates.DuplicateCandidate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("Distance")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("HashId1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HashId2")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HashId1");
+
+                    b.HasIndex("HashId2");
+
+                    b.ToTable("DuplicateCandidates");
+                });
+
+            modelBuilder.Entity("Octans.Core.Models.Duplicates.DuplicateDecision", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DecidedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HashId1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HashId2")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Resolution")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HashId1");
+
+                    b.HasIndex("HashId2");
+
+                    b.ToTable("DuplicateDecisions");
+                });
+
             modelBuilder.Entity("Octans.Core.Models.FileRecord", b =>
                 {
                     b.Property<int>("Id")
@@ -175,6 +229,9 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("BLOB");
 
+                    b.Property<ulong?>("PerceptualHash")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("RepositoryId")
                         .HasColumnType("INTEGER");
 
@@ -183,6 +240,32 @@ namespace Octans.Server.Migrations
                     b.HasIndex("RepositoryId");
 
                     b.ToTable("Hashes");
+                });
+
+            modelBuilder.Entity("Octans.Core.Models.Note", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HashItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HashItemId");
+
+                    b.ToTable("Notes");
                 });
 
             modelBuilder.Entity("Octans.Core.Models.Provider", b =>
@@ -478,6 +561,44 @@ namespace Octans.Server.Migrations
                     b.Navigation("ImportJob");
                 });
 
+            modelBuilder.Entity("Octans.Core.Models.Duplicates.DuplicateCandidate", b =>
+                {
+                    b.HasOne("Octans.Core.Models.HashItem", "Hash1")
+                        .WithMany()
+                        .HasForeignKey("HashId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Octans.Core.Models.HashItem", "Hash2")
+                        .WithMany()
+                        .HasForeignKey("HashId2")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hash1");
+
+                    b.Navigation("Hash2");
+                });
+
+            modelBuilder.Entity("Octans.Core.Models.Duplicates.DuplicateDecision", b =>
+                {
+                    b.HasOne("Octans.Core.Models.HashItem", "Hash1")
+                        .WithMany()
+                        .HasForeignKey("HashId1")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Octans.Core.Models.HashItem", "Hash2")
+                        .WithMany()
+                        .HasForeignKey("HashId2")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hash1");
+
+                    b.Navigation("Hash2");
+                });
+
             modelBuilder.Entity("Octans.Core.Models.HashItem", b =>
                 {
                     b.HasOne("Octans.Core.Models.Repository", "Repository")
@@ -487,6 +608,17 @@ namespace Octans.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Repository");
+                });
+
+            modelBuilder.Entity("Octans.Core.Models.Note", b =>
+                {
+                    b.HasOne("Octans.Core.Models.HashItem", "HashItem")
+                        .WithMany("Notes")
+                        .HasForeignKey("HashItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HashItem");
                 });
 
             modelBuilder.Entity("Octans.Core.Models.Ratings.HashRating", b =>
@@ -613,6 +745,8 @@ namespace Octans.Server.Migrations
 
             modelBuilder.Entity("Octans.Core.Models.HashItem", b =>
                 {
+                    b.Navigation("Notes");
+
                     b.Navigation("Ratings");
                 });
 

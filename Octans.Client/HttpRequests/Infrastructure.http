@@ -1,0 +1,19 @@
+### Submit Subscription (Not Implemented)
+POST {{host}}/subscriptions
+Content-Type: application/json
+
+### Clear All Data
+POST {{host}}/clearAllData
+Accept: application/json
+
+### Health Check
+GET {{host}}/health
+Accept: text/plain
+
+### Get Home Stats
+GET {{host}}/stats
+Accept: application/json
+
+### Get Version
+GET {{host}}/version
+Accept: application/json

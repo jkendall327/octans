@@ -6,19 +6,18 @@
 
     <ItemGroup>
         <PackageReference Include="Mediator.Abstractions" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
-        <PackageReference Include="Microsoft.Extensions.Http"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
-        <PackageReference Include="NLua"/>
-        <PackageReference Include="SixLabors.ImageSharp"/>
+        <PackageReference Include="Microsoft.Extensions.Http" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="NLua" />
+        <PackageReference Include="SixLabors.ImageSharp" />
         <PackageReference Include="CoenM.ImageSharp.ImageHash" />
-        <PackageReference Include="System.IO.Abstractions"/>
-        <PackageReference Include="MimeDetective.InMemory.Ext"/>
-        <PackageReference Include="Refit"/>
+        <PackageReference Include="System.IO.Abstractions" />
+        <PackageReference Include="MimeDetective.InMemory.Ext" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Octans.Data\Octans.Data.csproj"/>
+        <ProjectReference Include="..\Octans.Data\Octans.Data.csproj" />
     </ItemGroup>
 </Project>
