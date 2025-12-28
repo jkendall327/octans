@@ -1,0 +1,214 @@
+@using Octans.Client.Services
+@using Octans.Client.Settings
+@inject IKeybindingService KeybindingService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="4">
+                <MudText Typo="Typo.h6">Sets</MudText>
+                <MudList T="KeybindingSet" SelectedValue="_selectedSet" SelectionMode="SelectionMode.SingleSelection" SelectedValueChanged="OnSetSelected">
+                    @foreach (var set in _sets)
+                    {
+                        <MudListItem Value="set">
+                             <div class="d-flex justify-space-between align-center">
+                                 <MudText>@set.Name @(set.Id == _activeSetId ? "(Active)" : "")</MudText>
+                             </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                <MudButton OnClick="CreateSet" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2">New Set</MudButton>
+            </MudItem>
+            <MudItem xs="8">
+                @if (_selectedSet != null)
+                {
+                    <MudText Typo="Typo.h6">Edit: @_selectedSet.Name</MudText>
+                    <div class="d-flex gap-2 mb-4">
+                        <MudButton OnClick="ActivateSelectedSet" Disabled="@(_selectedSet.Id == _activeSetId)" Variant="Variant.Filled" Color="Color.Secondary">Activate</MudButton>
+                        <MudButton OnClick="DeleteSelectedSet" Color="Color.Error" Variant="Variant.Outlined">Delete Set</MudButton>
+                        <MudTextField @bind-Value="_selectedSet.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" DebounceInterval="500" OnDebounceIntervalElapsed="SaveSelectedSet" />
+                    </div>
+
+                    <MudTable Items="_selectedSet.Keybindings" Dense="true" Hover="true">
+                        <HeaderContent>
+                            <MudTh>Key</MudTh>
+                            <MudTh>Modifiers</MudTh>
+                            <MudTh>Action</MudTh>
+                            <MudTh>Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Key">@context.Key</MudTd>
+                            <MudTd DataLabel="Modifiers">@GetModifiersString(context)</MudTd>
+                            <MudTd DataLabel="Action">@context.ActionId</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveKeybinding(context))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                        <MudText Typo="Typo.subtitle1">Add Keybinding</MudText>
+                        <div class="d-flex gap-2 align-end">
+                            <MudTextField @bind-Value="_newKey" Label="Key (e.g. A, ArrowLeft)" />
+                            <MudCheckBox @bind-Value="_newCtrl" Label="Ctrl" />
+                            <MudCheckBox @bind-Value="_newShift" Label="Shift" />
+                            <MudCheckBox @bind-Value="_newAlt" Label="Alt" />
+                            <MudSelect @bind-Value="_newAction" Label="Action">
+                                <MudSelectItem Value="@KeybindingActions.Next">Next</MudSelectItem>
+                                <MudSelectItem Value="@KeybindingActions.Previous">Previous</MudSelectItem>
+                                <MudSelectItem Value="@KeybindingActions.Archive">Archive</MudSelectItem>
+                                <MudSelectItem Value="@KeybindingActions.Delete">Delete</MudSelectItem>
+                                <MudSelectItem Value="@KeybindingActions.Inbox">Inbox</MudSelectItem>
+                                <MudSelectItem Value="@KeybindingActions.Close">Close</MudSelectItem>
+                            </MudSelect>
+                            <MudButton OnClick="AddKeybinding" Variant="Variant.Filled" Color="Color.Primary">Add</MudButton>
+                        </div>
+                    </MudPaper>
+                }
+                else
+                {
+                    <MudText>Select a set to edit.</MudText>
+                }
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
+
+    private List<KeybindingSet> _sets = new();
+    private KeybindingSet? _selectedSet;
+    private Guid? _activeSetId;
+
+    // New keybinding inputs
+    private string _newKey = "";
+    private bool _newCtrl;
+    private bool _newShift;
+    private bool _newAlt;
+    private string _newAction = KeybindingActions.Next;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await KeybindingService.InitializeAsync();
+        RefreshState();
+    }
+
+    private void RefreshState()
+    {
+        _sets = KeybindingService.GetSets().ToList();
+        var active = KeybindingService.GetActiveSet();
+        _activeSetId = active?.Id;
+        StateHasChanged();
+    }
+
+    private void OnSetSelected(KeybindingSet set)
+    {
+        _selectedSet = set;
+    }
+
+    private async Task CreateSet()
+    {
+        var newSet = new KeybindingSet { Name = "New Set" };
+        await KeybindingService.AddSetAsync(newSet);
+        RefreshState();
+        _selectedSet = newSet;
+    }
+
+    private async Task ActivateSelectedSet()
+    {
+        if (_selectedSet != null)
+        {
+            await KeybindingService.SetActiveSetAsync(_selectedSet.Id);
+            RefreshState();
+            Snackbar.Add($"Activated set: {_selectedSet.Name}", Severity.Success);
+        }
+    }
+
+    private async Task DeleteSelectedSet()
+    {
+        if (_selectedSet != null)
+        {
+            if (_sets.Count <= 1)
+            {
+                Snackbar.Add("Cannot delete the last set.", Severity.Warning);
+                return;
+            }
+
+            await KeybindingService.DeleteSetAsync(_selectedSet.Id);
+            _selectedSet = null;
+            RefreshState();
+        }
+    }
+
+    private async Task SaveSelectedSet()
+    {
+        if (_selectedSet != null)
+        {
+            await KeybindingService.UpdateSetAsync(_selectedSet);
+        }
+    }
+
+    private async Task AddKeybinding()
+    {
+        if (_selectedSet == null) return;
+        if (string.IsNullOrWhiteSpace(_newKey))
+        {
+            Snackbar.Add("Key is required.", Severity.Error);
+            return;
+        }
+
+        // Check for duplicates
+        if (_selectedSet.Keybindings.Any(k =>
+            string.Equals(k.Key, _newKey, StringComparison.OrdinalIgnoreCase) &&
+            k.Ctrl == _newCtrl &&
+            k.Shift == _newShift &&
+            k.Alt == _newAlt))
+        {
+            Snackbar.Add("Keybinding already exists in this set.", Severity.Error);
+            return;
+        }
+
+        _selectedSet.Keybindings.Add(new Keybinding
+        {
+            Key = _newKey,
+            Ctrl = _newCtrl,
+            Shift = _newShift,
+            Alt = _newAlt,
+            ActionId = _newAction
+        });
+
+        await KeybindingService.UpdateSetAsync(_selectedSet);
+        StateHasChanged();
+
+        // Reset inputs
+        _newKey = "";
+        _newCtrl = false;
+        _newShift = false;
+        _newAlt = false;
+    }
+
+    private async Task RemoveKeybinding(Keybinding binding)
+    {
+        if (_selectedSet != null)
+        {
+            _selectedSet.Keybindings.Remove(binding);
+            await KeybindingService.UpdateSetAsync(_selectedSet);
+        }
+    }
+
+    private string GetModifiersString(Keybinding k)
+    {
+        var mods = new List<string>();
+        if (k.Ctrl) mods.Add("Ctrl");
+        if (k.Shift) mods.Add("Shift");
+        if (k.Alt) mods.Add("Alt");
+        return string.Join(" + ", mods);
+    }
+
+    private void Close() => MudDialog?.Close(DialogResult.Ok(true));
+}

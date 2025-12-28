@@ -29,6 +29,9 @@ public class SettingsService(
 
     public Task<SettingsModel> LoadAsync()
     {
+        var keybindingSets = new List<KeybindingSet>();
+        configuration.GetSection("UserSettings:KeybindingSets").Bind(keybindingSets);
+
         var model = new SettingsModel
         {
             Theme = configuration.GetValue<string>("UserSettings:Theme") ?? "light",
@@ -36,8 +39,11 @@ public class SettingsService(
             LogLevel = configuration.GetValue<string>("Logging:LogLevel:Default") ?? "Information",
             AspNetCoreLogLevel = configuration.GetValue<string>("Logging:LogLevel:Microsoft.AspNetCore") ?? "Warning",
             ImportSource = configuration.GetValue<string>("UserSettings:ImportSource") ?? string.Empty,
-            TagColor = configuration.GetValue<string>("UserSettings:TagColor") ?? "#000000"
+            TagColor = configuration.GetValue<string>("UserSettings:TagColor") ?? "#000000",
+            ActiveKeybindingSetId = configuration.GetValue<Guid?>("UserSettings:ActiveKeybindingSetId")
         };
+
+        model.KeybindingSets.AddRange(keybindingSets);
 
         return Task.FromResult(model);
     }
@@ -50,7 +56,9 @@ public class SettingsService(
             {
                 model.Theme,
                 model.ImportSource,
-                model.TagColor
+                model.TagColor,
+                model.KeybindingSets,
+                model.ActiveKeybindingSetId
             },
             GlobalSettings = new
             {

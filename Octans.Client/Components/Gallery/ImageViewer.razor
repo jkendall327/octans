@@ -1,6 +1,10 @@
 @inject ShellService ShellService
 @inject IDialogService DialogService
 @inject ITagService TagService
+@inject IKeybindingService KeybindingService
+@using Octans.Client.Services
+@using Octans.Client.Settings
+@using Octans.Client.Components.Settings
 @using Octans.Core
 @using Octans.Core.Tags
 @implements IDisposable
@@ -26,6 +30,9 @@
             Color="Color.Default">
             Previous
         </MudButton>
+
+        <MudIconButton Icon="@Icons.Material.Filled.Keyboard" Size="Size.Small" OnClick="@OpenKeybindingManager" Class="mb-1" />
+
         @if (FilterMode)
         {
             <MudButton
@@ -116,6 +123,7 @@
 
         ShellService.HideShell();
 
+        await KeybindingService.InitializeAsync();
         await LoadTagsAsync();
     }
 
@@ -130,11 +138,14 @@
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        switch (e.Key)
+        var action = KeybindingService.GetAction(e);
+        if (action == null) return;
+
+        switch (action)
         {
-            case "ArrowLeft": await PreviousAsync(); break;
-            case "ArrowRight": await NextAsync(); break;
-            case "Escape":
+            case KeybindingActions.Previous: await PreviousAsync(); break;
+            case KeybindingActions.Next: await NextAsync(); break;
+            case KeybindingActions.Close:
                 if (FilterMode)
                 {
                     await PromptCommitAsync();
@@ -143,9 +154,17 @@
                 {
                     await OnClose.InvokeAsync();
                 }
-
                 break;
+            case KeybindingActions.Archive: await ArchiveAsync(); break;
+            case KeybindingActions.Delete: await DeleteAsync(); break;
+            case KeybindingActions.Inbox: await InboxAsync(); break;
         }
+    }
+
+    private async Task OpenKeybindingManager()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<KeybindingManager>("Keyboard Shortcuts", options);
     }
 
     private async Task PreviousAsync()
@@ -209,12 +228,20 @@
 
     private async Task ArchiveAsync()
     {
+        if (!FilterMode) return;
         await RecordChoiceAsync(FilterChoice.Archive);
     }
 
     private async Task DeleteAsync()
     {
+        if (!FilterMode) return;
         await RecordChoiceAsync(FilterChoice.Delete);
+    }
+
+    private Task InboxAsync()
+    {
+        // Stub for Inbox action
+        return Task.CompletedTask;
     }
 
     private async Task RecordChoiceAsync(FilterChoice choice)
