@@ -9,6 +9,8 @@ namespace Octans.Server.Migrations
     /// <inheritdoc />
     public partial class AddRatingSystems : Migration
     {
+        private static readonly string[] columns = new[] { "Id", "MaxValue", "Name", "Type" };
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -56,7 +58,7 @@ namespace Octans.Server.Migrations
 
             migrationBuilder.InsertData(
                 table: "RatingSystems",
-                columns: new[] { "Id", "MaxValue", "Name", "Type" },
+                columns: columns,
                 values: new object[,]
                 {
                     { 1, 1, "Favourites", 0 },

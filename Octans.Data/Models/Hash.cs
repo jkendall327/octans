@@ -13,7 +13,7 @@ public class HashItem
     public DateTime? DeletedAt { get; set; }
     public int RepositoryId { get; set; } = (int)RepositoryType.Inbox;
     public Repository? Repository { get; init; }
-    public ICollection<HashRating> Ratings { get; set; } = new List<HashRating>();
+    public ICollection<HashRating> Ratings { get; } = new List<HashRating>();
 
     public bool IsDeleted() => DeletedAt is not null;
 }

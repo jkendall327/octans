@@ -8,8 +8,8 @@ public class ImportJob
     public Guid Id { get; set; }
     public DateTime CreatedAt { get; set; }
     public ImportJobStatus Status { get; set; }
-    public required string SerializedRequest { get; set; }
-    public List<ImportItem> Items { get; set; } = [];
+    public required string SerializedRequest { get; init; }
+    public List<ImportItem> Items { get; init; } = [];
 }
 
 public enum ImportJobStatus

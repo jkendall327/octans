@@ -19,6 +19,12 @@ public class SettingsService(
     IHostEnvironment environment,
     ILogger<SettingsService> logger) : ISettingsService
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly string _settingsPath = fileSystem.Path.Combine(environment.ContentRootPath, "usersettings.json");
 
     public Task<SettingsModel> LoadAsync()
@@ -62,13 +68,14 @@ public class SettingsService(
 
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+            var options = SerializerOptions;
             var json = JsonSerializer.Serialize(contents, options);
             await fileSystem.File.WriteAllTextAsync(_settingsPath, json);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to write settings file: {Path}", _settingsPath);
+
             throw;
         }
     }

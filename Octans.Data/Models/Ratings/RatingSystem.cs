@@ -8,5 +8,5 @@ public class RatingSystem
     public required string Name { get; set; }
     public RatingSystemType Type { get; set; }
     public int? MaxValue { get; set; }
-    public ICollection<HashRating> HashRatings { get; set; } = new List<HashRating>();
+    public ICollection<HashRating> HashRatings { get; } = new List<HashRating>();
 }

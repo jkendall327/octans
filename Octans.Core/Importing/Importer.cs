@@ -85,9 +85,7 @@ public class Importer(
         {
             ImportType.File => file.GetRawBytes(item),
             ImportType.RawUrl => simple.GetRawBytes(item),
-            ImportType.Gallery => throw new NotImplementedException(),
-            ImportType.Watchable => throw new NotImplementedException(),
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new InvalidOperationException("Import type not supported")
         };
 
         var bytes = await task;

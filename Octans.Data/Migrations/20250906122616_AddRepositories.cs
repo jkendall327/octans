@@ -7,6 +7,8 @@ namespace Octans.Server.Migrations
     /// <inheritdoc />
     public partial class AddRepositories : Migration
     {
+        private static readonly string[] columns = new[] { "Id", "Name" };
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -25,13 +27,15 @@ namespace Octans.Server.Migrations
 
             migrationBuilder.InsertData(
                 table: "Repositories",
-                columns: new[] { "Id", "Name" },
+                columns: columns,
+#pragma warning disable CA1814
                 values: new object[,]
                 {
                     { 1, "Inbox" },
                     { 2, "Archive" },
                     { 3, "Trash" }
                 });
+#pragma warning restore CA1814
 
             migrationBuilder.AddColumn<int>(
                 name: "RepositoryId",
