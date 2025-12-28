@@ -1,0 +1,49 @@
+@page "/subscriptions"
+@inject SubscriptionsViewmodel Viewmodel
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Subscriptions</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="Viewmodel.AddSubscriptionAsync">
+            Add Subscription
+        </MudButton>
+    </div>
+
+    <MudTable Items="Viewmodel.Subscriptions" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@(_loading)">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Downloader</MudTh>
+            <MudTh>Query</MudTh>
+            <MudTh>Frequency</MudTh>
+            <MudTh>Last Run</MudTh>
+            <MudTh>Items Found</MudTh>
+            <MudTh>Next Check</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Downloader">@context.DownloaderName</MudTd>
+            <MudTd DataLabel="Query">@context.Query</MudTd>
+            <MudTd DataLabel="Frequency">@context.Frequency</MudTd>
+            <MudTd DataLabel="Last Run">@(context.LastRun?.ToString("g") ?? "Never")</MudTd>
+            <MudTd DataLabel="Items Found">@(context.ItemsFound?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Next Check">@context.NextCheck.ToString("g")</MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Viewmodel.DeleteSubscriptionAsync(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No subscriptions found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Viewmodel.InitializeAsync();
+        _loading = false;
+    }
+}

@@ -1,0 +1,52 @@
+@using System.ComponentModel.DataAnnotations
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField Label="Name" @bind-Value="Model.Name" Required="true" RequiredError="Name is required"/>
+            <MudSelect Label="Downloader" @bind-Value="Model.Downloader" Required="true" RequiredError="Downloader is required">
+                @foreach (var name in DownloaderNames)
+                {
+                    <MudSelectItem Value="@name">@name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField Label="Query / URL" @bind-Value="Model.Query" Required="true" RequiredError="Query is required"/>
+            <MudNumericField Label="Frequency (minutes)" @bind-Value="Model.FrequencyMinutes" Min="1"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_isValid)">Add</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public List<string> DownloaderNames { get; set; } = [];
+
+    public FormModel Model { get; } = new();
+
+    private MudForm _form = default!;
+    private bool _isValid;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid)
+        {
+            MudDialog.Close(DialogResult.Ok(Model));
+        }
+    }
+
+    public class FormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Downloader { get; set; } = string.Empty;
+        public string Query { get; set; } = string.Empty;
+        public int FrequencyMinutes { get; set; } = 60;
+    }
+}
