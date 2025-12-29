@@ -25,7 +25,7 @@ Network.
     - **Task:** Implement the actual logic to fetch data from different downloaders (Galleries/Queries) periodically.
 
 - [ ] **Search & Querying**
-    - **Task:** Implement search limits/pagination in `HashSearcher` (currently skipped test in `HashSearcherTests`).
+    - [x] **Task:** Implement search limits/pagination in `HashSearcher` (currently skipped test in `HashSearcherTests`).
     - **Task:** Implement parsing for other `system:` predicates in `QueryParser` (e.g. `system:inbox`, `system:archive`, etc.). Only `system:everything` is currently supported.
 
 ## 2. User Interface (Client)

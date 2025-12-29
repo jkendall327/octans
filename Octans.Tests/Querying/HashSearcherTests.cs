@@ -148,10 +148,39 @@ public class HashSearcherTests : IAsyncLifetime
         count.Should().Be(total);
     }
 
-    [Fact(Skip = "Not implemented yet")]
-    public void ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
+    [Fact]
+    public async Task ReturnsOnlyNHashes_WhenALimitOfNIsSpecified()
     {
-        throw new NotImplementedException();
+        await SeedData();
+        var request = new DecomposedQuery
+        {
+            Limit = 2
+        };
+
+        var results = await _sut.Search(request);
+
+        results.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task SkipsNHashes_WhenAnOffsetOfNIsSpecified()
+    {
+        await SeedData();
+
+        // Get all items ordered by ID to simulate the default sort order in Search
+        var allItems = await _db.Hashes.OrderBy(h => h.Id).ToListAsync();
+
+        var expected = allItems.Skip(2).Take(1).Single();
+
+        var request = new DecomposedQuery
+        {
+            Offset = 2,
+            Limit = 1
+        };
+
+        var results = await _sut.Search(request);
+
+        results.Single().Id.Should().Be(expected.Id);
     }
 
     private async Task SeedData()
