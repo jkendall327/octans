@@ -4,12 +4,19 @@
     <MudToolBar Class="mud-bar">
         @foreach (var menu in Viewmodel.Menu)
         {
-            <MudMenu Size="Size.Small" ActivationEvent="MouseEvent.MouseOver" Label="@menu.Name">
-                @foreach (var item in menu.Items)
-                {
-                    <MudMenuItem Label="@item.Name" OnClick="@(() => Viewmodel.Navigate(item.Page))"/>
-                }
-            </MudMenu>
+            @if (menu.Page is not null)
+            {
+                <MudButton OnClick="@(() => Viewmodel.Navigate(menu.Page.Value))" Variant="Variant.Text" Size="Size.Small">@menu.Name</MudButton>
+            }
+            else
+            {
+                <MudMenu Size="Size.Small" ActivationEvent="MouseEvent.MouseOver" Label="@menu.Name">
+                    @foreach (var item in menu.Items)
+                    {
+                        <MudMenuItem Label="@item.Name" OnClick="@(() => Viewmodel.Navigate(item.Page))"/>
+                    }
+                </MudMenu>
+            }
         }
     </MudToolBar>
 </div>
