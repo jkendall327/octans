@@ -92,6 +92,9 @@ public class DecomposedQuery
     public HashSet<string> WildcardDoublesToInclude { get; init; } = [];
     public HashSet<string> WildcardDoublesToExclude { get; init; } = [];
 
+    public int? Limit { get; init; }
+    public int Offset { get; init; }
+
     public bool IsEmpty()
     {
         var hasContent = TagsToInclude.Any() || WildcardNamespacesToInclude.Any() || WildcardSubtagsToInclude.Any() ||

@@ -32,18 +32,49 @@ public class HashSearcher(ServerDbContext context, TagParentService tagParentSer
     {
         if (request.IsEmpty() || request.SystemPredicates.OfType<EverythingPredicate>().Any())
         {
-            var allHashes = await context.Hashes.ToListAsync(cancellationToken);
+            var query = context.Hashes.AsQueryable();
+
+            if (request.Offset > 0)
+            {
+                query = query.OrderBy(h => h.Id).Skip(request.Offset);
+            }
+
+            if (request.Limit.HasValue)
+            {
+                if (request.Offset == 0)
+                {
+                    query = query.OrderBy(h => h.Id);
+                }
+                query = query.Take(request.Limit.Value);
+            }
+
+            var allHashes = await query.ToListAsync(cancellationToken);
             return allHashes.ToHashSet();
         }
 
         var matchingIds = await GetMatchingTagIds(request, cancellationToken);
 
-        var hashes = await context.Mappings
+        var hashesQuery = context.Mappings
             .Where(m => matchingIds.Contains(m.Tag.Id))
             .Include(m => m.Hash)
             .Select(m => m.Hash)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+            .Distinct();
+
+        if (request.Offset > 0)
+        {
+            hashesQuery = hashesQuery.OrderBy(h => h.Id).Skip(request.Offset);
+        }
+
+        if (request.Limit.HasValue)
+        {
+            if (request.Offset == 0)
+            {
+                hashesQuery = hashesQuery.OrderBy(h => h.Id);
+            }
+            hashesQuery = hashesQuery.Take(request.Limit.Value);
+        }
+
+        var hashes = await hashesQuery.ToListAsync(cancellationToken);
 
         return hashes.ToHashSet();
     }
