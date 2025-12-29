@@ -5,8 +5,8 @@ using Octans.Client.Components.StatusBar;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
-using Microsoft.JSInterop;
 using Octans.Core.Communication;
+using Octans.Client.Services;
 
 namespace Octans.Client.Components.Pages;
 
@@ -22,11 +22,11 @@ public record GalleryContextMenuItem(
 public sealed class GalleryViewmodel(
     IQueryService service,
     IBrowserStorage storage,
-    IClipboard clipboard,
+    IClipboardService clipboard,
     StatusService status,
     ICustomCommandProvider customCommandProvider,
     ChannelWriter<RepositoryChangeRequest> repositoryChannel,
-    IJSRuntime jsRuntime,
+    IBrowserService browserService,
     ILogger<GalleryViewmodel> logger) : IAsyncDisposable, INotifyStateChanged
 {
     private CancellationTokenSource _cts = new();
@@ -45,8 +45,6 @@ public sealed class GalleryViewmodel(
     private int _total;
     private int _processed;
     public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
-
-    private readonly IJSRuntime _jsRuntime = jsRuntime;
 
     public async Task OnInitialized()
     {
@@ -100,7 +98,7 @@ public sealed class GalleryViewmodel(
         {
             try
             {
-                await _jsRuntime.InvokeVoidAsync("open", url, "_blank");
+                await browserService.OpenInNewTab(url);
             }
             catch (Exception e)
             {
@@ -117,7 +115,7 @@ public sealed class GalleryViewmodel(
 
         try
         {
-            await clipboard.CopyToClipboardAsync(joined);
+            await clipboard.CopyToClipboard(joined);
             status.GenericText = $"Copied {imageUrls.Count} URL(s)";
         }
         catch (Exception e)

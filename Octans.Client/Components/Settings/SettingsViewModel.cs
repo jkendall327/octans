@@ -1,4 +1,3 @@
-using Microsoft.JSInterop;
 using Octans.Client.Services;
 using Octans.Client.Settings;
 using Octans.Core.Communication;
@@ -8,7 +7,7 @@ namespace Octans.Client.Components.Settings;
 public sealed class SettingsViewModel(
     ISettingsService settingsService,
     ILogger<SettingsViewModel> logger,
-    IThemeJsInterop themeJsInterop,
+    IThemePreferenceService themeJsInterop,
     ThemeService themeService,
     TimeProvider timeProvider) : IDisposable, INotifyStateChanged
 {
@@ -40,7 +39,7 @@ public sealed class SettingsViewModel(
         Settings.ImportSource = loaded.ImportSource;
         Settings.TagColor = loaded.TagColor;
 
-        var savedTheme = await themeJsInterop.LoadThemePreferenceAsync();
+        var savedTheme = await themeJsInterop.LoadThemePreference();
         if (!string.IsNullOrEmpty(savedTheme))
         {
             Settings.Theme = savedTheme;
@@ -57,8 +56,8 @@ public sealed class SettingsViewModel(
 
     private async Task ApplyTheme()
     {
-        await themeJsInterop.SetThemeAsync(themeService.CurrentTheme);
-        await themeJsInterop.SaveThemePreferenceAsync(themeService.CurrentTheme);
+        await themeJsInterop.SetTheme(themeService.CurrentTheme);
+        await themeJsInterop.SaveThemePreference(themeService.CurrentTheme);
     }
 
     public async Task SaveConfiguration()

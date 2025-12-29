@@ -2,7 +2,6 @@ using System.Runtime.InteropServices.JavaScript;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using Microsoft.JSInterop;
 using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Settings;
@@ -17,7 +16,7 @@ public sealed class SettingsViewModelTests : IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly ILogger<SettingsViewModel> _logger;
-    private readonly IThemeJsInterop _themeJsInterop;
+    private readonly IThemePreferenceService _themeJsInterop;
     private readonly ThemeService _themeService;
     private readonly FakeTimeProvider _timeProvider;
     private readonly SettingsViewModel _sut;
@@ -28,10 +27,10 @@ public sealed class SettingsViewModelTests : IDisposable
         _settingsService.LoadAsync().Returns(new SettingsModel()); // Default setup
 
         _logger = Substitute.For<ILogger<SettingsViewModel>>();
-        _themeJsInterop = Substitute.For<IThemeJsInterop>();
+        _themeJsInterop = Substitute.For<IThemePreferenceService>();
 
         // Default JS Setup
-        _themeJsInterop.LoadThemePreferenceAsync().Returns("light");
+        _themeJsInterop.LoadThemePreference(Arg.Any<CancellationToken>()).Returns("light");
 
         _themeService = new ThemeService();
         _timeProvider = new FakeTimeProvider();
@@ -58,7 +57,7 @@ public sealed class SettingsViewModelTests : IDisposable
             TagColor = "#123456"
         };
         _settingsService.LoadAsync().Returns(settings);
-        _themeJsInterop.LoadThemePreferenceAsync().Returns("sepia");
+        _themeJsInterop.LoadThemePreference(Arg.Any<CancellationToken>()).Returns("sepia");
 
         // Act
         await _sut.InitializeAsync();
@@ -74,7 +73,7 @@ public sealed class SettingsViewModelTests : IDisposable
         // Verify theme was set
         _themeService.CurrentTheme.Should().Be("sepia");
         // Called twice: once by SetTheme event, once explicitly
-        await _themeJsInterop.Received(2).SetThemeAsync("sepia");
+        await _themeJsInterop.Received(2).SetTheme("sepia");
     }
 
     [Fact]
@@ -127,6 +126,6 @@ public sealed class SettingsViewModelTests : IDisposable
         // Assert
         _themeService.CurrentTheme.Should().Be("red");
         // InitializeAsync called it with "light" (default mock). ThemeChanged called it with "red".
-        await _themeJsInterop.Received(1).SetThemeAsync("red");
+        await _themeJsInterop.Received(1).SetTheme("red");
     }
 }

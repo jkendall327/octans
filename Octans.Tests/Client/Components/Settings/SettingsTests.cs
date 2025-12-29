@@ -22,15 +22,15 @@ public class SettingsTests : TestContext
     private readonly ISettingsService _settingsService;
     private readonly ThemeService _themeService;
     private readonly FakeTimeProvider _timeProvider;
-    private readonly IThemeJsInterop _themeJsInterop;
+    private readonly IThemePreferenceService _themeJsInterop;
 
     public SettingsTests()
     {
         _settingsService = Substitute.For<ISettingsService>();
         _themeService = new ThemeService();
         _timeProvider = new FakeTimeProvider();
-        _themeJsInterop = Substitute.For<IThemeJsInterop>();
-        _themeJsInterop.LoadThemePreferenceAsync().Returns("light");
+        _themeJsInterop = Substitute.For<IThemePreferenceService>();
+        _themeJsInterop.LoadThemePreference(Arg.Any<CancellationToken>()).Returns("light");
 
         Services.AddSingleton(_settingsService);
         Services.AddSingleton(_themeJsInterop);
