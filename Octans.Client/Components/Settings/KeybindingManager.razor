@@ -18,15 +18,15 @@
                         </MudListItem>
                     }
                 </MudList>
-                <MudButton OnClick="CreateSet" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2">New Set</MudButton>
+                <MudButton OnClick="@CreateSet" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2">New Set</MudButton>
             </MudItem>
             <MudItem xs="8">
                 @if (_selectedSet != null)
                 {
                     <MudText Typo="Typo.h6">Edit: @_selectedSet.Name</MudText>
                     <div class="d-flex gap-2 mb-4">
-                        <MudButton OnClick="ActivateSelectedSet" Disabled="@(_selectedSet.Id == _activeSetId)" Variant="Variant.Filled" Color="Color.Secondary">Activate</MudButton>
-                        <MudButton OnClick="DeleteSelectedSet" Color="Color.Error" Variant="Variant.Outlined">Delete Set</MudButton>
+                        <MudButton OnClick="@ActivateSelectedSet" Disabled="@(_selectedSet.Id == _activeSetId)" Variant="Variant.Filled" Color="Color.Secondary">Activate</MudButton>
+                        <MudButton OnClick="@DeleteSelectedSet" Color="Color.Error" Variant="Variant.Outlined">Delete Set</MudButton>
                         <MudTextField @bind-Value="_selectedSet.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" DebounceInterval="500" OnDebounceIntervalElapsed="SaveSelectedSet" />
                     </div>
 
@@ -62,7 +62,7 @@
                                 <MudSelectItem Value="@KeybindingActions.Inbox">Inbox</MudSelectItem>
                                 <MudSelectItem Value="@KeybindingActions.Close">Close</MudSelectItem>
                             </MudSelect>
-                            <MudButton OnClick="AddKeybinding" Variant="Variant.Filled" Color="Color.Primary">Add</MudButton>
+                            <MudButton OnClick="@AddKeybinding" Variant="Variant.Filled" Color="Color.Primary">Add</MudButton>
                         </div>
                     </MudPaper>
                 }
@@ -74,7 +74,7 @@
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Close" Color="Color.Primary">Close</MudButton>
+        <MudButton OnClick="@Close" Color="Color.Primary">Close</MudButton>
     </DialogActions>
 </MudDialog>
 
