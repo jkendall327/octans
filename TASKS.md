@@ -6,27 +6,8 @@ Network.
 ## 1. Core Logic & Data
 
 - [x] **Tag Hierarchy Support**
-    - Implemented `TagParentService` for managing parent-child relationships.
-    - Integrated tag expansion into `HashSearcher` to support hierarchical search (searching "animal" finds "cat").
     - *Future Optimization:* Implement Recursive Common Table Expressions (CTE) for `GetDescendantsAsync` if tag
       relationships grow very large.
-
-- [ ] **Duplicate Detection & Management**
-    - The backend (`IPerceptualHashProvider`, `ReimportChecker`) exists but needs a proper management UI.
-    - **Task:** Create a service to find potential duplicates using PHash distance.
-    - **Task:** Finalize duplicate resolution logic in `DuplicateService` (handling Keep A vs Keep B vs Merge vs Delete).
-    - **Task:** Create a UI to present duplicate candidates side-by-side for user resolution (Keep A, Keep B, Merge,
-      Ignore).
-
-- [ ] **Subscription System**
-    - `SubscriptionService` and background workers exist.
-    - **Task:** Implement `Subscription` entity management (CRUD).
-    - **Task:** Implement `POST /subscriptions` endpoint (currently throws `NotImplementedException`).
-    - **Task:** Implement the actual logic to fetch data from different downloaders (Galleries/Queries) periodically.
-
-- [ ] **Search & Querying**
-    - [x] **Task:** Implement search limits/pagination in `HashSearcher` (currently skipped test in `HashSearcherTests`).
-    - **Task:** Implement parsing for other `system:` predicates in `QueryParser` (e.g. `system:inbox`, `system:archive`, etc.). Only `system:everything` is currently supported.
 
 ## 2. User Interface (Client)
 
@@ -37,23 +18,6 @@ Network.
         - Edit tag text/namespace.
         - Manage Siblings (Merge tags).
         - Manage Parents (Add/Remove parent-child links).
-
-- [x] **Subscription UI**
-    - **Task:** Create a "Subscriptions" page.
-        - Add new subscription (Select Downloader, Enter Query/URL, Set Frequency).
-        - View status of subscriptions (Last run, new items found).
-
-- [ ] **Importer UI Improvements**
-    - The current import UI is basic.
-    - **Task:** Add options to tag imports immediately.
-    - **Task:** Show progress and results of imports more clearly (e.g., "Imported 50 files, 2 duplicates skipped").
-
-- [ ] **File Details & Notes**
-    - Hydrus allows rich notes and metadata editing.
-    - **Task:** Add a "Details" pane in the Gallery view to show all metadata, file info, and allow adding text notes.
-
-- [ ] **Gallery UI**
-    - **Task:** Implement a status bar in the layout to show background operations (e.g. import progress).
 
 ## 3. Extensibility
 
@@ -86,9 +50,6 @@ Network.
     - Implement UI for defining tag siblings (synonyms).
     - Allow creation of tag parent relationships.
     - Reindex existing media after relationship changes.
-- Tag Autocomplete
-    - Provide real-time tag suggestions as the user types.
-    - Debounce requests to avoid excessive database calls.
 - Ratings
     - Add support for like/dislike rating system.
     - Display ratings in search and media views.
@@ -98,24 +59,9 @@ Network.
 - Local Import
     - Support drag-and-drop folder import.
     - Extract tags and metadata from filenames.
-- Remote Import
-    - Implement URL watchers for scheduled downloads.
-    - Add downloader plugins for common booru sites.
-
-### Duplicate Management
-
-- Perceptual Hashing
-    - Generate perceptual hashes for imported media.
-    - Compare hashes to flag potential duplicates.
-- Duplicate Filter UI
-    - Side-by-side viewer to decide which file to keep.
-    - Automatic selection of the higher-quality file.
 
 ### User Interface
 
-- Keyboard Shortcuts
-    - Add keybindings for tagging, rating and navigation.
-    - Configurable shortcut editor in settings.
 - Layout Customization
     - Allow reordering of panels and tabs.
     - Persist layout preferences per user.
