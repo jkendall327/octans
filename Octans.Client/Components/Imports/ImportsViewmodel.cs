@@ -12,6 +12,7 @@ public interface IRawUrlImportViewmodel
     Task SendUrlsToServer();
     string RawInputs { get; set; }
     bool AllowReimportDeleted { get; set; }
+    bool AutoArchive { get; set; }
     TagChooser.TagChooserResult? TagResult { get; set; }
 }
 
@@ -20,6 +21,7 @@ public interface ILocalFileImportViewmodel
     ImportResult? Result { get; }
     Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null);
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
+    bool AutoArchive { get; set; }
 }
 
 public class LocalFileImportViewmodel(
@@ -31,6 +33,7 @@ public class LocalFileImportViewmodel(
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
 
     public ImportResult? Result { get; private set; }
+    public bool AutoArchive { get; set; }
 
     public async Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null)
     {
@@ -70,7 +73,8 @@ public class LocalFileImportViewmodel(
         {
             ImportType = ImportType.File,
             Items = items,
-            DeleteAfterImport = false
+            DeleteAfterImport = false,
+            AutoArchive = AutoArchive
         };
 
         Result = await importer.ProcessImport(request);
@@ -85,6 +89,7 @@ public class RawUrlImportViewmodel(
 {
     public string RawInputs { get; set; } = string.Empty;
     public bool AllowReimportDeleted { get; set; }
+    public bool AutoArchive { get; set; }
     public TagChooser.TagChooserResult? TagResult { get; set; }
 
     public async Task SendUrlsToServer()
@@ -125,7 +130,8 @@ public class RawUrlImportViewmodel(
                 ImportType = ImportType.RawUrl,
                 Items = importItems,
                 DeleteAfterImport = false,
-                AllowReimportDeleted = AllowReimportDeleted
+                AllowReimportDeleted = AllowReimportDeleted,
+                AutoArchive = AutoArchive
             };
 
             await importer.ProcessImport(request);

@@ -81,6 +81,8 @@ public sealed class GalleryViewmodel(
             new("Archive/Delete filter", Icons.Material.Filled.Inbox, OpenFilter),
             new("Copy URL", Icons.Material.Filled.ContentCopy, OnCopyUrl),
             new("Add to Favorites", Icons.Material.Filled.Star, OnAddToFavorites),
+            new("Archive", Icons.Material.Filled.Archive, OnArchive),
+            new("Inbox", Icons.Material.Filled.Inbox, OnInbox),
             new("Custom Commands", Icons.Material.Filled.Extension, SubItems: customCommandItems),
             new("Delete", Icons.Material.Filled.Delete, OnDelete)
         ];
@@ -132,6 +134,42 @@ public sealed class GalleryViewmodel(
     {
         // There isn't a dedicated favourites store yet, so simply notify the user.
         status.GenericText = $"Added {imageUrls.Count} item(s) to favourites";
+        await NotifyStateChanged();
+    }
+
+    public async Task OnArchive(List<string> imageUrls)
+    {
+         foreach (var url in imageUrls)
+        {
+            try
+            {
+                var hex = url[(url.LastIndexOf('/') + 1)..];
+                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Archive));
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to queue archive for {Url}", url);
+            }
+        }
+        status.GenericText = $"Archived {imageUrls.Count} item(s)";
+        await NotifyStateChanged();
+    }
+
+    public async Task OnInbox(List<string> imageUrls)
+    {
+         foreach (var url in imageUrls)
+        {
+            try
+            {
+                var hex = url[(url.LastIndexOf('/') + 1)..];
+                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Inbox));
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to queue inbox for {Url}", url);
+            }
+        }
+        status.GenericText = $"Inbox'ed {imageUrls.Count} item(s)";
         await NotifyStateChanged();
     }
 

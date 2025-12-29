@@ -2,14 +2,16 @@ using Microsoft.Extensions.Logging;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
+using Octans.Core.Repositories;
 
 namespace Octans.Core.Importing;
 
 public class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
 {
-    public async Task AddItemToDatabase(ImportItem item, HashedBytes hashed)
+    public async Task AddItemToDatabase(ImportItem item, HashedBytes hashed, bool autoArchive)
     {
-        var hashItem = new HashItem { Hash = hashed.Bytes };
+        var repositoryId = autoArchive ? (int)RepositoryType.Archive : (int)RepositoryType.Inbox;
+        var hashItem = new HashItem { Hash = hashed.Bytes, RepositoryId = repositoryId };
 
         context.Hashes.Add(hashItem);
 

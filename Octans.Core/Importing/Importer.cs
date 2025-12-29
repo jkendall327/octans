@@ -119,7 +119,7 @@ public class Importer(
 
         await filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
 
-        await databaseWriter.AddItemToDatabase(item, hashed);
+        await databaseWriter.AddItemToDatabase(item, hashed, request.AutoArchive);
 
         logger.LogInformation("Sending thumbnail creation request");
 
