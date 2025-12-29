@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Mediator;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Progress;
@@ -15,7 +16,7 @@ public interface IBackgroundProgressReporter
     Task ReportError(string message);
 }
 
-public class BackgroundProgressService(ILogger<BackgroundProgressService> logger, IMediator mediator)
+public class BackgroundProgressService(ILogger<BackgroundProgressService> logger, IServiceScopeFactory scopeFactory)
     : IBackgroundProgressReporter
 {
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();
@@ -71,17 +72,23 @@ public class BackgroundProgressService(ILogger<BackgroundProgressService> logger
     public async Task ReportMessage(string message)
     {
         logger.LogDebug("Background message: {Message}", message);
+        using var scope = scopeFactory.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
         await mediator.Publish(new ProgressMessage(message, false));
     }
 
     public async Task ReportError(string message)
     {
         logger.LogDebug("Background error: {Message}", message);
+        using var scope = scopeFactory.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
         await mediator.Publish(new ProgressMessage(message, true));
     }
 
     private async Task Raise(ProgressStatus status, bool completed = false)
     {
+        using var scope = scopeFactory.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
         await mediator.Publish(new ProgressStatus
         {
             Id = status.Id,
