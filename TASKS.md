@@ -5,12 +5,26 @@ Network.
 
 ## 1. Core Logic & Data
 
+- [ ] **Subscription Endpoint**
+    - `Subscriptions` endpoint is currently unimplemented.
+    - **Task:** Implement logic to handle subscription creation and management.
+- [ ] **Resumable Downloads**
+    - Currently, pausing a download cancels it.
+    - **Task:** Implement true pause/resume support for downloads.
 - [x] **Tag Hierarchy Support**
     - *Future Optimization:* Implement Recursive Common Table Expressions (CTE) for `GetDescendantsAsync` if tag
       relationships grow very large.
 
 ## 2. User Interface (Client)
 
+- [ ] **Import Sources**
+    - Several import tabs are placeholders.
+    - **Task:** Implement "Post" import.
+    - **Task:** Implement "Gallery" import.
+    - **Task:** Implement "Watchable" import.
+- [ ] **Gallery Features**
+    - **Task:** Implement visual selection highlighting in `Gallery` component.
+    - **Task:** Implement a status bar in the layout.
 - [ ] **Tag Management UI**
     - Currently, there is no way to manage tags, siblings, or parents in the UI.
     - **Task:** Create a "Tag Manager" page.
@@ -41,6 +55,13 @@ Network.
 
 - [ ] **Integration Testing**
     - Add more integration tests for the full search pipeline with complex tag hierarchies.
+- [ ] **DownloaderFactory Tests**
+    - **Task:** Enable and fix skipped tests in `DownloaderFactoryTests.cs` (Lua loading logic).
+
+## 6. Documentation
+
+- [ ] **System Queries**
+    - **Task:** List and document all supported system queries in `docs/Querying.md`.
 
 ## Unsorted
 
