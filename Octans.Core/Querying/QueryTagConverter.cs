@@ -1,3 +1,5 @@
+using Octans.Core.Repositories;
+
 namespace Octans.Core.Querying;
 
 /// <summary>
@@ -19,11 +21,17 @@ public class QueryTagConverter
             ProcessTagPredicate(tagPredicate, include, exclude);
         }
 
+        var repositoryFilters = system
+            .OfType<RepositoryPredicate>()
+            .Select(p => p.Repository)
+            .ToList();
+
         return new()
         {
             SystemPredicates = system,
             TagsToInclude = include,
-            TagsToExclude = exclude
+            TagsToExclude = exclude,
+            RepositoryFilters = repositoryFilters
         };
     }
 
@@ -82,6 +90,7 @@ public class QueryTagConverter
 public class DecomposedQuery
 {
     public List<SystemPredicate> SystemPredicates { get; init; } = [];
+    public List<RepositoryType> RepositoryFilters { get; init; } = [];
     public HashSet<TagModel> TagsToInclude { get; init; } = [];
     public HashSet<TagModel> TagsToExclude { get; init; } = [];
 

@@ -21,6 +21,7 @@ public class ImportRequest
     public required bool DeleteAfterImport { get; init; }
     public ImportFilterData? FilterData { get; init; }
     public bool AllowReimportDeleted { get; set; }
+    public bool AutoArchive { get; init; }
 }
 
 public class ImportFilterData

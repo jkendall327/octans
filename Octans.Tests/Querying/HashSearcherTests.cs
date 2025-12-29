@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
+using Octans.Core.Repositories;
 using Octans.Core.Tags;
 
 namespace Octans.Tests;
@@ -42,7 +43,7 @@ public class HashSearcherTests : IAsyncLifetime
     {
         await SeedData();
 
-        var all = await _db.Hashes.ToListAsync();
+        var all = await _db.Hashes.Where(h => h.RepositoryId != (int)RepositoryType.Trash).ToListAsync();
 
         var result = await _sut.Search(new());
 
@@ -140,7 +141,7 @@ public class HashSearcherTests : IAsyncLifetime
     public async Task CountAsync_ReturnsAll_WhenEmptyQuery()
     {
         await SeedData();
-        var total = await _db.Hashes.CountAsync();
+        var total = await _db.Hashes.Where(h => h.RepositoryId != (int)RepositoryType.Trash).CountAsync();
 
         var request = new DecomposedQuery();
         var count = await _sut.CountAsync(request);
@@ -168,7 +169,11 @@ public class HashSearcherTests : IAsyncLifetime
         await SeedData();
 
         // Get all items ordered by ID to simulate the default sort order in Search
-        var allItems = await _db.Hashes.OrderBy(h => h.Id).ToListAsync();
+        // NOTE: We must filter out Trash because the searcher does it by default now
+        var allItems = await _db.Hashes
+            .Where(h => h.RepositoryId != (int)RepositoryType.Trash)
+            .OrderBy(h => h.Id)
+            .ToListAsync();
 
         var expected = allItems.Skip(2).Take(1).Single();
 
@@ -181,6 +186,59 @@ public class HashSearcherTests : IAsyncLifetime
         var results = await _sut.Search(request);
 
         results.Single().Id.Should().Be(expected.Id);
+    }
+
+    [Fact]
+    public async Task ExcludesTrash_ByDefault()
+    {
+        var item = GenerateRandomHashItem();
+        item.RepositoryId = (int)RepositoryType.Trash;
+        _db.Hashes.Add(item);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery();
+        var results = await _sut.Search(request);
+
+        results.Should().NotContain(i => i.Id == item.Id);
+    }
+
+    [Fact]
+    public async Task IncludesTrash_WhenTrashFilterSpecified()
+    {
+        var item = GenerateRandomHashItem();
+        item.RepositoryId = (int)RepositoryType.Trash;
+        _db.Hashes.Add(item);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery
+        {
+            RepositoryFilters = [RepositoryType.Trash]
+        };
+        var results = await _sut.Search(request);
+
+        results.Should().Contain(i => i.Id == item.Id);
+    }
+
+    [Fact]
+    public async Task OnlyIncludesInbox_WhenInboxFilterSpecified()
+    {
+        var inboxItem = GenerateRandomHashItem();
+        inboxItem.RepositoryId = (int)RepositoryType.Inbox;
+
+        var archiveItem = GenerateRandomHashItem();
+        archiveItem.RepositoryId = (int)RepositoryType.Archive;
+
+        _db.Hashes.AddRange(inboxItem, archiveItem);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery
+        {
+            RepositoryFilters = [RepositoryType.Inbox]
+        };
+        var results = await _sut.Search(request);
+
+        results.Should().Contain(i => i.Id == inboxItem.Id);
+        results.Should().NotContain(i => i.Id == archiveItem.Id);
     }
 
     private async Task SeedData()
@@ -201,7 +259,8 @@ public class HashSearcherTests : IAsyncLifetime
 
     private async Task<List<HashItem>> GetRandomItems(int count)
     {
-        var all = await _db.Hashes.ToListAsync();
+        // Must exclude trash to match default search behavior
+        var all = await _db.Hashes.Where(h => h.RepositoryId != (int)RepositoryType.Trash).ToListAsync();
         return all.OrderBy(i => Guid.NewGuid()).Take(count).ToList();
     }
 
@@ -234,7 +293,8 @@ public class HashSearcherTests : IAsyncLifetime
         return new()
         {
             Hash = GenerateRandomHash(),
-            DeletedAt = random.Next(2) == 0 ? null : DateTime.UtcNow.AddDays(-random.Next(1, 365))
+            DeletedAt = random.Next(2) == 0 ? null : DateTime.UtcNow.AddDays(-random.Next(1, 365)),
+            RepositoryId = (int)RepositoryType.Inbox
         };
     }
 

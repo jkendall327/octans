@@ -1,10 +1,14 @@
 @using Octans.Core.Models
 @using Octans.Core.Notes
 @using Octans.Core.Tags
+@using Octans.Core.Repositories
 @using Octans.Client.Components.Gallery
+@using Octans.Core.Communication
+@using System.Threading.Channels
 @inject INoteService NoteService
 @inject ITagService TagService
 @inject ISnackbar Snackbar
+@inject ChannelWriter<RepositoryChangeRequest> RepositoryChannel
 
 @if (SelectedHash is not null)
 {
@@ -12,7 +16,23 @@
         <section class="file-info">
             <MudText Typo="Typo.h6">File Details</MudText>
             <MudText Typo="Typo.body2">Hash: @SelectedHash</MudText>
-            @* Add more file info here if available *@
+
+            <div class="actions mt-2">
+                 <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Archive"
+                           OnClick="@ArchiveImage">
+                     Archive
+                 </MudButton>
+
+                  <MudButton Variant="Variant.Outlined"
+                            Color="Color.Primary"
+                            StartIcon="@Icons.Material.Filled.Inbox"
+                            OnClick="@InboxImage"
+                            Class="ml-2">
+                      To Inbox
+                  </MudButton>
+            </div>
         </section>
 
         <section class="tags-section">
@@ -78,6 +98,24 @@ else
         }
     }
 
+    private async Task ArchiveImage()
+    {
+        if (SelectedHash is not null)
+        {
+            await RepositoryChannel.WriteAsync(new(SelectedHash, RepositoryType.Archive));
+            Snackbar.Add("Archived", Severity.Success);
+        }
+    }
+
+    private async Task InboxImage()
+    {
+        if (SelectedHash is not null)
+        {
+            await RepositoryChannel.WriteAsync(new(SelectedHash, RepositoryType.Inbox));
+             Snackbar.Add("Moved to Inbox", Severity.Success);
+        }
+    }
+
     private async Task AddNote()
     {
         if (SelectedHash is not null && !string.IsNullOrWhiteSpace(NewNoteContent))
@@ -133,5 +171,14 @@ else
         align-items: center;
         height: 100%;
         color: #888;
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .ml-2 {
+        margin-left: 0.5rem;
     }
 </style>

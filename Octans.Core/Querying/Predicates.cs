@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Octans.Core.Repositories;
 
 namespace Octans.Core.Querying;
 
@@ -30,6 +31,11 @@ public class FilesizePredicate : SystemPredicate
 
 public class EverythingPredicate : SystemPredicate
 {
+}
+
+public class RepositoryPredicate : SystemPredicate
+{
+    public required RepositoryType Repository { get; init; }
 }
 
 public class OrPredicate : IPredicate

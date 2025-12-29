@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Octans.Core.Repositories;
 
 namespace Octans.Core.Querying;
 
@@ -35,15 +36,16 @@ public class QueryParser
         return predicates;
     }
 
-    private EverythingPredicate ParseSystemPredicate(RawQuery query)
+    private SystemPredicate ParseSystemPredicate(RawQuery query)
     {
-        if (query.Query is "everything")
+        return query.Query switch
         {
-            return new();
-        }
-
-        // TODO: Implement parsing for other system predicates beyond 'everything'.
-        throw new NotImplementedException("Only 'system:everything' is currently supported.");
+            "everything" => new EverythingPredicate(),
+            "inbox" => new RepositoryPredicate { Repository = RepositoryType.Inbox },
+            "archive" => new RepositoryPredicate { Repository = RepositoryType.Archive },
+            "trash" => new RepositoryPredicate { Repository = RepositoryType.Trash },
+            _ => throw new NotImplementedException($"System predicate '{query.Query}' is not supported.")
+        };
     }
 
     private OrPredicate ParseOrPredicate(RawQuery query)

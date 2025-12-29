@@ -38,6 +38,7 @@
             Disabled="@(Viewmodel.LocalFiles.Count == 0)">
             Add Tags
         </MudButton>
+        <MudCheckBox @bind-Value="Viewmodel.AutoArchive" Label="Auto Archive" Color="Color.Primary"></MudCheckBox>
     </div>
 }
 
