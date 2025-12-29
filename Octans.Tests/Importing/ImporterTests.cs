@@ -155,9 +155,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var hash = await SetupDeletedImage(db);
 
-        var request = BuildReimportRequest();
-
-        request.AllowReimportDeleted = false;
+        var request = BuildReimportRequest() with { AllowReimportDeleted = false };
 
         var result = await _sut.ProcessImport(request);
 
@@ -196,9 +194,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         var hash = await SetupDeletedImage(db);
 
-        var request = BuildReimportRequest();
-
-        request.AllowReimportDeleted = true;
+        var request = BuildReimportRequest() with { AllowReimportDeleted = true };
 
         var result = await _sut.ProcessImport(request);
 
