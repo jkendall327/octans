@@ -139,6 +139,7 @@
         Viewmodel.SelectedImageHash = hex;
         // Trigger state change so sidebar updates
         await Viewmodel.NotifyStateChanged();
+        // TODO: Implement visual selection highlighting
         // Trigger local state change to highlight selection if implemented (or just to be safe)
         StateHasChanged();
     }
