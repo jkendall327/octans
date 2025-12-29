@@ -266,11 +266,26 @@ public class HashSearcherTests : IAsyncLifetime
 
     private async Task AddMappings(string @namespace, string subtag, params HashItem[] items)
     {
-        var ns = new Namespace { Value = @namespace };
-        var st = new Subtag { Value = subtag };
-        var tag = new Tag { Namespace = ns, Subtag = st };
+        var ns = await _db.Namespaces.FirstOrDefaultAsync(n => n.Value == @namespace);
+        if (ns == null)
+        {
+            ns = new Namespace { Value = @namespace };
+            _db.Namespaces.Add(ns);
+        }
 
-        _db.Tags.Add(tag);
+        var st = await _db.Subtags.FirstOrDefaultAsync(s => s.Value == subtag);
+        if (st == null)
+        {
+            st = new Subtag { Value = subtag };
+            _db.Subtags.Add(st);
+        }
+
+        var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Namespace == ns && t.Subtag == st);
+        if (tag == null)
+        {
+            tag = new Tag { Namespace = ns, Subtag = st };
+            _db.Tags.Add(tag);
+        }
 
         foreach (var item in items)
         {
