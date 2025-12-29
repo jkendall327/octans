@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using Octans.Client.Services;
 using Octans.Client.Settings;
 using Octans.Core.Communication;
 
@@ -7,8 +8,9 @@ namespace Octans.Client.Components.Settings;
 public sealed class SettingsViewModel(
     ISettingsService settingsService,
     ILogger<SettingsViewModel> logger,
-    IJSRuntime jsRuntime,
-    ThemeService themeService) : IAsyncDisposable, INotifyStateChanged
+    IThemeJsInterop themeJsInterop,
+    ThemeService themeService,
+    TimeProvider timeProvider) : IDisposable, INotifyStateChanged
 {
     public SettingsContext Context { get; } = new();
     public SettingsModel Settings { get; } = new();
@@ -38,7 +40,7 @@ public sealed class SettingsViewModel(
         Settings.ImportSource = loaded.ImportSource;
         Settings.TagColor = loaded.TagColor;
 
-        var savedTheme = await jsRuntime.InvokeAsync<string>("themeManager.loadThemePreference");
+        var savedTheme = await themeJsInterop.LoadThemePreferenceAsync();
         if (!string.IsNullOrEmpty(savedTheme))
         {
             Settings.Theme = savedTheme;
@@ -55,8 +57,8 @@ public sealed class SettingsViewModel(
 
     private async Task ApplyTheme()
     {
-        await jsRuntime.InvokeVoidAsync("themeManager.setTheme", themeService.CurrentTheme);
-        await jsRuntime.InvokeVoidAsync("themeManager.saveThemePreference", themeService.CurrentTheme);
+        await themeJsInterop.SetThemeAsync(themeService.CurrentTheme);
+        await themeJsInterop.SaveThemePreferenceAsync(themeService.CurrentTheme);
     }
 
     public async Task SaveConfiguration()
@@ -77,7 +79,7 @@ public sealed class SettingsViewModel(
 
             await OnStateChanged();
 
-            await Task.Delay(3000);
+            await Task.Delay(TimeSpan.FromSeconds(3), timeProvider);
 
             SaveSuccess = false;
         }
@@ -101,9 +103,8 @@ public sealed class SettingsViewModel(
         }
     }
 
-    public ValueTask DisposeAsync()
+    public void Dispose()
     {
         themeService.OnThemeChanged -= ApplyTheme;
-        return ValueTask.CompletedTask;
     }
 }
