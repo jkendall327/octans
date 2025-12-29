@@ -9,7 +9,7 @@ using Octans.Core.Models;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
-using Microsoft.JSInterop;
+using Octans.Client.Services;
 
 namespace Octans.Tests.Viewmodels;
 
@@ -18,10 +18,10 @@ public class GalleryViewmodelTests
     private readonly IQueryService _service;
     private readonly GalleryViewmodel _sut;
     private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
-    private readonly IClipboard _clipboard = Substitute.For<IClipboard>();
+    private readonly IClipboardService _clipboard = Substitute.For<IClipboardService>();
     private readonly SpyChannelWriter<RepositoryChangeRequest> _repoChannel = new();
     private readonly ICustomCommandProvider _commandProvider = Substitute.For<ICustomCommandProvider>();
-    private readonly IJSRuntime _js = Substitute.For<IJSRuntime>();
+    private readonly IBrowserService _browserService = Substitute.For<IBrowserService>();
     private readonly StatusService _status = new();
 
     private static readonly string[] Expected =
@@ -39,7 +39,7 @@ public class GalleryViewmodelTests
             _status,
             _commandProvider,
             _repoChannel,
-            _js,
+            _browserService,
             NullLogger<GalleryViewmodel>.Instance);
     }
 
@@ -212,7 +212,7 @@ public class GalleryViewmodelTests
 
         await _clipboard
             .ReceivedWithAnyArgs(1)
-            .CopyToClipboardAsync("/media/DEADBEEF\n/media/01234567");
+            .CopyToClipboard("/media/DEADBEEF\n/media/01234567");
 
         Assert.Equal("Copied 2 URL(s)", _status.GenericText);
     }

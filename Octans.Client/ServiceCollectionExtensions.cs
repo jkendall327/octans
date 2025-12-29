@@ -175,9 +175,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IFileSystem>(new FileSystem());
         services.AddScoped<IBrowserStorage, BrowserStorage>();
-        services.AddScoped<IClipboard, Clipboard>();
+        services.AddScoped<IClipboardService, ClipboardService>();
+        services.AddScoped<IBrowserService, BrowserService>();
         services.AddScoped<ThemeService>();
-        services.AddScoped<IThemeJsInterop, ThemeJsInterop>();
+        services.AddScoped<IThemePreferenceService, ThemePreferenceService>();
         services.AddScoped<ShellService>();
         services.AddScoped<ISettingsService, SettingsService>();
 
