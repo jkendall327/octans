@@ -12,6 +12,11 @@ public class MainToolbarViewmodel(NavigationManager nav)
         [
             new()
             {
+                Name = "gallery",
+                Page = Page.Gallery
+            },
+            new()
+            {
                 Name = "import",
                 Items =
                 [
@@ -28,7 +33,7 @@ public class MainToolbarViewmodel(NavigationManager nav)
                     new()
                     {
                         Name = "gallery",
-                        Page = Page.Gallery
+                        Page = Page.ImportGallery
                     },
                     new()
                     {
@@ -97,7 +102,8 @@ public class MainToolbarViewmodel(NavigationManager nav)
         {
             Page.LocalFiles => "/imports?tab=files",
             Page.WebUrls => "/imports?tab=url",
-            Page.Gallery => "/imports?tab=gallery",
+            Page.ImportGallery => "/imports?tab=gallery",
+            Page.Gallery => "/gallery",
             Page.Watchable => "/imports?tab=watchable",
             Page.Downloaders => "/downloaders",
             Page.Settings => "/settings",
@@ -116,6 +122,7 @@ public enum Page
 {
     LocalFiles,
     WebUrls,
+    ImportGallery,
     Gallery,
     Watchable,
     Settings,
@@ -127,6 +134,7 @@ public enum Page
 public class MenuItem
 {
     public required string Name { get; init; }
+    public Page? Page { get; init; }
     public List<ToolbarItem> Items { get; init; } = [];
 }
 
