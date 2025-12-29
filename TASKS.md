@@ -35,7 +35,7 @@ Network.
 
 - [ ] **Code Refactoring**
     - **Task:** Review `TagSibling` and `TagParent` 'Status' property necessity (Hydrus legacy).
-    - **Task:** Convert DTO types in `ImportModels.cs` to `record`s.
+    - [x] **Task:** Convert DTO types in `ImportModels.cs` to `record`s.
 
 ## 5. Testing
 

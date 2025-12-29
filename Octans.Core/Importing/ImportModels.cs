@@ -9,22 +9,18 @@ public enum ImportType
     Watchable
 }
 
-public class ImportRequest
+public record ImportRequest
 {
-    // TODO: make this and other DTO types into records.
-    // Removing the setter on this broke a test,
-    // presumably because it relied on the ImportId being set
-    // when deserialized across a HTTP boundary.
-    public Guid ImportId { get; set; } = Guid.NewGuid();
+    public Guid ImportId { get; init; } = Guid.NewGuid();
     public required ImportType ImportType { get; init; }
     public required List<ImportItem> Items { get; init; }
     public required bool DeleteAfterImport { get; init; }
     public ImportFilterData? FilterData { get; init; }
-    public bool AllowReimportDeleted { get; set; }
+    public bool AllowReimportDeleted { get; init; }
     public bool AutoArchive { get; init; }
 }
 
-public class ImportFilterData
+public record ImportFilterData
 {
     public uint? MaxFileSize { get; init; }
     public uint? MinFileSize { get; init; }
@@ -37,7 +33,7 @@ public class ImportFilterData
     public uint? MinWidth { get; init; }
 }
 
-public class ImportItem
+public record ImportItem
 {
     public Uri? Url { get; init; }
     public string? Filepath { get; init; }
@@ -47,10 +43,10 @@ public class ImportItem
 /// <summary>
 /// Represents the success of the import for an individual item/file.
 /// </summary>
-public class ImportItemResult
+public record ImportItemResult
 {
-    public required bool Ok { get; set; }
-    public string? Message { get; set; }
+    public required bool Ok { get; init; }
+    public string? Message { get; init; }
 }
 
 /// <summary>
