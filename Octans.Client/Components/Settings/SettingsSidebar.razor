@@ -1,7 +1,7 @@
 <ul class="settings-sidebar">
     @foreach (var p in Pages)
     {
-        <li class="@(p == ActivePage ? "active" : null)" @onclick="@(() => OnSelectPage.InvokeAsync(p))">@p.Title</li>
+        <li class="@(p == ActivePage ? "active" : null)" @onclick="@(() => OnSelectPage.InvokeAsync(p))" data-test="settings-page-@p.Title">@p.Title</li>
     }
 </ul>
 

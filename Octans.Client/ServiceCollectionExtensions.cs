@@ -177,6 +177,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBrowserStorage, BrowserStorage>();
         services.AddScoped<IClipboard, Clipboard>();
         services.AddScoped<ThemeService>();
+        services.AddScoped<IThemeJsInterop, ThemeJsInterop>();
         services.AddScoped<ShellService>();
         services.AddScoped<ISettingsService, SettingsService>();
 
