@@ -89,6 +89,7 @@ public sealed class DownloadService(
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Pausing download");
 
+        // TODO: Implement true pause/resume logic.
         // For now, we'll implement pause as cancel since we don't support resuming partial downloads
         CancelDownloadToken(id);
         stateService.UpdateState(id, DownloadState.Paused);

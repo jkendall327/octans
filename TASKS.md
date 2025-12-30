@@ -9,6 +9,10 @@ Network.
     - *Future Optimization:* Implement Recursive Common Table Expressions (CTE) for `GetDescendantsAsync` if tag
       relationships grow very large.
 
+- [ ] **Downloaders**
+    - **Task:** Fix/Implement `DownloaderFactory` to pass skipped tests (Lua loading/parsing).
+    - **Task:** Implement resumable downloads (currently pause is implemented as cancel).
+
 ## 2. User Interface (Client)
 
 - [ ] **Tag Management UI**
@@ -18,6 +22,17 @@ Network.
         - Edit tag text/namespace.
         - Manage Siblings (Merge tags).
         - Manage Parents (Add/Remove parent-child links).
+
+- [ ] **Import UI**
+    - **Task:** Implement "Post" Import tab.
+    - **Task:** Implement "Gallery" Import tab.
+    - **Task:** Implement "Watchable" Import tab.
+
+- [ ] **Layout & Navigation**
+    - **Task:** Implement Status Bar in Layout (to show progress, etc.).
+
+- [ ] **Subscriptions**
+    - **Task:** Implement Subscription API endpoints (`Octans.Client/Endpoints.cs`).
 
 ## 3. Extensibility
 
