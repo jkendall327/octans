@@ -178,7 +178,8 @@ public class DuplicateService(
             await fileDeleter.ProcessDeletion(new[] { deleteId });
 
             // We don't save a DuplicateDecision if one is deleted, because the pair is broken.
-            // Or maybe we should? If we delete B, and reimport B later, it will be a new HashItem (new ID? No, same ID if not hard deleted).
+            // TODO: Determine if we should handle re-import of deleted duplicates.
+            // If we delete B, and reimport B later, it will be a new HashItem (new ID? No, same ID if not hard deleted).
             // ReimportChecker reactivates existing hash.
             // So if we delete B, B.DeletedAt is set.
             // If B is reimported, B.DeletedAt is cleared.

@@ -85,6 +85,7 @@ public class Importer(
         {
             ImportType.File => file.GetRawBytes(item),
             ImportType.RawUrl => simple.GetRawBytes(item),
+            // TODO: Implement additional import types.
             _ => throw new InvalidOperationException("Import type not supported")
         };
 

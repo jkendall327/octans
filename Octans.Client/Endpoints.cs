@@ -102,7 +102,11 @@ internal static class Endpoints
     {
         app
             .MapPost("/subscriptions",
-                () => { throw new NotImplementedException("Subscription endpoint not yet implemented"); })
+                () =>
+                {
+                    // TODO: Implement subscription processing logic.
+                    throw new NotImplementedException("Subscription endpoint not yet implemented");
+                })
             .WithName("SubmitSubscription")
             .WithDescription("Submits a subscription request for automated queries");
 

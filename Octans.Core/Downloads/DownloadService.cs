@@ -90,7 +90,7 @@ public sealed class DownloadService(
         logger.LogInformation("Pausing download");
 
         // TODO: Implement true pause/resume logic.
-        // For now, we'll implement pause as cancel since we don't support resuming partial downloads
+        // TODO: Implement true pause/resume logic. For now, pause is implemented as cancel since we don't support resuming partial downloads.
         CancelDownloadToken(id);
         stateService.UpdateState(id, DownloadState.Paused);
 

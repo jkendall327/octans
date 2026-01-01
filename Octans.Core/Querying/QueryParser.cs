@@ -44,6 +44,7 @@ public class QueryParser
             "inbox" => new RepositoryPredicate { Repository = RepositoryType.Inbox },
             "archive" => new RepositoryPredicate { Repository = RepositoryType.Archive },
             "trash" => new RepositoryPredicate { Repository = RepositoryType.Trash },
+            // TODO: Implement remaining system predicates.
             _ => throw new NotImplementedException($"System predicate '{query.Query}' is not supported.")
         };
     }
