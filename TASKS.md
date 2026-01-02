@@ -27,12 +27,14 @@ Network.
     - **Task:** Implement "Post" Import tab.
     - **Task:** Implement "Gallery" Import tab.
     - **Task:** Implement "Watchable" Import tab.
+    - **Task:** Implement additional import types in `Importer.cs`.
 
 - [ ] **Layout & Navigation**
     - **Task:** Implement Status Bar in Layout (to show progress, etc.).
 
 - [ ] **Subscriptions**
     - **Task:** Implement Subscription API endpoints (`Octans.Client/Endpoints.cs`).
+    - **Task:** Implement subscription processing logic (TODO in `Octans.Client/Endpoints.cs`).
 
 ## 3. Extensibility
 
@@ -47,6 +49,7 @@ Network.
     - Ensure indexes exist on foreign keys in `TagParents`, `TagSiblings`.
     - Monitor search performance with large tag sets.
     - **Task:** Optimize `DuplicateService` comparison algorithm (currently O(N^2)). Use BK-tree or similar.
+    - **Task:** Determine if re-import of deleted duplicates should be handled in `DuplicateService`.
 
 - [ ] **Code Refactoring**
     - **Task:** Review `TagSibling` and `TagParent` 'Status' property necessity (Hydrus legacy).
@@ -56,6 +59,10 @@ Network.
 
 - [ ] **Integration Testing**
     - Add more integration tests for the full search pipeline with complex tag hierarchies.
+    - **Task:** Verify `QueryParser` handles all system predicates correctly.
+
+- [ ] **Error Handling**
+    - **Task:** Surface downloader creation errors to the UI in `DownloaderFactory`.
 
 ## Unsorted
 

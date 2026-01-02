@@ -41,6 +41,7 @@ public class DownloaderFactory(
 
             if (downloader is null)
             {
+                // TODO: Handle specific creation exceptions or surface errors to UI.
                 // exception on creation
                 continue;
             }
