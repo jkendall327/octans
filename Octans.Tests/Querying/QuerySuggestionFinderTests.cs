@@ -67,14 +67,17 @@ public class QuerySuggestionFinderTests : IAsyncLifetime, IClassFixture<Database
         // Arrange
         var ns1 = new Namespace { Value = "artist" };
         var ns2 = new Namespace { Value = "character" };
-        var t1 = new Tag { Namespace = ns1, Subtag = new Subtag { Value = "test" } };
-        var t2 = new Tag { Namespace = ns2, Subtag = new Subtag { Value = "test" } };
+
+        // Use different subtag values to avoid unique constraint violation on Subtags.Value
+        var t1 = new Tag { Namespace = ns1, Subtag = new Subtag { Value = "test1" } };
+        var t2 = new Tag { Namespace = ns2, Subtag = new Subtag { Value = "test2" } };
 
         await _context.Namespaces.AddRangeAsync(ns1, ns2);
         await _context.Tags.AddRangeAsync(t1, t2);
         await _context.SaveChangesAsync();
 
         // Act
+        // Searching for "artist:te" should match "artist:test1"
         var result = await _sut.GetAutocompleteTagIds("artist:te", false);
 
         // Assert
@@ -89,15 +92,18 @@ public class QuerySuggestionFinderTests : IAsyncLifetime, IClassFixture<Database
         var ns1 = new Namespace { Value = "artist" };
         var ns2 = new Namespace { Value = "artwork" };
         var ns3 = new Namespace { Value = "character" };
-        var t1 = new Tag { Namespace = ns1, Subtag = new Subtag { Value = "test" } };
-        var t2 = new Tag { Namespace = ns2, Subtag = new Subtag { Value = "test" } };
-        var t3 = new Tag { Namespace = ns3, Subtag = new Subtag { Value = "test" } };
+
+        // Use different subtag values to avoid unique constraint violation on Subtags.Value
+        var t1 = new Tag { Namespace = ns1, Subtag = new Subtag { Value = "test1" } };
+        var t2 = new Tag { Namespace = ns2, Subtag = new Subtag { Value = "test2" } };
+        var t3 = new Tag { Namespace = ns3, Subtag = new Subtag { Value = "test3" } };
 
         await _context.Namespaces.AddRangeAsync(ns1, ns2, ns3);
         await _context.Tags.AddRangeAsync(t1, t2, t3);
         await _context.SaveChangesAsync();
 
         // Act
+        // Searching for "art:te" should match "artist:test1" and "artwork:test2"
         var result = await _sut.GetAutocompleteTagIds("art:te", false);
 
         // Assert

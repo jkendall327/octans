@@ -36,6 +36,61 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<FileRecord>(entity =>
+        {
+            entity.HasIndex(e => e.Filepath).IsUnique();
+            entity.Property(e => e.Filepath).HasMaxLength(4096);
+        });
+
+        modelBuilder.Entity<HashItem>(entity =>
+        {
+            entity.HasIndex(e => e.Hash).IsUnique();
+            entity.Property(e => e.Hash).HasMaxLength(32);
+            entity.HasIndex(e => e.PerceptualHash);
+            entity.HasIndex(e => e.RepositoryId);
+            entity.HasIndex(e => e.DeletedAt);
+        });
+
+        modelBuilder.Entity<Namespace>(entity =>
+        {
+            entity.HasIndex(e => e.Value).IsUnique();
+            entity.Property(e => e.Value).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<Subtag>(entity =>
+        {
+            entity.HasIndex(e => e.Value).IsUnique();
+            entity.Property(e => e.Value).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<Tag>(entity =>
+        {
+            entity.HasIndex(t => new { t.NamespaceId, t.SubtagId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Mapping>(entity =>
+        {
+            entity.HasIndex(m => new { m.HashId, m.TagId }).IsUnique();
+        });
+
+        modelBuilder.Entity<QueuedDownload>(entity =>
+        {
+            entity.HasIndex(e => e.Url);
+            entity.Property(e => e.Url).HasMaxLength(2048);
+            entity.Property(e => e.DestinationPath).HasMaxLength(1024);
+            entity.Property(e => e.Domain).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<ImportItem>(entity =>
+        {
+            entity.Property(e => e.Source).HasMaxLength(2048);
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
         modelBuilder.Entity<DuplicateCandidate>()
             .HasOne(c => c.Hash1)
             .WithMany()
