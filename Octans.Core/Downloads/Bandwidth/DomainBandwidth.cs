@@ -7,7 +7,7 @@ public class DomainBandwidth
     public required string Domain { get; set; }
     public long BandwidthLimit { get; set; } // in bytes per second
 
-    public ConcurrentQueue<(DateTime Timestamp, long Usage)> UsageHistory { get; init; } = new();
+    public ConcurrentQueue<(DateTimeOffset Timestamp, long Usage)> UsageHistory { get; init; } = new();
 
     public TimeSpan WindowDuration { get; set; } = TimeSpan.FromSeconds(60); // Default 60-second window
 }

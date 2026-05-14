@@ -26,10 +26,10 @@ namespace Octans.Server.Migrations
                     b.Property<long>("BytesDownloaded")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("CompletedAt")
+                    b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<double>("CurrentSpeed")
@@ -50,10 +50,10 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("LastUpdated")
+                    b.Property<DateTimeOffset>("LastUpdated")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("StartedAt")
+                    b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("State")
@@ -77,7 +77,7 @@ namespace Octans.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<double>("Distance")
@@ -104,7 +104,7 @@ namespace Octans.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("DecidedAt")
+                    b.Property<DateTimeOffset>("DecidedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("HashId1")
@@ -149,7 +149,7 @@ namespace Octans.Server.Migrations
                     b.Property<string>("ContentType")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DeletedAt")
+                    b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Extension")
@@ -181,10 +181,10 @@ namespace Octans.Server.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("CompletedAt")
+                    b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Error")
@@ -203,13 +203,13 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("StartedAt")
+                    b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -231,10 +231,10 @@ namespace Octans.Server.Migrations
                     b.Property<bool>("AutoArchive")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("CompletedAt")
+                    b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CurrentItem")
@@ -262,7 +262,7 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("StartedAt")
+                    b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
@@ -271,7 +271,7 @@ namespace Octans.Server.Migrations
                     b.Property<int>("TotalItems")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -289,13 +289,13 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("HashItemId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("LastModifiedAt")
+                    b.Property<DateTimeOffset>("LastModifiedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -322,7 +322,7 @@ namespace Octans.Server.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("QueuedAt")
+                    b.Property<DateTimeOffset>("QueuedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Url")
@@ -456,7 +456,7 @@ namespace Octans.Server.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("NextCheck")
+                    b.Property<DateTimeOffset>("NextCheck")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ProviderId")
@@ -480,7 +480,7 @@ namespace Octans.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("ExecutedAt")
+                    b.Property<DateTimeOffset>("ExecutedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ItemsFound")

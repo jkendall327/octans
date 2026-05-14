@@ -77,7 +77,7 @@ public class SubscriptionServiceTests
                 CheckPeriod = TimeSpan.FromHours(1),
                 Query = "test query",
                 ProviderId = provider.Id,
-                NextCheck = now.UtcDateTime.AddMinutes(-1) // Should be checked
+                NextCheck = now.AddMinutes(-1) // Should be checked
             };
             context.Subscriptions.Add(subscription);
             await context.SaveChangesAsync();
@@ -96,10 +96,10 @@ public class SubscriptionServiceTests
             Assert.Single(executions);
             var execution = executions.First();
             Assert.Equal(42, execution.ItemsFound);
-            Assert.Equal(now.UtcDateTime, execution.ExecutedAt);
+            Assert.Equal(now, execution.ExecutedAt);
 
             var subscription = await context.Subscriptions.FirstAsync();
-            Assert.Equal(now.UtcDateTime.AddHours(1), subscription.NextCheck);
+            Assert.Equal(now.AddHours(1), subscription.NextCheck);
         }
     }
 }

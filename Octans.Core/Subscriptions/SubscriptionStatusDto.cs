@@ -6,6 +6,6 @@ public record SubscriptionStatusDto(
     string DownloaderName,
     string Query,
     TimeSpan Frequency,
-    DateTime? LastRun,
+    DateTimeOffset? LastRun,
     int? ItemsFound,
-    DateTime NextCheck);
+    DateTimeOffset NextCheck);

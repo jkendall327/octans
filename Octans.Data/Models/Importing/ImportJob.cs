@@ -13,10 +13,10 @@ public class ImportJob
     public int FailedItems { get; set; }
     public string? CurrentItem { get; set; }
     public string? FailureReason { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? StartedAt { get; set; }
-    public DateTime? CompletedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
     public bool DeleteAfterImport { get; set; }
     public bool AllowReimportDeleted { get; set; }
     public bool AutoArchive { get; set; }

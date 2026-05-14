@@ -17,8 +17,7 @@ public sealed class SubscriptionService(
     {
         using var db = await factory.CreateDbContextAsync(stoppingToken);
 
-        var now = timeProvider.GetUtcNow()
-            .UtcDateTime;
+        var now = timeProvider.GetUtcNow();
 
         var subscriptions = await db
             .Subscriptions
@@ -90,7 +89,7 @@ public sealed class SubscriptionService(
             Provider = provider,
             Query = query,
             CheckPeriod = frequency,
-            NextCheck = timeProvider.GetUtcNow().UtcDateTime
+            NextCheck = timeProvider.GetUtcNow()
         };
 
         db.Subscriptions.Add(subscription);

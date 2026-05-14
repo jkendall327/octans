@@ -62,7 +62,7 @@ public class DownloadStatusTracker(
         status.BytesDownloaded = bytesDownloaded;
         status.TotalBytes = totalBytes;
         status.CurrentSpeed = speed;
-        status.LastUpdated = timeProvider.GetUtcNow().UtcDateTime;
+        status.LastUpdated = timeProvider.GetUtcNow();
 
         // Notify subscribers
         await publisher.Publish(new DownloadStatusChanged { Status = status });
@@ -72,7 +72,7 @@ public class DownloadStatusTracker(
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var now = timeProvider.GetUtcNow();
         status.State = newState;
         status.LastUpdated = now;
 

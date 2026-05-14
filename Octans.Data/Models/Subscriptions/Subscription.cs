@@ -17,6 +17,6 @@ public class Subscription
     public int ProviderId { get; init; }
     [ForeignKey(nameof(ProviderId))]
     public Provider Provider { get; init; } = null!;
-    public DateTime NextCheck { get; set; }
+    public DateTimeOffset NextCheck { get; set; }
     public ICollection<SubscriptionExecution> Executions { get; } = new List<SubscriptionExecution>();
 }

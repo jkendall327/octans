@@ -187,5 +187,5 @@ public class ImportProcessorService(
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static DateTime Now(TimeProvider timeProvider) => timeProvider.GetUtcNow().UtcDateTime;
+    private static DateTimeOffset Now(TimeProvider timeProvider) => timeProvider.GetUtcNow();
 }

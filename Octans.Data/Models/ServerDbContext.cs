@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Octans.Data.Models.Duplicates;
 using Octans.Data.Models.Importing;
 using Octans.Data.Models.Ratings;
@@ -9,6 +11,10 @@ namespace Octans.Data.Models;
 
 public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbContext(context)
 {
+    private static readonly ValueConverter<DateTimeOffset, string> DateTimeOffsetConverter = new(
+        value => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+        value => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+
     public virtual DbSet<FileRecord> FileRecords { get; set; }
     public virtual DbSet<HashItem> Hashes { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
@@ -77,5 +83,16 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
             new RatingSystem { Id = 1, Name = "Favourites", Type = RatingSystemType.Toggle, MaxValue = 1 },
             new RatingSystem { Id = 2, Name = "Quality", Type = RatingSystemType.Range, MaxValue = 5 }
         );
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTimeOffset) || property.ClrType == typeof(DateTimeOffset?))
+                {
+                    property.SetValueConverter(DateTimeOffsetConverter);
+                }
+            }
+        }
     }
 }

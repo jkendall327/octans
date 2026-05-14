@@ -46,7 +46,7 @@
                         <MudCard Outlined="true" Class="pa-2 mb-2">
                              <MudCardContent>
                                  <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@note.Content</MudText>
-                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@note.CreatedAt.ToLocalTime()</MudText>
+                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@Formatting.FormatLocalTime(note.CreatedAt)</MudText>
                              </MudCardContent>
                              <MudCardActions>
                                  <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteNote(note))" Color="Color.Error" />

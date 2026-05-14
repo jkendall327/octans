@@ -15,7 +15,7 @@ public class Note
 
     public required string Content { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
-    public DateTime LastModifiedAt { get; set; }
+    public DateTimeOffset LastModifiedAt { get; set; }
 }

@@ -39,7 +39,7 @@ public sealed class DownloadService(
 
         logger.LogInformation("Queueing download for {Filename}", filename);
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var now = timeProvider.GetUtcNow();
         var status = new DownloadStatus
         {
             Id = id,
@@ -116,7 +116,7 @@ public sealed class DownloadService(
                 Id = id,
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
-                QueuedAt = timeProvider.GetUtcNow().UtcDateTime,
+                QueuedAt = timeProvider.GetUtcNow(),
                 Domain = status.Domain
             });
 
@@ -150,7 +150,7 @@ public sealed class DownloadService(
                 Id = id,
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
-                QueuedAt = timeProvider.GetUtcNow().UtcDateTime,
+                QueuedAt = timeProvider.GetUtcNow(),
                 Domain = status.Domain
             });
 
