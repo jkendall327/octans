@@ -22,7 +22,7 @@
 ## General notes
 
 This is not a production app yet.
-I have a dev database I don't want to explore, so use proper EF migrations.
+I have a dev database I don't want to explode, so use proper EF migrations.
 But if I need to start up a new database for something really radical, it's not the end of the world.
 
 ## Verification
