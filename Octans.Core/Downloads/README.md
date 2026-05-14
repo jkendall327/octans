@@ -31,10 +31,12 @@ builder.Services.AddDownloadManager(options =>
 {
     options.MaxConcurrentDownloads = 5;
 });
-
-builder.Services.AddHostedService<DownloadManager>();
 ```
 
 ## Components
 
-TBD
+- `IDownloadService` accepts feature-level download requests and exposes cancel/pause/resume/retry commands.
+- `IDownloadQueue` persists queued work and chooses the next bandwidth-eligible job.
+- `DownloadBackgroundService` is registered by `AddDownloadManager` and runs the worker loop.
+- `HttpDownloader` performs the HTTP request, streams bytes to disk, and reports progress.
+- `IDownloadStateService` tracks active status in memory, persists state transitions, and raises UI notifications.

@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
@@ -12,12 +14,14 @@ public static class DownloadServiceExtensions
         // Add options
         var options = new DownloadManagerOptions();
         configure?.Invoke(options);
+        services.RemoveAll<DownloadManagerOptions>();
         services.AddSingleton(options);
 
-        services.AddSingleton<IDownloadStateService, DownloadStatusTracker>();
-        services.AddSingleton<HttpDownloader>();
-        services.AddSingleton<IDownloadService, DownloadService>();
-        services.AddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
+        services.TryAddSingleton<IDownloadStateService, DownloadStatusTracker>();
+        services.TryAddSingleton<HttpDownloader>();
+        services.TryAddSingleton<IDownloadService, DownloadService>();
+        services.TryAddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DownloadBackgroundService>());
 
         // Add HTTP client
         services.AddHttpClient("DownloadClient", client =>

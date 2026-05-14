@@ -6,6 +6,7 @@ namespace Octans.Core.Downloads;
 
 public sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,
+    IDownloadStateService stateService,
     HttpDownloader processor,
     ILogger<DownloadBackgroundService> logger,
     DownloadManagerOptions options) : BackgroundService
@@ -22,6 +23,7 @@ public sealed class DownloadBackgroundService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Download Manager started with max concurrency: {Concurrency}", _maxConcurrentDownloads);
+        await stateService.InitializeFromDbAsync();
 
         while (!stoppingToken.IsCancellationRequested)
         {
