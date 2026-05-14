@@ -19,6 +19,7 @@ public interface IDownloadQueue
 public class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
     IBandwidthLimiter bandwidthLimiter,
+    IDownloadStateService stateService,
     ILogger<DatabaseDownloadQueue> logger) : IDownloadQueue
 {
     public async Task<Guid> EnqueueAsync(QueuedDownload download)
@@ -73,6 +74,12 @@ public class DatabaseDownloadQueue(
             if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
             {
                 logger.LogDebug("Skipping download due to bandwidth limitations for domain {Domain}", download.Domain);
+                var status = stateService.GetDownloadById(download.Id);
+                if (status?.State != DownloadState.WaitingForBandwidth)
+                {
+                    await stateService.UpdateState(download.Id, DownloadState.WaitingForBandwidth);
+                }
+
                 continue;
             }
 

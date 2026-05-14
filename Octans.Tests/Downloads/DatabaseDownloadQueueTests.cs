@@ -14,6 +14,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     private readonly SqliteConnection _connection = new("Filename=:memory:");
     private readonly IDbContextFactory<ServerDbContext> _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
+    private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly DatabaseDownloadQueue _sut;
 
     public DatabaseDownloadQueueTests()
@@ -30,6 +31,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         _sut = new(
             _contextFactory,
             _bandwidthLimiter,
+            _stateService,
             NullLogger<DatabaseDownloadQueue>.Instance);
     }
 
@@ -131,6 +133,15 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 
         // Set bandwidth limiter to reject this domain
         _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
+        _stateService.GetDownloadById(download.Id).Returns(new DownloadStatus
+        {
+            Id = download.Id,
+            Url = download.Url,
+            Filename = "file.jpg",
+            DestinationPath = download.DestinationPath,
+            State = DownloadState.Queued,
+            Domain = download.Domain
+        });
 
         var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
 
@@ -140,6 +151,42 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         // Verify it's still in the queue
         var remainingCount = await context.QueuedDownloads.CountAsync();
         Assert.Equal(1, remainingCount);
+        await _stateService.Received(1).UpdateState(download.Id, DownloadState.WaitingForBandwidth);
+    }
+
+    [Fact]
+    public async Task DequeueNextEligibleAsync_ShouldNotRepeatWaitingStateWhenAlreadyWaitingForBandwidth()
+    {
+        await using var context = CreateContext();
+
+        var download = new QueuedDownload
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file.jpg",
+            DestinationPath = "/downloads/file.jpg",
+            Domain = "example.com",
+            Priority = 5,
+            QueuedAt = TestClock.UtcNow
+        };
+
+        context.QueuedDownloads.Add(download);
+        await context.SaveChangesAsync();
+
+        _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
+        _stateService.GetDownloadById(download.Id).Returns(new DownloadStatus
+        {
+            Id = download.Id,
+            Url = download.Url,
+            Filename = "file.jpg",
+            DestinationPath = download.DestinationPath,
+            State = DownloadState.WaitingForBandwidth,
+            Domain = download.Domain
+        });
+
+        var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
+
+        Assert.Null(result);
+        await _stateService.DidNotReceive().UpdateState(download.Id, DownloadState.WaitingForBandwidth);
     }
 
     [Fact]
