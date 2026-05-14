@@ -32,6 +32,17 @@ public class ActiveDownloadRegistryTests
     }
 
     [Fact]
+    public void Release_ShouldRemoveTokenWithoutCancelingIt()
+    {
+        var id = Guid.NewGuid();
+        var token = _sut.GetToken(id);
+
+        _sut.Release(id);
+
+        Assert.False(token.IsCancellationRequested);
+    }
+
+    [Fact]
     public async Task CancelAllAsync_ShouldCancelAllActiveTokens()
     {
         var first = _sut.GetToken(Guid.NewGuid());

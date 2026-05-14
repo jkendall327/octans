@@ -11,6 +11,7 @@ namespace Octans.Core.Downloads;
 public class HttpDownloader(
     IBandwidthLimiter bandwidthLimiter,
     IDownloadStateService stateService,
+    IDownloadLifecycleService lifecycle,
     IActiveDownloadRegistry activeDownloads,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
@@ -34,18 +35,18 @@ public class HttpDownloader(
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
             logger.LogInformation("Download canceled: {Url}", download.Url);
-            await stateService.UpdateState(downloadId, DownloadState.Canceled);
+            await lifecycle.MarkCanceledAsync(downloadId);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
             logger.LogError(ex, "Download failed: {Url}", download.Url);
-            await stateService.UpdateState(downloadId, DownloadState.Failed, ex.Message);
+            await lifecycle.MarkFailedAsync(downloadId, ex.Message);
         }
     }
 
     private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
     {
-        await stateService.UpdateState(downloadId, DownloadState.InProgress);
+        await lifecycle.MarkInProgressAsync(downloadId);
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
         var directoryName = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??
@@ -110,7 +111,7 @@ public class HttpDownloader(
             totalBytes,
             bytesDownloaded / totalElapsed.TotalSeconds);
 
-        await stateService.UpdateState(downloadId, DownloadState.Completed);
+        await lifecycle.MarkCompletedAsync(downloadId);
 
         // Record bandwidth usage
         bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);

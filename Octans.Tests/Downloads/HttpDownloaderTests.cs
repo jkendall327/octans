@@ -13,6 +13,7 @@ public class HttpDownloaderTests
 {
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
+    private readonly IDownloadLifecycleService _lifecycle = Substitute.For<IDownloadLifecycleService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
@@ -34,6 +35,7 @@ public class HttpDownloaderTests
         _sut = new(
             _bandwidthLimiter,
             _stateService,
+            _lifecycle,
             _activeDownloads,
             factory,
             _fileSystem,
@@ -70,11 +72,8 @@ public class HttpDownloaderTests
 
         // Assert
         // Verify state updates
-        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        await _stateService.Received(1).UpdateState(
-            downloadId,
-            DownloadState.Failed,
-            Arg.Is<string>(s => s.Contains("404")));
+        await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
+        await _lifecycle.Received(1).MarkFailedAsync(downloadId, Arg.Is<string>(s => s.Contains("404")));
 
         // Verify file was not created
         Assert.False(_fileSystem.File.Exists(destinationPath));
@@ -113,9 +112,9 @@ public class HttpDownloaderTests
 
         // Assert
         // Verify state updates
-        await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
-        await _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
-        await _stateService.DidNotReceive().UpdateState(downloadId, DownloadState.Completed);
+        await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
+        await _lifecycle.Received(1).MarkCanceledAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
     }
 }
 

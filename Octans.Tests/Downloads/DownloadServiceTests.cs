@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -14,19 +13,20 @@ public class DownloadServiceTests
     private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
+    private readonly DownloadLifecycleService _lifecycle;
     private readonly DownloadService _service;
 
     public DownloadServiceTests()
     {
         var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
-        var lifecycle = new DownloadLifecycleService(
+        _lifecycle = new(
             _mockQueue,
             _mockStateService,
             _activeDownloads,
             timeProvider,
             NullLogger<DownloadLifecycleService>.Instance);
 
-        _service = new(lifecycle);
+        _service = new(_lifecycle);
     }
 
     [Fact]
@@ -222,4 +222,36 @@ public class DownloadServiceTests
         await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
+    [Fact]
+    public async Task MarkCompletedAsync_ShouldUpdateStateAndReleaseActiveToken()
+    {
+        var id = Guid.NewGuid();
+
+        await _lifecycle.MarkCompletedAsync(id);
+
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Completed);
+        _activeDownloads.Received(1).Release(id);
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_ShouldUpdateStateAndReleaseActiveToken()
+    {
+        var id = Guid.NewGuid();
+
+        await _lifecycle.MarkFailedAsync(id, "Network broke");
+
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Failed, "Network broke");
+        _activeDownloads.Received(1).Release(id);
+    }
+
+    [Fact]
+    public async Task MarkCanceledAsync_ShouldUpdateStateAndReleaseActiveToken()
+    {
+        var id = Guid.NewGuid();
+
+        await _lifecycle.MarkCanceledAsync(id);
+
+        await _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
+        _activeDownloads.Received(1).Release(id);
+    }
 }

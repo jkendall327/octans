@@ -7,6 +7,7 @@ public interface IActiveDownloadRegistry
 {
     CancellationToken GetToken(Guid downloadId);
     void Cancel(Guid downloadId);
+    void Release(Guid downloadId);
     Task CancelAllAsync();
 }
 
@@ -43,6 +44,18 @@ public sealed class ActiveDownloadRegistry(
         logger.LogDebug("Canceling download token for {DownloadId}", downloadId);
 
         cts.Cancel();
+        cts.Dispose();
+    }
+
+    public void Release(Guid downloadId)
+    {
+        if (!_downloadCancellations.TryRemove(downloadId, out var cts))
+        {
+            logger.LogDebug("No active cancellation token found to release for download {DownloadId}", downloadId);
+            return;
+        }
+
+        logger.LogDebug("Releasing download token for {DownloadId}", downloadId);
         cts.Dispose();
     }
 

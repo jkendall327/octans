@@ -11,6 +11,10 @@ public interface IDownloadLifecycleService
     Task PauseDownloadAsync(Guid id);
     Task ResumeDownloadAsync(Guid id);
     Task RetryDownloadAsync(Guid id);
+    Task MarkInProgressAsync(Guid id);
+    Task MarkCompletedAsync(Guid id);
+    Task MarkFailedAsync(Guid id, string errorMessage);
+    Task MarkCanceledAsync(Guid id);
 }
 
 public sealed class DownloadLifecycleService(
@@ -126,6 +130,29 @@ public sealed class DownloadLifecycleService(
         await stateService.UpdateState(id, DownloadState.Queued);
 
         logger.LogDebug("Download reset and re-queued");
+    }
+
+    public Task MarkInProgressAsync(Guid id)
+    {
+        return stateService.UpdateState(id, DownloadState.InProgress);
+    }
+
+    public async Task MarkCompletedAsync(Guid id)
+    {
+        await stateService.UpdateState(id, DownloadState.Completed);
+        activeDownloads.Release(id);
+    }
+
+    public async Task MarkFailedAsync(Guid id, string errorMessage)
+    {
+        await stateService.UpdateState(id, DownloadState.Failed, errorMessage);
+        activeDownloads.Release(id);
+    }
+
+    public async Task MarkCanceledAsync(Guid id)
+    {
+        await stateService.UpdateState(id, DownloadState.Canceled);
+        activeDownloads.Release(id);
     }
 
     private static QueuedDownload BuildQueuedDownload(DownloadStatus status, DateTimeOffset queuedAt) => new()
