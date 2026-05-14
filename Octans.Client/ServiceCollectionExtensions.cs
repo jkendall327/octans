@@ -295,10 +295,9 @@ public static class ServiceCollectionExtensions
         manager.MakeSubfolders();
 
         // Ensure database is initialised.
-        var scope = app.Services.CreateScope();
+        await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
         await db.Database.MigrateAsync();
-        scope.Dispose();
     }
 
     private static string GetContentType(string extension)
