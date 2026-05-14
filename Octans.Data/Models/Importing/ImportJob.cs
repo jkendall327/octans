@@ -6,17 +6,40 @@ public class ImportJob
 {
     [Key]
     public Guid Id { get; set; }
-    public DateTime CreatedAt { get; set; }
     public ImportJobStatus Status { get; set; }
-    public required string SerializedRequest { get; init; }
+    public ImportJobPhase Phase { get; set; }
+    public int TotalItems { get; set; }
+    public int ProcessedItems { get; set; }
+    public int FailedItems { get; set; }
+    public string? CurrentItem { get; set; }
+    public string? FailureReason { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public bool DeleteAfterImport { get; set; }
+    public bool AllowReimportDeleted { get; set; }
+    public bool AutoArchive { get; set; }
+    public string? SerializedFilterData { get; set; }
+
+    public string SerializedRequest { get; set; } = string.Empty;
     public List<ImportItem> Items { get; init; } = [];
 }
 
 public enum ImportJobStatus
 {
     Queued,
-    InProgress,
+    Running,
+    PauseRequested,
     Paused,
+    CancelRequested,
+    Cancelled,
     Completed,
     Failed
+}
+
+public enum ImportJobPhase
+{
+    Scanning,
+    Importing
 }

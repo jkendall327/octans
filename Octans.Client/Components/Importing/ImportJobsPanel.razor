@@ -1,0 +1,125 @@
+@implements IAsyncDisposable
+@using Octans.Core.Importing
+@inject IImportJobService ImportJobService
+
+<section class="import-jobs-panel">
+    <div class="import-jobs-header">
+        <h4>Import Jobs</h4>
+        <button type="button" @onclick="Refresh">Refresh</button>
+    </div>
+
+    @if (_jobs.Count == 0)
+    {
+        <p>No import jobs yet.</p>
+    }
+    else
+    {
+        <div class="import-job-list">
+            @foreach (var job in _jobs)
+            {
+                <article class="import-job">
+                    <div>
+                        <strong>@job.Status</strong>
+                        <span>@job.Phase</span>
+                    </div>
+                    <progress value="@job.ProcessedItems" max="@Math.Max(job.TotalItems, 1)"></progress>
+                    <div class="import-job-summary">
+                        <span>@job.ProcessedItems / @job.TotalItems processed</span>
+                        <span>@job.FailedItems failed</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(job.CurrentItem))
+                    {
+                        <small>@job.CurrentItem</small>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(job.FailureReason))
+                    {
+                        <small>@job.FailureReason</small>
+                    }
+                    <div class="import-job-actions">
+                        @if (CanPause(job))
+                        {
+                            <button type="button" @onclick="@(() => Pause(job.Id))">Pause</button>
+                        }
+                        @if (CanResume(job))
+                        {
+                            <button type="button" @onclick="@(() => Resume(job.Id))">Resume</button>
+                        }
+                        @if (CanCancel(job))
+                        {
+                            <button type="button" @onclick="@(() => Cancel(job.Id))">Cancel</button>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private readonly CancellationTokenSource _polling = new();
+    private IReadOnlyList<ImportJobDto> _jobs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        _ = Poll();
+    }
+
+    private async Task Poll()
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+            while (await timer.WaitForNextTickAsync(_polling.Token))
+            {
+                if (_jobs.Count == 0 || _jobs.Any(IsActive))
+                {
+                    await InvokeAsync(Refresh);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task Refresh()
+    {
+        _jobs = await ImportJobService.GetJobs(_polling.Token);
+        StateHasChanged();
+    }
+
+    private async Task Pause(Guid id)
+    {
+        await ImportJobService.PauseJob(id, _polling.Token);
+        await Refresh();
+    }
+
+    private async Task Resume(Guid id)
+    {
+        await ImportJobService.ResumeJob(id, _polling.Token);
+        await Refresh();
+    }
+
+    private async Task Cancel(Guid id)
+    {
+        await ImportJobService.CancelJob(id, _polling.Token);
+        await Refresh();
+    }
+
+    private static bool IsActive(ImportJobDto job) =>
+        job.Status is "Queued" or "Running" or "PauseRequested" or "CancelRequested";
+
+    private static bool CanPause(ImportJobDto job) => job.Status is "Queued" or "Running";
+    private static bool CanResume(ImportJobDto job) => job.Status is "Paused" or "PauseRequested";
+    private static bool CanCancel(ImportJobDto job) => job.Status is "Queued" or "Paused" or "Running" or "PauseRequested";
+
+    public ValueTask DisposeAsync()
+    {
+        _polling.Cancel();
+        _polling.Dispose();
+
+        return ValueTask.CompletedTask;
+    }
+}

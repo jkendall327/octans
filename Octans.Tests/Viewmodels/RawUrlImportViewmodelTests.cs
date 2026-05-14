@@ -7,20 +7,20 @@ namespace Octans.Tests.Viewmodels;
 
 public class RawUrlImportViewmodelTests
 {
-    private readonly IImporter _importer;
+    private readonly IImportJobService _importJobService;
     private readonly RawUrlImportViewmodel _sut;
 
     public RawUrlImportViewmodelTests()
     {
-        _importer = Substitute.For<IImporter>();
+        _importJobService = Substitute.For<IImportJobService>();
 
-        var importResult = new ImportResult(Guid.NewGuid(), []);
+        var created = new ImportJobCreatedDto(Guid.NewGuid());
 
-        _importer
-            .ProcessImport(Arg.Any<ImportRequest>())
-            .Returns(Task.FromResult(importResult));
+        _importJobService
+            .Create(Arg.Any<ImportJobCreateRequest>())
+            .Returns(Task.FromResult(created));
 
-        _sut = new(_importer, NullLogger<RawUrlImportViewmodel>.Instance);
+        _sut = new(_importJobService, NullLogger<RawUrlImportViewmodel>.Instance);
     }
 
     [Fact]
@@ -31,11 +31,11 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _importer
+        await _importJobService
             .Received(1)
-            .ProcessImport(Arg.Is<ImportRequest>(r =>
+            .Create(Arg.Is<ImportJobCreateRequest>(r =>
                 r.ImportType == ImportType.RawUrl && r.DeleteAfterImport == false && r.AllowReimportDeleted &&
-                r.Items.Count == 2));
+                r.Sources.Count == 2));
 
         Assert.Equal(string.Empty, _sut.RawInputs);
     }
@@ -47,8 +47,8 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _importer
+        await _importJobService
             .DidNotReceive()
-            .ProcessImport(Arg.Any<ImportRequest>());
+            .Create(Arg.Any<ImportJobCreateRequest>());
     }
 }

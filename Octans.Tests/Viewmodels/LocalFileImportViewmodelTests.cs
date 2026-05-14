@@ -10,19 +10,22 @@ namespace Octans.Tests.Viewmodels;
 
 public class LocalFileImportViewmodelTests
 {
-    private readonly IImporter _importer;
+    private readonly IImportJobService _importJobService;
     private readonly LocalFileImportViewmodel _sut;
 
     public LocalFileImportViewmodelTests()
     {
         MockFileSystem fs = new();
         var env = Substitute.For<IWebHostEnvironment>();
-        _importer = Substitute.For<IImporter>();
+        _importJobService = Substitute.For<IImportJobService>();
+        _importJobService
+            .Create(Arg.Any<ImportJobCreateRequest>())
+            .Returns(Task.FromResult(new ImportJobCreatedDto(Guid.NewGuid())));
 
         // This has to be a root path to avoid the URI ctor breaking.
         env.WebRootPath.Returns("/wwwroot");
 
-        _sut = new(fs, env, _importer, NullLogger<LocalFileImportViewmodel>.Instance);
+        _sut = new(fs, env, _importJobService, NullLogger<LocalFileImportViewmodel>.Instance);
     }
 
     [Fact]
@@ -56,10 +59,10 @@ public class LocalFileImportViewmodelTests
 
         await _sut.SendLocalFilesToServer();
 
-        await _importer
+        await _importJobService
             .Received(1)
-            .ProcessImport(Arg.Is<ImportRequest>(r =>
-                r.ImportType == ImportType.File && r.DeleteAfterImport == false && r.Items.Count == 2));
+            .Create(Arg.Is<ImportJobCreateRequest>(r =>
+                r.ImportType == ImportType.File && r.DeleteAfterImport == false && r.Sources.Count == 2));
 
         Assert.Empty(_sut.LocalFiles);
     }
@@ -71,8 +74,8 @@ public class LocalFileImportViewmodelTests
 
         await _sut.SendLocalFilesToServer();
 
-        await _importer
+        await _importJobService
             .DidNotReceive()
-            .ProcessImport(Arg.Any<ImportRequest>());
+            .Create(Arg.Any<ImportJobCreateRequest>());
     }
 }

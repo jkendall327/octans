@@ -58,9 +58,6 @@ public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<Database
         // Use a short debounce for testing
         await _sut.OnInputAsync("go", debounceMs: 10);
 
-        // Wait for debounce
-        await Task.Delay(50);
-
         // Assert
         stateChanged.Should().BeTrue();
         _sut.Suggestions.Should().Contain(t1);
@@ -79,12 +76,10 @@ public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<Database
 
         // Populate first
         await _sut.OnInputAsync("go", debounceMs: 10);
-        await Task.Delay(50);
         _sut.Suggestions.Should().NotBeEmpty();
 
         // Act
         await _sut.OnInputAsync("", debounceMs: 10);
-        await Task.Delay(50);
 
         // Assert
         _sut.Suggestions.Should().BeEmpty();

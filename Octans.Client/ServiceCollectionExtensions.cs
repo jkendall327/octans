@@ -97,7 +97,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SimpleImporter>();
         services.AddScoped<FileImporter>();
         services.AddScoped<PostImporter>();
+        services.AddScoped<ImportItemProcessor>();
         services.AddScoped<IImporter, Importer>();
+        services.AddScoped<ImportJobService>();
+        services.AddScoped<IImportJobService>(s => s.GetRequiredService<ImportJobService>());
+        services.AddSingleton<IImportJobNotifier, NoOpImportJobNotifier>();
 
         // Import services
         services.AddScoped<ReimportChecker>();

@@ -1,0 +1,35 @@
+.import-jobs-panel {
+    margin-top: 24px;
+}
+
+.import-jobs-header,
+.import-job-summary,
+.import-job-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.import-jobs-header {
+    justify-content: space-between;
+}
+
+.import-job-list {
+    display: grid;
+    gap: 12px;
+}
+
+.import-job {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.import-job progress {
+    width: 100%;
+}
+
+.import-job small {
+    display: block;
+    overflow-wrap: anywhere;
+}

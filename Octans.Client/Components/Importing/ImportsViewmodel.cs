@@ -11,12 +11,13 @@ public interface IRawUrlImportViewmodel
     string RawInputs { get; set; }
     bool AllowReimportDeleted { get; set; }
     bool AutoArchive { get; set; }
+    Guid? LastJobId { get; }
     TagChooser.TagChooserResult? TagResult { get; set; }
 }
 
 public interface ILocalFileImportViewmodel
 {
-    ImportResult? Result { get; }
+    Guid? LastJobId { get; }
     Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null);
     IReadOnlyList<IBrowserFile> LocalFiles { get; set; }
     bool AutoArchive { get; set; }
@@ -25,12 +26,12 @@ public interface ILocalFileImportViewmodel
 public class LocalFileImportViewmodel(
     IFileSystem fileSystem,
     IWebHostEnvironment environment,
-    IImporter importer,
+    IImportJobService importJobService,
     ILogger<LocalFileImportViewmodel> logger) : ILocalFileImportViewmodel
 {
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
 
-    public ImportResult? Result { get; private set; }
+    public Guid? LastJobId { get; private set; }
     public bool AutoArchive { get; set; }
 
     public async Task SendLocalFilesToServer(Dictionary<string, IEnumerable<TagModel>>? tags = null)
@@ -42,7 +43,8 @@ public class LocalFileImportViewmodel(
         var uploadPath = fileSystem.Path.Combine(environment.WebRootPath, "uploads");
         fileSystem.Directory.CreateDirectory(uploadPath);
 
-        var items = new List<ImportItem>();
+        var sources = new List<string>();
+        var tagsBySource = new Dictionary<string, ICollection<TagModel>>();
 
         foreach (var file in LocalFiles)
         {
@@ -54,40 +56,49 @@ public class LocalFileImportViewmodel(
             await using var source = file.OpenReadStream();
             await source.CopyToAsync(stream);
 
-            var item = new ImportItem { Filepath = filePath };
             if (tags is not null && tags.TryGetValue(file.Name, out var fileTags))
             {
-                item = new ImportItem
-                {
-                    Filepath = filePath,
-                    Tags = fileTags.ToList()
-                };
+                tagsBySource[filePath] = fileTags.ToList();
             }
 
-            items.Add(item);
+            sources.Add(filePath);
         }
 
         var request = new ImportRequest
         {
             ImportType = ImportType.File,
-            Items = items,
+            Items = sources.Select(source => new ImportItem
+            {
+                Filepath = source,
+                Tags = tagsBySource.GetValueOrDefault(source)
+            }).ToList(),
             DeleteAfterImport = false,
             AutoArchive = AutoArchive
         };
 
-        Result = await importer.ProcessImport(request);
+        var created = await importJobService.Create(new()
+        {
+            ImportType = request.ImportType,
+            Sources = sources,
+            DeleteAfterImport = request.DeleteAfterImport,
+            AutoArchive = request.AutoArchive,
+            TagsBySource = tagsBySource
+        });
+
+        LastJobId = created.JobId;
 
         LocalFiles = [];
     }
 }
 
 public class RawUrlImportViewmodel(
-    IImporter importer,
+    IImportJobService importJobService,
     ILogger<RawUrlImportViewmodel> logger) : IRawUrlImportViewmodel
 {
     public string RawInputs { get; set; } = string.Empty;
     public bool AllowReimportDeleted { get; set; }
     public bool AutoArchive { get; set; }
+    public Guid? LastJobId { get; private set; }
     public TagChooser.TagChooserResult? TagResult { get; set; }
 
     public async Task SendUrlsToServer()
@@ -105,34 +116,40 @@ public class RawUrlImportViewmodel(
         {
             logger.LogInformation("Sending {Count} URLs to server with type {ImportType}", urls.Count, ImportType.RawUrl);
 
-            var importItems = new List<ImportItem>();
+            var tagsBySource = new Dictionary<string, ICollection<TagModel>>();
             foreach (var url in urls)
             {
-                ICollection<TagModel>? tags = null;
                 if (TagResult is not null)
                 {
                     var viewTags = TagResult.GetTagsSinglePath(url);
-                    tags = viewTags.Select(t => new TagModel(t.Namespace, t.Subtag)).ToList();
+                    tagsBySource[url] = viewTags.Select(t => new TagModel(t.Namespace, t.Subtag)).ToList();
                 }
-
-                var item = new ImportItem
-                {
-                    Url = new(url),
-                    Tags = tags
-                };
-                importItems.Add(item);
             }
 
             var request = new ImportRequest
             {
                 ImportType = ImportType.RawUrl,
-                Items = importItems,
+                Items = urls.Select(url => new ImportItem
+                {
+                    Url = new(url),
+                    Tags = tagsBySource.GetValueOrDefault(url)
+                }).ToList(),
                 DeleteAfterImport = false,
                 AllowReimportDeleted = AllowReimportDeleted,
                 AutoArchive = AutoArchive
             };
 
-            await importer.ProcessImport(request);
+            var created = await importJobService.Create(new()
+            {
+                ImportType = request.ImportType,
+                Sources = urls,
+                DeleteAfterImport = request.DeleteAfterImport,
+                AllowReimportDeleted = request.AllowReimportDeleted,
+                AutoArchive = request.AutoArchive,
+                TagsBySource = tagsBySource
+            });
+
+            LastJobId = created.JobId;
 
             RawInputs = string.Empty;
         }

@@ -24,6 +24,8 @@ internal static class Endpoints
 
         MapDownloaderEndpoints(app);
 
+        MapImportJobEndpoints(app);
+
         MapInfrastructureEndpoints(app);
     }
 
@@ -85,10 +87,15 @@ internal static class Endpoints
         app
             .MapPost("/files",
                 async ([FromBody] ImportRequest request,
-                    [FromServices] IImporter service,
-                    CancellationToken token) => await service.ProcessImport(request, token))
+                    [FromServices] ImportJobService service,
+                    CancellationToken token) =>
+                {
+                    var created = await service.Create(ImportJobCreateRequestFromImportRequest(request), token);
+
+                    return Results.Accepted($"/import-jobs/{created.JobId}", created);
+                })
             .WithName("Import")
-            .WithDescription("Processes an import request");
+            .WithDescription("Creates an import job");
 
         app
             .MapPost("/files/deletion",
@@ -100,6 +107,90 @@ internal static class Endpoints
                 })
             .WithDescription("Delete one or more files and their associated data");
     }
+
+    private static void MapImportJobEndpoints(WebApplication app)
+    {
+        app
+            .MapPost("/import-jobs",
+                async ([FromBody] ImportJobCreateRequest request,
+                    [FromServices] ImportJobService service,
+                    CancellationToken token) =>
+                {
+                    var created = await service.Create(request, token);
+
+                    return Results.Accepted($"/import-jobs/{created.JobId}", created);
+                })
+            .WithName("CreateImportJob")
+            .WithDescription("Creates a durable import job");
+
+        app
+            .MapGet("/import-jobs",
+                async ([FromServices] ImportJobService service, CancellationToken token) =>
+                    await service.GetJobs(token))
+            .WithName("GetImportJobs")
+            .WithDescription("Gets recent import jobs");
+
+        app
+            .MapGet("/import-jobs/{id:guid}",
+                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                {
+                    var job = await service.GetJob(id, token);
+
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("GetImportJob")
+            .WithDescription("Gets a durable import job");
+
+        app
+            .MapPost("/import-jobs/{id:guid}/pause",
+                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                {
+                    var job = await service.PauseJob(id, token);
+
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("PauseImportJob");
+
+        app
+            .MapPost("/import-jobs/{id:guid}/resume",
+                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                {
+                    var job = await service.ResumeJob(id, token);
+
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("ResumeImportJob");
+
+        app
+            .MapPost("/import-jobs/{id:guid}/cancel",
+                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                {
+                    var job = await service.CancelJob(id, token);
+
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("CancelImportJob");
+    }
+
+    private static ImportJobCreateRequest ImportJobCreateRequestFromImportRequest(ImportRequest request) => new()
+    {
+        ImportType = request.ImportType,
+        Sources = request.Items.Select(item => item.Filepath ?? item.Url?.AbsoluteUri ?? string.Empty)
+            .Where(source => !string.IsNullOrWhiteSpace(source))
+            .ToList(),
+        DeleteAfterImport = request.DeleteAfterImport,
+        AllowReimportDeleted = request.AllowReimportDeleted,
+        AutoArchive = request.AutoArchive,
+        FilterData = request.FilterData,
+        TagsBySource = request.Items
+            .Select(item => new
+            {
+                Source = item.Filepath ?? item.Url?.AbsoluteUri ?? string.Empty,
+                item.Tags
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Source) && item.Tags is not null)
+            .ToDictionary(item => item.Source, item => item.Tags!)
+    };
 
     private static void MapInfrastructureEndpoints(WebApplication app)
     {

@@ -67,7 +67,7 @@ public sealed class ImportFolderBackgroundService(
                 .Where(IsImageFile)
                 .Select(file => new ImportItem
                 {
-                    Url = new(file)
+                    Filepath = file
                 })
                 .ToList();
 
@@ -86,9 +86,17 @@ public sealed class ImportFolderBackgroundService(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
 
-            var router = scope.ServiceProvider.GetRequiredService<Importer>();
+            var importJobService = scope.ServiceProvider.GetRequiredService<ImportJobService>();
 
-            var response = await router.ProcessImport(importRequest, stoppingToken);
+            await importJobService.Create(new()
+            {
+                ImportType = importRequest.ImportType,
+                Sources = importRequest.Items.Select(i => i.Filepath).OfType<string>().ToList(),
+                DeleteAfterImport = importRequest.DeleteAfterImport,
+                AllowReimportDeleted = importRequest.AllowReimportDeleted,
+                AutoArchive = importRequest.AutoArchive,
+                FilterData = importRequest.FilterData
+            }, stoppingToken);
 
             logger.LogInformation("Sent import request for {ImportCount} items", importRequest.Items.Count);
         }

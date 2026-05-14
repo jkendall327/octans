@@ -50,15 +50,10 @@
     Import
 </MudButton>
 
-@if (Viewmodel.Result is not null)
+@if (Viewmodel.LastJobId is not null)
 {
     <section class="results">
-        <p>@Viewmodel.Result.Results.Count(s => s.Ok) OK</p>
-
-        @foreach (var result in Viewmodel.Result.Results.Where(s => !s.Ok))
-        {
-            <p>@result.Message</p>
-        }
+        <p>Import job queued: @Viewmodel.LastJobId</p>
     </section>
 }
 
