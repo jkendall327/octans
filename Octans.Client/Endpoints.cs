@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using Octans.Core;
 using Octans.Core.Deletion;
@@ -155,36 +156,45 @@ internal static class Endpoints
     public static void MapImageEndpoints(this WebApplication app)
     {
         app.MapGet("/media/{hash}",
-            (HttpContext http, string hash, [FromServices] SubfolderManager manager) =>
+            async (HttpContext http,
+                string hash,
+                [FromServices] ImageStorage imageStorage,
+                [FromServices] ServerDbContext db) =>
             {
                 if (string.IsNullOrWhiteSpace(hash))
                 {
                     return Results.BadRequest("Invalid hash.");
                 }
 
-                byte[] unhashedBytes;
+                ContentHash contentHash;
 
                 try
                 {
-                    unhashedBytes = Convert.FromHexString(hash);
+                    contentHash = ContentHash.FromHex(hash);
                 }
                 catch
                 {
                     return Results.BadRequest("Hash must be hex.");
                 }
 
-                var info = manager.GetFilepath(HashedBytes.FromHashed(unhashedBytes));
+                var hashBytes = contentHash.Bytes;
+                var hashItem = await db.Hashes.FirstOrDefaultAsync(h => h.Hash == hashBytes);
+                var info = imageStorage.FindOriginal(contentHash, hashItem?.Extension);
 
                 if (info is null || !info.Exists)
                 {
                     return Results.NotFound();
                 }
 
-                var provider = new FileExtensionContentTypeProvider();
-
-                if (!provider.TryGetContentType(info.FullName, out var contentType))
+                var contentType = hashItem?.ContentType;
+                if (string.IsNullOrWhiteSpace(contentType))
                 {
-                    contentType = "application/octet-stream";
+                    var provider = new FileExtensionContentTypeProvider();
+
+                    if (!provider.TryGetContentType(info.FullName, out contentType))
+                    {
+                        contentType = "application/octet-stream";
+                    }
                 }
 
                 // ETag derived from the content hash you're already using.

@@ -44,7 +44,7 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         services.AddSingleton<IFileSystem>(_fileSystem);
         services.AddSingleton<TimeProvider>(new FakeTimeProvider(TestClock.UtcNow));
         services.Configure<GlobalSettings>(s => s.AppRoot = _appRoot);
-        services.AddSingleton<SubfolderManager>();
+        services.AddSingleton<ImageStorage>();
 
         _hashProvider = Substitute.For<IPerceptualHashProvider>();
         services.AddSingleton(_hashProvider);
@@ -53,8 +53,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         _dbContext = _provider.GetRequiredService<ServerDbContext>();
         _sut = _provider.GetRequiredService<DuplicateService>();
 
-        var subfolderManager = _provider.GetRequiredService<SubfolderManager>();
-        subfolderManager.MakeSubfolders();
+        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        imageStorage.EnsureStorage();
     }
 
     public async Task InitializeAsync()
@@ -69,14 +69,20 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     {
         // Arrange
         var bytes = new byte[] { 1, 2, 3 };
-        var hashed = HashedBytes.FromUnhashed(bytes);
+        var hash = ContentHash.FromContent(bytes);
+        var metadata = new ImageMetadata("jpg", "image/jpeg");
 
-        var hashItem = new HashItem { Hash = hashed.Bytes };
+        var hashItem = new HashItem
+        {
+            Hash = hash.Bytes,
+            Extension = metadata.Extension,
+            ContentType = metadata.ContentType
+        };
         _dbContext.Hashes.Add(hashItem);
         await _dbContext.SaveChangesAsync();
 
-        var subfolderManager = _provider.GetRequiredService<SubfolderManager>();
-        var destination = subfolderManager.GetDestination(hashed, bytes);
+        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        var destination = imageStorage.GetOriginalDestination(hash, metadata);
         _fileSystem.AddFile(destination, new MockFileData(bytes));
 
         _hashProvider.GetHash(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -208,9 +214,13 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         await _dbContext.SaveChangesAsync();
 
         // Simulate file existence for deletion
-        var subfolderManager = _provider.GetRequiredService<SubfolderManager>();
-        var hashed2 = HashedBytes.FromHashed(item2.Hash);
-        var dest2 = subfolderManager.GetDestination(hashed2, item2.Hash); // destination path
+        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        var hash2 = ContentHash.FromHashBytes(item2.Hash);
+        var metadata = new ImageMetadata("jpg", "image/jpeg");
+        item2.Extension = metadata.Extension;
+        item2.ContentType = metadata.ContentType;
+        await _dbContext.SaveChangesAsync();
+        var dest2 = imageStorage.GetOriginalDestination(hash2, metadata);
         _fileSystem.AddFile(dest2, new MockFileData("content"));
 
         // Act

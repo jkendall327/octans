@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Filesystem;
 using Octans.Core.Importing.Filters;
 using Octans.Core.Importing.RawByteProviders;
 using Octans.Core.Progress;
@@ -18,6 +19,7 @@ public class Importer(
     ReimportChecker reimportChecker,
     DatabaseWriter databaseWriter,
     FilesystemWriter filesystemWriter,
+    ImageStorage imageStorage,
     ChannelWriter<ThumbnailCreationRequest> thumbnailChannel,
     FileImporter file,
     PostImporter post,
@@ -102,17 +104,18 @@ public class Importer(
             return filterResult;
         }
 
-        var hashed = HashedBytes.FromUnhashed(bytes);
+        var hash = ContentHash.FromContent(bytes);
+        var metadata = imageStorage.GetMetadata(bytes);
 
         logger.LogDebug("Created hash: {@HashDetails}",
             new
             {
-                hashed.Hexadecimal,
-                hashed.Bucket,
-                hashed.MimeType
+                hash.Hex,
+                hash.Bucket,
+                metadata.ContentType
             });
 
-        var existing = await reimportChecker.CheckIfPreviouslyDeleted(hashed, request.AllowReimportDeleted, bytes);
+        var existing = await reimportChecker.CheckIfPreviouslyDeleted(hash, metadata, request.AllowReimportDeleted, bytes);
 
         if (existing is not null)
         {
@@ -120,13 +123,13 @@ public class Importer(
             return existing;
         }
 
-        await filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
+        await filesystemWriter.WriteOriginal(hash, metadata, bytes);
 
-        await databaseWriter.AddItemToDatabase(item, hashed, request.AutoArchive);
+        await databaseWriter.AddItemToDatabase(item, hash, metadata, request.AutoArchive);
 
         logger.LogInformation("Sending thumbnail creation request");
 
-        await thumbnailChannel.WriteAsync(new(bytes, hashed));
+        await thumbnailChannel.WriteAsync(new(bytes, hash));
 
         logger.LogInformation("Import successful");
 

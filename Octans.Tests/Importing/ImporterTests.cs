@@ -129,13 +129,19 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
             .Should()
             .Be("example", "the subtag should be linked to the tag");
 
-        var hashed = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg);
+        var hash = ContentHash.FromContent(TestingConstants.MinimalJpeg);
 
         mapping
             .Hash
             .Hash
             .Should()
-            .BeEquivalentTo(hashed.Bytes, "we should be persisting the hashed bytes");
+            .BeEquivalentTo(hash.Bytes, "we should be persisting the hashed bytes");
+
+        mapping
+            .Hash
+            .ContentType
+            .Should()
+            .Be("image/jpeg", "we should persist detected media metadata");
     }
 
     [Fact]
@@ -234,8 +240,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         var hash = new HashItem
         {
-            Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg)
-                .Bytes,
+            Hash = ContentHash.FromContent(TestingConstants.MinimalJpeg).Bytes,
             DeletedAt = TestClock.UtcNow.AddDays(-1)
         };
 
@@ -305,9 +310,9 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         await DatabaseFixture.ResetAsync(_provider);
 
-        var folders = _provider.GetRequiredService<SubfolderManager>();
+        var folders = _provider.GetRequiredService<ImageStorage>();
 
-        folders.MakeSubfolders();
+        folders.EnsureStorage();
     }
 
     public Task DisposeAsync()

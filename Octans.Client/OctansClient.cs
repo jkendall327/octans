@@ -26,7 +26,7 @@ public interface IOctansClient
     Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default);
     Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default);
     Task ClearAllDataAsync(CancellationToken cancellationToken = default);
-    string GetMediaUrl(HashedBytes hash);
+    string GetMediaUrl(ContentHash hash);
     string GetMediaUrl(string hexHash);
 }
 
@@ -142,9 +142,9 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
-    public string GetMediaUrl(HashedBytes hash)
+    public string GetMediaUrl(ContentHash hash)
     {
-        return GetMediaUrl(hash.Hexadecimal);
+        return GetMediaUrl(hash.Hex);
     }
 
     public string GetMediaUrl(string hexHash)

@@ -25,10 +25,10 @@ public class ThumbnailCreationTests
             AppRoot = "C:/app"
         });
 
-        var subfolderManager = new SubfolderManager(options, _mockFileSystem);
-        subfolderManager.MakeSubfolders();
+        var imageStorage = new ImageStorage(options, _mockFileSystem);
+        imageStorage.EnsureStorage();
 
-        _sut = new(_mockFileSystem, options, NullLogger<ThumbnailCreator>.Instance);
+        _sut = new(_mockFileSystem, imageStorage, NullLogger<ThumbnailCreator>.Instance);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class ThumbnailCreationTests
     {
         var bytes = TestingConstants.MinimalJpeg;
 
-        var request = new ThumbnailCreationRequest(bytes, HashedBytes.FromUnhashed(bytes));
+        var request = new ThumbnailCreationRequest(bytes, ContentHash.FromContent(bytes));
 
         return request;
     }

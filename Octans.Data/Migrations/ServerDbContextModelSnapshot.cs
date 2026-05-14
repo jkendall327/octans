@@ -225,6 +225,12 @@ namespace Octans.Server.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ContentType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Extension")
+                        .HasColumnType("TEXT");
+
                     b.Property<byte[]>("Hash")
                         .IsRequired()
                         .HasColumnType("BLOB");

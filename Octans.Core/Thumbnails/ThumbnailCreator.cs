@@ -1,6 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Octans.Core.Filesystem;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
@@ -8,7 +8,7 @@ namespace Octans.Core.Thumbnails;
 
 public class ThumbnailCreator(
     IFileSystem fileSystem,
-    IOptions<GlobalSettings> globalSettings,
+    ImageStorage imageStorage,
     ILogger<ThumbnailCreator> logger)
 {
     public async Task ProcessThumbnailRequestAsync(ThumbnailCreationRequest request, CancellationToken stoppingToken = default)
@@ -32,11 +32,7 @@ public class ThumbnailCreator(
 
         logger.LogDebug("Thumbnail generated at {ThumbnailSize} bytes", thumbnailBytes.Length);
 
-        var destination = fileSystem.Path.Join(globalSettings.Value.AppRoot,
-            "db",
-            "files",
-            request.Hashed.ThumbnailBucket,
-            request.Hashed.Hexadecimal + ".jpeg");
+        var destination = imageStorage.GetThumbnailDestination(request.Hash);
 
         logger.LogInformation("Writing thumbnail to {ThumbnailDestination}", destination);
 

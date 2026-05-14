@@ -7,7 +7,7 @@ public record DeleteResult(int Id, bool Success, string? Error);
 public record DeleteRequest(IEnumerable<int> Ids);
 public record DeleteResponse(List<DeleteResult> Results);
 
-public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext context, TimeProvider timeProvider)
+public class FileDeleter(ImageStorage imageStorage, ServerDbContext context, TimeProvider timeProvider)
 {
     public async Task<List<DeleteResult>> ProcessDeletion(IEnumerable<int> request)
     {
@@ -33,21 +33,10 @@ public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext cont
             return new(id, false, "Hash not found");
         }
 
-        var hashed = HashedBytes.FromHashed(entry.Hash);
+        var hash = ContentHash.FromHashBytes(entry.Hash);
 
-        var file = subfolderManager.GetFilepath(hashed);
-
-        if (file?.Exists == true)
-        {
-            file.Delete();
-        }
-
-        var thumbnail = subfolderManager.GetThumbnail(hashed);
-
-        if (thumbnail?.Exists == true)
-        {
-            thumbnail.Delete();
-        }
+        imageStorage.DeleteOriginal(hash, entry.Extension);
+        imageStorage.DeleteThumbnail(hash);
 
         entry.DeletedAt = timeProvider.GetUtcNow().UtcDateTime;
 

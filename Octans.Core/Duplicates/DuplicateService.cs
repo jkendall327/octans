@@ -11,7 +11,7 @@ namespace Octans.Core.Duplicates;
 public class DuplicateService(
     ServerDbContext context,
     IPerceptualHashProvider hashProvider,
-    SubfolderManager subfolderManager,
+    ImageStorage imageStorage,
     FileDeleter fileDeleter,
     TimeProvider timeProvider,
     ILogger<DuplicateService> logger)
@@ -28,8 +28,8 @@ public class DuplicateService(
         {
             if (cancellationToken.IsCancellationRequested) break;
 
-            var hashed = HashedBytes.FromHashed(hashItem.Hash);
-            var file = subfolderManager.GetFilepath(hashed);
+            var hash = ContentHash.FromHashBytes(hashItem.Hash);
+            var file = imageStorage.FindOriginal(hash, hashItem.Extension);
 
             if (file == null || !file.Exists)
             {
@@ -39,9 +39,7 @@ public class DuplicateService(
 
             try
             {
-                // We need to use System.IO.Abstractions types if possible, but OpenRead returns Stream.
-                // file is IFileSystemInfo, so we can cast to IFileInfo to use OpenRead.
-                using var stream = ((System.IO.Abstractions.IFileInfo)file).OpenRead();
+                using var stream = file.OpenRead();
                 hashItem.PerceptualHash = await hashProvider.GetHash(stream, cancellationToken);
                 count++;
             }

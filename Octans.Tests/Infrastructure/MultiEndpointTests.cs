@@ -63,11 +63,10 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
         var imagePath = "C:/test_image.jpg";
         _fileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
-        var expectedFilePath = _fileSystem.Path.Join(AppRoot,
-            "db",
-            "files",
-            "f61",
-            "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
+        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        var hash = ContentHash.FromContent(TestingConstants.MinimalJpeg);
+        var metadata = imageStorage.GetMetadata(TestingConstants.MinimalJpeg);
+        var expectedFilePath = imageStorage.GetOriginalDestination(hash, metadata);
 
         await ImportFile(imagePath, expectedFilePath);
 
@@ -202,9 +201,9 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
     {
         await DatabaseFixture.ResetAsync(_provider);
 
-        var folders = _provider.GetRequiredService<SubfolderManager>();
+        var folders = _provider.GetRequiredService<ImageStorage>();
 
-        folders.MakeSubfolders();
+        folders.EnsureStorage();
     }
 
     public Task DisposeAsync()

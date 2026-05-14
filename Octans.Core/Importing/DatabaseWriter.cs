@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Filesystem;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
@@ -8,10 +9,16 @@ namespace Octans.Core.Importing;
 
 public class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
 {
-    public async Task AddItemToDatabase(ImportItem item, HashedBytes hashed, bool autoArchive)
+    public async Task AddItemToDatabase(ImportItem item, ContentHash hash, ImageMetadata metadata, bool autoArchive)
     {
         var repositoryId = autoArchive ? (int)RepositoryType.Archive : (int)RepositoryType.Inbox;
-        var hashItem = new HashItem { Hash = hashed.Bytes, RepositoryId = repositoryId };
+        var hashItem = new HashItem
+        {
+            Hash = hash.Bytes,
+            RepositoryId = repositoryId,
+            Extension = metadata.Extension,
+            ContentType = metadata.ContentType
+        };
 
         context.Hashes.Add(hashItem);
 

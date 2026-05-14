@@ -5,13 +5,13 @@ using Octans.Core.Filesystem;
 namespace Octans.Core.Importing;
 
 public class FilesystemWriter(
-    SubfolderManager subfolderManager,
+    ImageStorage imageStorage,
     IFileSystem fileSystem,
     ILogger<FilesystemWriter> logger)
 {
-    public async Task CopyBytesToSubfolder(HashedBytes hashed, byte[] bytes)
+    public async Task WriteOriginal(ContentHash hash, ImageMetadata metadata, byte[] bytes)
     {
-        var destination = subfolderManager.GetDestination(hashed, bytes);
+        var destination = imageStorage.GetOriginalDestination(hash, metadata);
 
         logger.LogDebug("Persisting file to {Destination}", destination);
 

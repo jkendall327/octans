@@ -118,9 +118,9 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
     {
         await DatabaseFixture.ResetAsync(_provider);
 
-        var folders = _provider.GetRequiredService<SubfolderManager>();
+        var folders = _provider.GetRequiredService<ImageStorage>();
 
-        folders.MakeSubfolders();
+        folders.EnsureStorage();
     }
 
     public Task DisposeAsync()

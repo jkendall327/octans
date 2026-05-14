@@ -64,7 +64,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IBackgroundProgressReporter, BackgroundProgressService>();
 
-        services.AddScoped<SubfolderManager>();
+        services.AddSingleton<ImageStorage>();
         services.AddSingleton<StorageService>();
         services.AddScoped<StatsService>();
         services.AddScoped<SubscriptionService>();
@@ -109,7 +109,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DownloaderService>();
 
         // Files
-        services.AddSingleton<SubfolderManager>();
+        services.AddSingleton<ImageStorage>();
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
         services.AddScoped<TagUpdater>();
@@ -298,8 +298,8 @@ public static class ServiceCollectionExtensions
     public static async Task PerformAppInitialisation(this WebApplication app)
     {
         // Ensure subfolders are initialised.
-        var manager = app.Services.GetRequiredService<SubfolderManager>();
-        manager.MakeSubfolders();
+        var storage = app.Services.GetRequiredService<ImageStorage>();
+        storage.EnsureStorage();
 
         // Ensure database is initialised.
         await using var scope = app.Services.CreateAsyncScope();

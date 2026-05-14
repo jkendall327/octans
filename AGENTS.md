@@ -19,6 +19,11 @@
 - `Octans.Data` – Entity Framework Core models and migrations.
 - `Octans.Tests` – unit tests covering core services and client view models.
 
+## General notes
+
+This is not a production app yet.
+We can go crazy changing things; nobody has important data stored in this app yet.
+
 ## Verification
 
 Run after your changes: `dotnet build && dotnet test`.

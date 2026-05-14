@@ -7,17 +7,18 @@ namespace Octans.Core.Importing;
 
 public class ReimportChecker(
     ServerDbContext context,
-    SubfolderManager subfolderManager,
+    ImageStorage imageStorage,
     FilesystemWriter filesystemWriter,
     ILogger<ReimportChecker> logger)
 {
     public async Task<ImportItemResult?> CheckIfPreviouslyDeleted(
-        HashedBytes hashed,
+        ContentHash hash,
+        ImageMetadata metadata,
         bool allowReimportDeleted,
         byte[] bytes)
     {
         var existingHash = await context.Hashes
-            .FirstOrDefaultAsync(h => h.Hash == hashed.Bytes);
+            .FirstOrDefaultAsync(h => h.Hash == hash.Bytes);
 
         if (existingHash == null) return null;
 
@@ -31,15 +32,17 @@ public class ReimportChecker(
         }
 
         existingHash.DeletedAt = null;
+        existingHash.Extension ??= metadata.Extension;
+        existingHash.ContentType ??= metadata.ContentType;
         await context.SaveChangesAsync();
 
         logger.LogInformation("Reactivated previously deleted hash: {HashId}", existingHash.Id);
 
-        var existingFile = subfolderManager.GetFilepath(hashed);
+        var existingFile = imageStorage.FindOriginal(hash, existingHash.Extension);
         if (existingFile is null)
         {
             logger.LogInformation("Restoring content for previously deleted hash: {HashId}", existingHash.Id);
-            await filesystemWriter.CopyBytesToSubfolder(hashed, bytes);
+            await filesystemWriter.WriteOriginal(hash, metadata, bytes);
         }
 
         return new()

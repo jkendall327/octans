@@ -50,9 +50,9 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         await using var scope = _provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
-        var hashed = AddFileToFilesystem(out var filePath);
+        var hash = AddFileToFilesystem(out var filePath, out var metadata);
 
-        var id = await AddFileToDatabase(hashed, db);
+        var id = await AddFileToDatabase(hash, metadata, db);
 
         var result = await _sut.ProcessDeletion([id]);
 
@@ -69,9 +69,14 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         deletedHash.DeletedAt.Should().NotBeNull();
     }
 
-    private static async Task<int> AddFileToDatabase(HashedBytes hashed, ServerDbContext db)
+    private static async Task<int> AddFileToDatabase(ContentHash hash, ImageMetadata metadata, ServerDbContext db)
     {
-        var hashItem = new HashItem { Hash = hashed.Bytes };
+        var hashItem = new HashItem
+        {
+            Hash = hash.Bytes,
+            Extension = metadata.Extension,
+            ContentType = metadata.ContentType
+        };
 
         db.Hashes.Add(hashItem);
         await db.SaveChangesAsync();
@@ -79,17 +84,18 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         return hashItem.Id;
     }
 
-    private HashedBytes AddFileToFilesystem(out string filePath)
+    private ContentHash AddFileToFilesystem(out string filePath, out ImageMetadata metadata)
     {
         var fileBytes = TestingConstants.MinimalJpeg;
 
-        var hashed = HashedBytes.FromUnhashed(fileBytes);
+        var hash = ContentHash.FromContent(fileBytes);
+        metadata = new ImageMetadata("jpeg", "image/jpeg");
 
-        filePath = _fileSystem.Path.Combine(AppRoot, "db", "files", hashed.ContentBucket, hashed.Hexadecimal + ".jpeg");
+        filePath = _fileSystem.Path.Combine(AppRoot, "db", "files", hash.ContentBucket, hash.Hex + ".jpeg");
 
         _fileSystem.AddFile(filePath, new(fileBytes));
 
-        return hashed;
+        return hash;
     }
 
     [Fact]
@@ -107,9 +113,9 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
     {
         await DatabaseFixture.ResetAsync(_provider);
 
-        var folders = _provider.GetRequiredService<SubfolderManager>();
+        var folders = _provider.GetRequiredService<ImageStorage>();
 
-        folders.MakeSubfolders();
+        folders.EnsureStorage();
     }
 
     public Task DisposeAsync()

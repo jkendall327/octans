@@ -37,15 +37,15 @@ public class ReimportCheckerTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         _fileSystem = new MockFileSystem();
         services.AddSingleton<IFileSystem>(_fileSystem);
         services.Configure<GlobalSettings>(s => s.AppRoot = _appRoot);
-        services.AddSingleton<SubfolderManager>();
+        services.AddSingleton<ImageStorage>();
         services.AddSingleton<FilesystemWriter>();
 
         _provider = services.BuildServiceProvider();
         _dbContext = _provider.GetRequiredService<ServerDbContext>();
         _sut = _provider.GetRequiredService<ReimportChecker>();
 
-        var subfolderManager = _provider.GetRequiredService<SubfolderManager>();
-        subfolderManager.MakeSubfolders();
+        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        imageStorage.EnsureStorage();
     }
 
     public async Task InitializeAsync()
@@ -60,24 +60,24 @@ public class ReimportCheckerTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         // Arrange
         var bytes = TestingConstants.MinimalJpeg;
-        var hashed = HashedBytes.FromUnhashed(bytes);
+        var hash = ContentHash.FromContent(bytes);
+        var metadata = _provider.GetRequiredService<ImageStorage>().GetMetadata(bytes);
 
         // Add hash to DB as deleted
         var hashItem = new HashItem
         {
-            Hash = hashed.Bytes,
+            Hash = hash.Bytes,
             DeletedAt = TestClock.UtcNow.AddDays(-1)
         };
         _dbContext.Hashes.Add(hashItem);
         await _dbContext.SaveChangesAsync();
 
         // Ensure file is NOT on filesystem
-        var subfolderManager = _provider.GetRequiredService<SubfolderManager>();
-        var destination = subfolderManager.GetDestination(hashed, bytes);
+        var destination = _provider.GetRequiredService<ImageStorage>().GetOriginalDestination(hash, metadata);
         _fileSystem.FileExists(destination).Should().BeFalse();
 
         // Act
-        var result = await _sut.CheckIfPreviouslyDeleted(hashed, true, bytes);
+        var result = await _sut.CheckIfPreviouslyDeleted(hash, metadata, true, bytes);
 
         // Assert
         result!.Ok.Should().BeTrue();

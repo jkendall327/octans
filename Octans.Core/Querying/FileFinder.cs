@@ -1,4 +1,3 @@
-using System.IO.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Filesystem;
 using Octans.Data.Models;
@@ -6,7 +5,7 @@ using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Querying;
 
-public class FileFinder(SubfolderManager subfolderManager, ServerDbContext context, IFileSystem fileSystem)
+public class FileFinder(ImageStorage imageStorage, ServerDbContext context)
 {
     public async Task<List<HashItem>> GetAll()
     {
@@ -22,13 +21,10 @@ public class FileFinder(SubfolderManager subfolderManager, ServerDbContext conte
             return null;
         }
 
-        var hashed = HashedBytes.FromHashed(hashItem.Hash);
+        var hash = ContentHash.FromHashBytes(hashItem.Hash);
+        var file = imageStorage.FindOriginal(hash, hashItem.Extension);
 
-        var subfolder = subfolderManager.GetSubfolder(hashed);
-
-        return fileSystem.Directory
-            .EnumerateFiles(subfolder.AbsolutePath)
-            .SingleOrDefault(x => x.Contains(hashed.Hexadecimal, StringComparison.Ordinal));
+        return file?.FullName;
     }
 
     public async Task<List<HashItem>?> GetFilesByTagQuery(IEnumerable<Tag> tags)
