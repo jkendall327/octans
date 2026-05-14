@@ -23,6 +23,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 builder.AddKeyProtection();
 
 builder.Services.AddMudServices();
+builder.Services.AddOctansClient();
 builder.Services.AddInfrastructure();
 builder.Services.AddOctansServices();
 builder.Services.AddViewmodels();

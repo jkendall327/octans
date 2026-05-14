@@ -23,8 +23,6 @@
 
 Run after your changes: `dotnet build && dotnet test`.
 
-Run `dotnet format` before presenting changes to user.
-
 ## Code style
 Use `var`.
 
