@@ -16,10 +16,10 @@ public class DownloadStatus
     public double ProgressPercentage => TotalBytes > 0 ? (double)BytesDownloaded / TotalBytes * 100 : 0;
     public double CurrentSpeed { get; set; } // bytes per second
     public DownloadState State { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? StartedAt { get; set; }
-    public DateTime? CompletedAt { get; set; }
-    public DateTime LastUpdated { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset LastUpdated { get; set; }
     public string? ErrorMessage { get; set; }
     public required string Domain { get; set; }
 }

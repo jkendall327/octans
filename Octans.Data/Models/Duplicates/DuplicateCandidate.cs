@@ -14,5 +14,5 @@ public class DuplicateCandidate
     public HashItem Hash2 { get; set; } = null!;
 
     public double Distance { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }

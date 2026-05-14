@@ -55,7 +55,7 @@ public sealed class ImportJobServiceTests : IAsyncLifetime, IClassFixture<Databa
         job.TotalItems.Should().Be(2);
         job.DeleteAfterImport.Should().BeTrue();
         job.AutoArchive.Should().BeTrue();
-        job.CreatedAt.Should().Be(_timeProvider.GetUtcNow().UtcDateTime);
+        job.CreatedAt.Should().Be(_timeProvider.GetUtcNow());
         job.Items.Should().HaveCount(2);
         job.Items.Should().OnlyContain(i => i.Status == ImportItemStatus.Pending);
         job.Items.Should().OnlyContain(i => i.ImportType == Octans.Data.Models.Importing.ImportType.File);

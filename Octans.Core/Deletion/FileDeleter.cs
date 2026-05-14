@@ -38,7 +38,7 @@ public class FileDeleter(ImageStorage imageStorage, ServerDbContext context, Tim
         imageStorage.DeleteOriginal(hash, entry.Extension);
         imageStorage.DeleteThumbnail(hash);
 
-        entry.DeletedAt = timeProvider.GetUtcNow().UtcDateTime;
+        entry.DeletedAt = timeProvider.GetUtcNow();
 
         return new(id, true, null);
     }

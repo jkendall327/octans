@@ -2,6 +2,9 @@ namespace Octans.Client;
 
 public static class Formatting
 {
+    public static string FormatLocalTime(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture);
+
     public static string FormatBytes(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
@@ -15,4 +18,3 @@ public static class Formatting
         return $"{len:0.##} {sizes[order]}";
     }
 }
-

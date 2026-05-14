@@ -11,7 +11,7 @@ public class HashItem
     public required byte[] Hash { get; init; }
     public string? Extension { get; set; }
     public string? ContentType { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
     public int RepositoryId { get; set; } = (int)RepositoryType.Inbox;
     public Repository? Repository { get; init; }
     public ICollection<HashRating> Ratings { get; } = new List<HashRating>();

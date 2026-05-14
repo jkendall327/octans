@@ -112,7 +112,7 @@ public class DuplicateService(
                         HashId1 = pair.Item1,
                         HashId2 = pair.Item2,
                         Distance = similarity,
-                        CreatedAt = timeProvider.GetUtcNow().UtcDateTime
+                        CreatedAt = timeProvider.GetUtcNow()
                     });
                     candidateSet.Add(pair); // Prevent re-adding in same loop
                     found++;
@@ -139,7 +139,7 @@ public class DuplicateService(
             HashId1 = candidate.HashId1,
             HashId2 = candidate.HashId2,
             Resolution = resolution,
-            DecidedAt = timeProvider.GetUtcNow().UtcDateTime
+            DecidedAt = timeProvider.GetUtcNow()
         };
         context.DuplicateDecisions.Add(decision);
 

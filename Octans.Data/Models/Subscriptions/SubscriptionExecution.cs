@@ -13,7 +13,7 @@ public class SubscriptionExecution
     [ForeignKey(nameof(SubscriptionId))]
     public Subscription Subscription { get; init; } = null!;
 
-    public DateTime ExecutedAt { get; init; }
+    public DateTimeOffset ExecutedAt { get; init; }
 
     public int ItemsFound { get; init; }
 }

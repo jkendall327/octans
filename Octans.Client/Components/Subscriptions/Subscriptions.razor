@@ -25,9 +25,9 @@
             <MudTd DataLabel="Downloader">@context.DownloaderName</MudTd>
             <MudTd DataLabel="Query">@context.Query</MudTd>
             <MudTd DataLabel="Frequency">@context.Frequency</MudTd>
-            <MudTd DataLabel="Last Run">@(context.LastRun?.ToString("g") ?? "Never")</MudTd>
+            <MudTd DataLabel="Last Run">@(context.LastRun is { } lastRun ? Formatting.FormatLocalTime(lastRun) : "Never")</MudTd>
             <MudTd DataLabel="Items Found">@(context.ItemsFound?.ToString() ?? "-")</MudTd>
-            <MudTd DataLabel="Next Check">@context.NextCheck.ToString("g")</MudTd>
+            <MudTd DataLabel="Next Check">@Formatting.FormatLocalTime(context.NextCheck)</MudTd>
             <MudTd DataLabel="Actions">
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Viewmodel.DeleteSubscriptionAsync(context.Id))" />
             </MudTd>

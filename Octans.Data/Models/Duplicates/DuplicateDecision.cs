@@ -14,5 +14,5 @@ public class DuplicateDecision
     public HashItem Hash2 { get; set; } = null!;
 
     public DuplicateResolution Resolution { get; set; }
-    public DateTime DecidedAt { get; set; }
+    public DateTimeOffset DecidedAt { get; set; }
 }

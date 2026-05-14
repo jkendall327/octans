@@ -208,7 +208,7 @@ public class ImportJobService(
         return MapJob(job);
     }
 
-    private DateTime Now() => timeProvider.GetUtcNow().UtcDateTime;
+    private DateTimeOffset Now() => timeProvider.GetUtcNow();
 
     private static ImportJobItemDto MapItem(DataImportItem item) => new(
         item.Id,
@@ -293,10 +293,10 @@ public record ImportJobDto(
     int FailedItems,
     string? CurrentItem,
     string? FailureReason,
-    DateTime CreatedAt,
-    DateTime? StartedAt,
-    DateTime? CompletedAt,
-    DateTime UpdatedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset UpdatedAt,
     IReadOnlyList<ImportJobItemDto> Items);
 
 public record ImportJobItemDto(
@@ -306,6 +306,6 @@ public record ImportJobItemDto(
     string Status,
     string? Error,
     int Attempts,
-    DateTime? StartedAt,
-    DateTime? CompletedAt,
-    DateTime UpdatedAt);
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset UpdatedAt);

@@ -21,7 +21,7 @@ public class NoteService(ServerDbContext context, TimeProvider timeProvider) : I
         var hashItem = await context.Hashes
             .FirstOrDefaultAsync(h => h.Hash == bytes) ?? throw new ArgumentException("Hash not found");
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var now = timeProvider.GetUtcNow();
         var note = new Note
         {
             HashItemId = hashItem.Id,
@@ -39,7 +39,7 @@ public class NoteService(ServerDbContext context, TimeProvider timeProvider) : I
     {
         var note = await context.Notes.FindAsync(noteId) ?? throw new ArgumentException("Note not found");
         note.Content = content;
-        note.LastModifiedAt = timeProvider.GetUtcNow().UtcDateTime;
+        note.LastModifiedAt = timeProvider.GetUtcNow();
         await context.SaveChangesAsync();
     }
 
