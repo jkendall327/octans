@@ -10,6 +10,7 @@ namespace Octans.Core.Downloads;
 /// </summary>
 public class HttpDownloader(
     IBandwidthLimiter bandwidthLimiter,
+    IDownloadBandwidthGate bandwidthGate,
     IDownloadStateService stateService,
     IDownloadLifecycleService lifecycle,
     IActiveDownloadRegistry activeDownloads,
@@ -82,6 +83,7 @@ public class HttpDownloader(
         int bytesRead;
         while ((bytesRead = await contentStream.ReadAsync(buffer, combinedToken)) > 0)
         {
+            await bandwidthGate.WaitForBytesAsync(download.Domain, bytesRead, combinedToken);
             await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), combinedToken);
 
             bytesDownloaded += bytesRead;

@@ -24,6 +24,7 @@ await service.QueueDownloadAsync(new()
 ```csharp
 builder.Services.AddBandwidthLimiter(options =>
 {
+    options.GlobalBytesPerSecond = 5 * 1024 * 1024; // 5 MB/s total
     options.DefaultBytesPerSecond = 1024 * 1024; // 1 MB/s
 });
 
@@ -39,5 +40,5 @@ builder.Services.AddDownloadManager(options =>
 - `IDownloadService` accepts feature-level download requests and exposes cancel/pause/resume/retry commands.
 - `IDownloadQueue` persists queued work and chooses the next bandwidth-eligible job.
 - `DownloadBackgroundService` is registered by `AddDownloadManager` and runs the worker loop.
-- `HttpDownloader` performs the HTTP request, streams bytes to disk, and reports progress.
+- `HttpDownloader` performs the HTTP request, waits for byte-level bandwidth budget, streams bytes to disk, and reports progress.
 - `IDownloadStateService` tracks active status in memory, persists state transitions, and raises UI notifications.

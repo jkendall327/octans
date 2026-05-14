@@ -12,6 +12,7 @@ namespace Octans.Tests.Downloads;
 public class HttpDownloaderTests
 {
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
+    private readonly IDownloadBandwidthGate _bandwidthGate = Substitute.For<IDownloadBandwidthGate>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadLifecycleService _lifecycle = Substitute.For<IDownloadLifecycleService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
@@ -34,6 +35,7 @@ public class HttpDownloaderTests
 
         _sut = new(
             _bandwidthLimiter,
+            _bandwidthGate,
             _stateService,
             _lifecycle,
             _activeDownloads,

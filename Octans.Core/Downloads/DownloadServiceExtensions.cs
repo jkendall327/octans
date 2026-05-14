@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
@@ -20,6 +21,7 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadStateService, DownloadStatusTracker>();
         services.TryAddSingleton<IActiveDownloadRegistry, ActiveDownloadRegistry>();
         services.TryAddSingleton<IDownloadCompletionNotifier, NoOpDownloadCompletionNotifier>();
+        services.TryAddSingleton<IDownloadBandwidthGate, NoOpDownloadBandwidthGate>();
         services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
         services.TryAddSingleton<HttpDownloader>();
         services.TryAddSingleton<IDownloadService, DownloadService>();

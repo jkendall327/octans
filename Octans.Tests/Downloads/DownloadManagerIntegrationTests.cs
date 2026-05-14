@@ -108,6 +108,35 @@ public sealed class DownloadManagerIntegrationTests
         Assert.Equal("three", await harness.FileSystem.File.ReadAllTextAsync("/downloads/three.txt"));
     }
 
+    [Fact]
+    public async Task DownloadManager_PacesStreamThroughBandwidthGate()
+    {
+        await using var harness = await DownloadManagerHarness.Create(
+            configureBandwidth: options => options.DefaultBytesPerSecond = 100);
+
+        var body = new string('x', 250);
+        var url = new Uri("https://slow.example/files/large.txt");
+        harness.HttpHandler.AddResponse(url.ToString(), body);
+
+        var downloadService = harness.Services.GetRequiredService<IDownloadService>();
+        var downloadId = await Queue(downloadService, url.ToString(), "/downloads/large.txt");
+
+        await harness.StartAsync();
+
+        await WaitUntilAsync(() => harness.HttpHandler.StartedRequests.Contains(url));
+
+        Assert.DoesNotContain(harness.Notifier.CompletedDownloads, d => d.Id == downloadId);
+
+        harness.TimeProvider.Advance(TimeSpan.FromMilliseconds(1499));
+        Assert.DoesNotContain(harness.Notifier.CompletedDownloads, d => d.Id == downloadId);
+
+        harness.TimeProvider.Advance(TimeSpan.FromMilliseconds(1));
+
+        await WaitUntilAsync(() => harness.Notifier.CompletedDownloads.Any(d => d.Id == downloadId));
+
+        Assert.Equal(body, await harness.FileSystem.File.ReadAllTextAsync("/downloads/large.txt"));
+    }
+
     private static async Task<Guid> Queue(IDownloadService downloadService, string url, string destinationPath)
     {
         return await downloadService.QueueDownloadAsync(new()
@@ -170,8 +199,11 @@ public sealed class DownloadManagerIntegrationTests
         public MockFileSystem FileSystem { get; }
         public IntegrationHttpMessageHandler HttpHandler { get; }
         public TrackingCompletionNotifier Notifier { get; }
+        public required FakeTimeProvider TimeProvider { get; init; }
 
-        public static async Task<DownloadManagerHarness> Create(Action<DownloadManagerOptions>? configure = null)
+        public static async Task<DownloadManagerHarness> Create(
+            Action<DownloadManagerOptions>? configure = null,
+            Action<BandwidthLimiterOptions>? configureBandwidth = null)
         {
             var connectionString = $"Data Source=DownloadManagerIntegrationTests-{Guid.NewGuid()};Mode=Memory;Cache=Shared";
             var connection = new SqliteConnection(connectionString);
@@ -188,7 +220,7 @@ public sealed class DownloadManagerIntegrationTests
             services.AddSingleton<IFileSystem>(fileSystem);
             services.AddSingleton<IDownloadCompletionNotifier>(notifier);
             services.AddDbContextFactory<ServerDbContext>(options => options.UseSqlite(connectionString));
-            services.AddBandwidthLimiter();
+            services.AddBandwidthLimiter(configureBandwidth);
             services.AddDownloadManager(configure);
             services.AddHttpClient("DownloadClient")
                 .ConfigurePrimaryHttpMessageHandler(() => httpHandler);
@@ -200,7 +232,10 @@ public sealed class DownloadManagerIntegrationTests
                 await db.Database.EnsureCreatedAsync();
             }
 
-            return new(connection, provider, fileSystem, httpHandler, notifier);
+            return new(connection, provider, fileSystem, httpHandler, notifier)
+            {
+                TimeProvider = timeProvider
+            };
         }
 
         public async Task StartAsync()
