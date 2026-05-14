@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Files/">
+    <File Path="AGENTS.md" />
+    <File Path="BannedSymbols.txt" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+    <File Path="TASKS.md" />
+    <File Path=".github/workflows/ci.yaml" />
+    <File Path=".github/workflows/release.yaml" />
+  </Folder>
+  <Project Path="Octans.Client/Octans.Client.csproj" />
+  <Project Path="Octans.Core/Octans.Core.csproj" />
+  <Project Path="Octans.Data/Octans.Data.csproj" />
+  <Project Path="Octans.Tests/Octans.Tests.csproj" />
+</Solution>
