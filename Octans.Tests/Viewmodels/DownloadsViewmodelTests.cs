@@ -42,7 +42,7 @@ public class DownloadsViewmodelTests
             return Task.CompletedTask;
         };
 
-        await _sut.Handle(new DownloadsChanged { ChangeType = DownloadChangeType.Added }, CancellationToken.None);
+        await _sut.Handle(new DownloadsChanged { ChangeType = DownloadChangeType.Added });
 
         Assert.True(triggered);
         Assert.Single(_sut.ActiveDownloads);
@@ -66,7 +66,7 @@ public class DownloadsViewmodelTests
             return Task.CompletedTask;
         };
 
-        await _sut.Handle(new DownloadStatusChanged { Status = updated }, CancellationToken.None);
+        await _sut.Handle(new DownloadStatusChanged { Status = updated });
 
         Assert.True(triggered);
         Assert.Single(_sut.ActiveDownloads);
@@ -84,7 +84,7 @@ public class DownloadsViewmodelTests
             return Task.CompletedTask;
         };
 
-        await _sut.Handle(new DownloadStatusChanged { Status = status }, CancellationToken.None);
+        await _sut.Handle(new DownloadStatusChanged { Status = status });
 
         Assert.True(triggered);
         Assert.Single(_sut.ActiveDownloads);

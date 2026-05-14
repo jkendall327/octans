@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads.Models;
@@ -21,14 +20,11 @@ public interface IDownloadStateService
     Task RemoveDownloadAsync(Guid id);
 }
 
-public delegate ValueTask DownloadsChangedHandler(DownloadsChanged notification, CancellationToken cancellationToken);
+public delegate ValueTask DownloadsChangedHandler(DownloadsChanged notification);
 
-public delegate ValueTask DownloadStatusChangedHandler(
-    DownloadStatusChanged notification,
-    CancellationToken cancellationToken);
+public delegate ValueTask DownloadStatusChangedHandler(DownloadStatusChanged notification);
 
 public class DownloadStatusTracker(
-    IPublisher publisher,
     IDbContextFactory<ServerDbContext> contextFactory,
     TimeProvider timeProvider,
     ILogger<DownloadStatusTracker> logger) : IDownloadStateService
@@ -202,27 +198,25 @@ public class DownloadStatusTracker(
 
     private async Task Raise(DownloadsChanged notification)
     {
-        await publisher.Publish(notification);
-
         var handler = DownloadsChanged;
         if (handler is null) return;
 
-        foreach (DownloadsChangedHandler subscriber in handler.GetInvocationList())
+        foreach (var @delegate in handler.GetInvocationList())
         {
-            await subscriber(notification, CancellationToken.None);
+            var subscriber = (DownloadsChangedHandler)@delegate;
+            await subscriber(notification);
         }
     }
 
     private async Task Raise(DownloadStatusChanged notification)
     {
-        await publisher.Publish(notification);
-
         var handler = DownloadStatusChanged;
         if (handler is null) return;
 
-        foreach (DownloadStatusChangedHandler subscriber in handler.GetInvocationList())
+        foreach (var @delegate in handler.GetInvocationList())
         {
-            await subscriber(notification, CancellationToken.None);
+            var subscriber = (DownloadStatusChangedHandler)@delegate;
+            await subscriber(notification);
         }
     }
 }

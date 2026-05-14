@@ -26,7 +26,7 @@ public sealed class DownloadsViewmodel(
         await Task.CompletedTask;
     }
 
-    public async ValueTask Handle(DownloadsChanged notification, CancellationToken cancellationToken)
+    public async ValueTask Handle(DownloadsChanged notification)
     {
         ActiveDownloads = stateService.GetAllDownloads().Select(MapStatus).ToList();
         var handler = StateChanged;
@@ -36,7 +36,7 @@ public sealed class DownloadsViewmodel(
         }
     }
 
-    public async ValueTask Handle(DownloadStatusChanged notification, CancellationToken cancellationToken)
+    public async ValueTask Handle(DownloadStatusChanged notification)
     {
         var status = MapStatus(notification.Status);
         var index = ActiveDownloads.FindIndex(d => d.Id == status.Id);

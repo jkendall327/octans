@@ -1,5 +1,4 @@
 using System.Data.Common;
-using Mediator;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,7 +16,6 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
     private readonly DbConnection _connection;
     private readonly DbContextOptions<ServerDbContext> _contextOptions;
     private readonly DownloadStatusTracker _service;
-    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
 
     public DownloadStatusTrackerTests()
     {
@@ -44,7 +42,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             .Returns(_ => new(_contextOptions));
 
         var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
-        _service = new(_publisher, contextFactory, timeProvider, NullLogger<DownloadStatusTracker>.Instance);
+        _service = new(contextFactory, timeProvider, NullLogger<DownloadStatusTracker>.Instance);
     }
 
     [Fact]
@@ -145,22 +143,25 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 
         await _service.AddOrUpdateDownloadAsync(download);
 
+        DownloadStatusChanged? statusChanged = null;
+        _service.DownloadStatusChanged += notification =>
+        {
+            statusChanged = notification;
+            return ValueTask.CompletedTask;
+        };
+
         // Act
         await _service.UpdateProgress(download.Id, 500, 1000, 100.0);
-
-        // Assert
-        await _publisher
-            .Received()
-            .Publish(Arg.Is<DownloadStatusChanged>(ds =>
-                ds.Status.BytesDownloaded == 500
-                && ds.Status.TotalBytes == 1000
-                && ds.Status.CurrentSpeed == 100.0));
 
         var updated = _service.GetDownloadById(download.Id);
         Assert.NotNull(updated);
         Assert.Equal(500, updated.BytesDownloaded);
         Assert.Equal(1000, updated.TotalBytes);
         Assert.Equal(100.0, updated.CurrentSpeed);
+        Assert.NotNull(statusChanged);
+        Assert.Equal(500, statusChanged.Status.BytesDownloaded);
+        Assert.Equal(1000, statusChanged.Status.TotalBytes);
+        Assert.Equal(100.0, statusChanged.Status.CurrentSpeed);
     }
 
     [Fact]
@@ -181,23 +182,31 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 
         await _service.AddOrUpdateDownloadAsync(download);
 
+        var downloadsChanged = 0;
+        DownloadStatusChanged? statusChanged = null;
+        _service.DownloadsChanged += _ =>
+        {
+            downloadsChanged++;
+            return ValueTask.CompletedTask;
+        };
+        _service.DownloadStatusChanged += notification =>
+        {
+            statusChanged = notification;
+            return ValueTask.CompletedTask;
+        };
+
         // Act
         await _service.UpdateState(download.Id, DownloadState.InProgress);
 
         // Assert
-        await _publisher
-            .Received(2)
-            .Publish(Arg.Any<DownloadsChanged>());
-
-        await _publisher
-            .Received(1)
-            .Publish(Arg.Is<DownloadStatusChanged>(ds => ds.Status.State == DownloadState.InProgress));
-
         var updated = _service.GetDownloadById(download.Id);
 
         Assert.NotNull(updated);
         Assert.Equal(DownloadState.InProgress, updated.State);
         Assert.NotNull(updated.StartedAt);
+        Assert.Equal(1, downloadsChanged);
+        Assert.NotNull(statusChanged);
+        Assert.Equal(DownloadState.InProgress, statusChanged.Status.State);
     }
 
     [Fact]
@@ -280,10 +289,6 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         var result = _service.GetDownloadById(download.Id);
         Assert.NotNull(result);
         Assert.Equal(download.Id, result.Id);
-
-        await _publisher
-            .Received(1)
-            .Publish(Arg.Any<DownloadsChanged>());
 
         // Verify it was added to the database
         await using var context = new ServerDbContext(_contextOptions);
@@ -368,6 +373,13 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 
         await _service.AddOrUpdateDownloadAsync(download);
 
+        var downloadsChanged = 0;
+        _service.DownloadsChanged += _ =>
+        {
+            downloadsChanged++;
+            return ValueTask.CompletedTask;
+        };
+
         // Act
         await _service.RemoveDownloadAsync(download.Id);
 
@@ -375,10 +387,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         var result = _service.GetDownloadById(download.Id);
 
         Assert.Null(result);
-
-        await _publisher
-            .Received(2)
-            .Publish(Arg.Any<DownloadsChanged>());
+        Assert.Equal(1, downloadsChanged);
 
         // Verify it was removed from the database
         await using (var context = new ServerDbContext(_contextOptions))
