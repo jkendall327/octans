@@ -60,7 +60,7 @@ public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<Database
 
         // Assert
         stateChanged.Should().BeTrue();
-        _sut.Suggestions.Should().Contain(t1);
+        _sut.Suggestions.Should().Contain(s => s.Namespace == t1.Namespace.Value && s.Subtag == t1.Subtag.Value);
     }
 
     [Fact]

@@ -10,19 +10,19 @@ public sealed class DownloadsViewmodel(
     INotificationHandler<DownloadsChanged>,
     INotificationHandler<DownloadStatusChanged>
 {
-    public List<DownloadStatus> ActiveDownloads { get; private set; } = [];
+    public List<DownloadStatusDto> ActiveDownloads { get; private set; } = [];
 
     public event Func<Task>? StateChanged;
 
     public async Task InitializeAsync()
     {
-        ActiveDownloads = stateService.GetAllDownloads().ToList();
+        ActiveDownloads = stateService.GetAllDownloads().Select(MapStatus).ToList();
         await Task.CompletedTask;
     }
 
     public async ValueTask Handle(DownloadsChanged notification, CancellationToken cancellationToken)
     {
-        ActiveDownloads = stateService.GetAllDownloads().ToList();
+        ActiveDownloads = stateService.GetAllDownloads().Select(MapStatus).ToList();
         var handler = StateChanged;
         if (handler != null)
         {
@@ -32,7 +32,7 @@ public sealed class DownloadsViewmodel(
 
     public async ValueTask Handle(DownloadStatusChanged notification, CancellationToken cancellationToken)
     {
-        var status = notification.Status;
+        var status = MapStatus(notification.Status);
         var index = ActiveDownloads.FindIndex(d => d.Id == status.Id);
         if (index >= 0)
         {
@@ -48,4 +48,24 @@ public sealed class DownloadsViewmodel(
             await handler();
         }
     }
+
+    private static DownloadStatusDto MapStatus(DownloadStatus status) => new(
+        status.Id,
+        status.Domain,
+        status.Filename,
+        status.TotalBytes,
+        status.BytesDownloaded,
+        status.ProgressPercentage,
+        status.CurrentSpeed,
+        status.State.ToString());
 }
+
+public sealed record DownloadStatusDto(
+    Guid Id,
+    string Domain,
+    string Filename,
+    long TotalBytes,
+    long BytesDownloaded,
+    double ProgressPercentage,
+    double CurrentSpeed,
+    string State);

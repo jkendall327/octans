@@ -146,8 +146,8 @@ public class GalleryViewmodelTests
             items.Add(item);
         }
 
-        Assert.Contains(items, r => r is { Hash: "DEADBEEF", Destination: RepositoryType.Archive });
-        Assert.Contains(items, r => r is { Hash: "01234567", Destination: RepositoryType.Trash });
+        Assert.Contains(items, r => r is { Hash: "DEADBEEF", Destination: RepositoryDestination.Archive });
+        Assert.Contains(items, r => r is { Hash: "01234567", Destination: RepositoryDestination.Trash });
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class GalleryViewmodelTests
 
         Assert.True(_repoChannel.Channel.Reader.TryRead(out var item));
         Assert.Equal("DEADBEEF", item.Hash);
-        Assert.Equal(RepositoryType.Trash, item.Destination);
+        Assert.Equal(RepositoryDestination.Trash, item.Destination);
     }
 
     [Fact]

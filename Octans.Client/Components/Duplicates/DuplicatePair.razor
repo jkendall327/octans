@@ -1,25 +1,24 @@
-@using Octans.Data.Models.Duplicates
 <MudCard Class="ma-2 pa-2">
     <MudCardHeader>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">Similarity: @Candidate.Distance.ToString("F1")%</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-             <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="@(() => OnResolve(DuplicateResolution.KeepBoth, null))">Keep Both</MudButton>
-             <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="@(() => OnResolve(DuplicateResolution.Distinct, null))">Not Duplicates</MudButton>
+             <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="@(() => OnResolve(DuplicateCandidateResolution.KeepBoth, null))">Keep Both</MudButton>
+             <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="@(() => OnResolve(DuplicateCandidateResolution.Distinct, null))">Not Duplicates</MudButton>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
         <MudGrid>
             <MudItem xs="6">
-                <MudPaper Class="d-flex flex-column align-center pa-2 cursor-pointer hover-effect" @onclick="@(() => OnResolve(DuplicateResolution.KeepBoth, Candidate.HashId1))">
+                <MudPaper Class="d-flex flex-column align-center pa-2 cursor-pointer hover-effect" @onclick="@(() => OnResolve(DuplicateCandidateResolution.KeepBoth, Candidate.HashId1))">
                     <MudImage Src="@Candidate.Url1" ObjectFit="ObjectFit.Contain" Height="300" Class="rounded-lg"/>
                     <MudText Typo="Typo.caption">ID: @Candidate.HashId1</MudText>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2">Keep This</MudButton>
                 </MudPaper>
             </MudItem>
             <MudItem xs="6">
-                <MudPaper Class="d-flex flex-column align-center pa-2 cursor-pointer hover-effect" @onclick="@(() => OnResolve(DuplicateResolution.KeepBoth, Candidate.HashId2))">
+                <MudPaper Class="d-flex flex-column align-center pa-2 cursor-pointer hover-effect" @onclick="@(() => OnResolve(DuplicateCandidateResolution.KeepBoth, Candidate.HashId2))">
                     <MudImage Src="@Candidate.Url2" ObjectFit="ObjectFit.Contain" Height="300" Class="rounded-lg"/>
                     <MudText Typo="Typo.caption">ID: @Candidate.HashId2</MudText>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2">Keep This</MudButton>
@@ -31,10 +30,10 @@
 
 @code {
     [Parameter] public required DuplicateCandidateDto Candidate { get; set; }
-    [Parameter] public EventCallback<(int CandidateId, DuplicateResolution Resolution, int? KeepHashId)> OnResolution { get; set; }
+    [Parameter] public EventCallback<DuplicateCandidateResolutionRequest> OnResolution { get; set; }
 
-    private async Task OnResolve(DuplicateResolution resolution, int? keepHashId)
+    private async Task OnResolve(DuplicateCandidateResolution resolution, int? keepHashId)
     {
-        await OnResolution.InvokeAsync((Candidate.Id, resolution, keepHashId));
+        await OnResolution.InvokeAsync(new(Candidate.Id, resolution, keepHashId));
     }
 }

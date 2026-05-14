@@ -9,3 +9,14 @@ public class DuplicateCandidateDto
     public string Url2 { get; set; } = string.Empty;
     public double Distance { get; set; }
 }
+
+public enum DuplicateCandidateResolution
+{
+    Distinct,
+    KeepBoth
+}
+
+public sealed record DuplicateCandidateResolutionRequest(
+    int CandidateId,
+    DuplicateCandidateResolution Resolution,
+    int? KeepHashId);

@@ -54,7 +54,8 @@ public class DownloadsViewmodelTests
     {
         var id = Guid.NewGuid();
         var existing = CreateStatus(id, bytesDownloaded: 10);
-        _sut.ActiveDownloads.Add(existing);
+        _stateService.GetAllDownloads().Returns(new List<DownloadStatus> { existing });
+        await _sut.InitializeAsync();
 
         var updated = CreateStatus(id, bytesDownloaded: 50);
 

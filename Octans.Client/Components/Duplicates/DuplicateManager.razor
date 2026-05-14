@@ -1,5 +1,4 @@
 @page "/duplicates"
-@using Octans.Data.Models.Duplicates
 @inject DuplicateManagerViewmodel ViewModel
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -49,7 +48,7 @@
         await ViewModel.Initialize();
     }
 
-    private async Task HandleResolution((int CandidateId, DuplicateResolution Resolution, int? KeepHashId) args)
+    private async Task HandleResolution(DuplicateCandidateResolutionRequest args)
     {
         await ViewModel.Resolve(args.CandidateId, args.Resolution, args.KeepHashId);
     }

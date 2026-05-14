@@ -41,11 +41,11 @@ public class NoteServiceTests
         // Assert
         note.Should().NotBeNull();
         note.Content.Should().Be("Test Note");
-        note.HashItemId.Should().Be(hashItem.Id);
 
         var savedNote = await _context.Notes.FirstOrDefaultAsync();
         savedNote.Should().NotBeNull();
         savedNote!.Content.Should().Be("Test Note");
+        savedNote.HashItemId.Should().Be(hashItem.Id);
     }
 
     [Fact]

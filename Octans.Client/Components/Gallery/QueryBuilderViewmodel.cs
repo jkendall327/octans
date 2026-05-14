@@ -1,6 +1,6 @@
 using Octans.Core.Communication;
 using Octans.Core.Querying;
-using Octans.Data.Models.Tagging;
+using DataTag = Octans.Data.Models.Tagging.Tag;
 
 namespace Octans.Client.Components.Gallery;
 
@@ -12,13 +12,13 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     private bool _initialized;
 
     private readonly List<QueryParameter> _parameters = [];
-    private readonly List<Tag> _suggestions = [];
+    private readonly List<QuerySuggestionDto> _suggestions = [];
 
     public Func<Task>? StateChanged { get; set; }
     public Func<List<QueryParameter>, Task>? QueryChanged { get; set; }
 
     public IReadOnlyList<QueryParameter> Parameters => _parameters;
-    public IReadOnlyList<Tag> Suggestions => _suggestions;
+    public IReadOnlyList<QuerySuggestionDto> Suggestions => _suggestions;
 
     public string Current { get; private set; } = string.Empty;
 
@@ -127,7 +127,8 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
             _suggestions.AddRange(results
                 .OrderBy(t => t.Namespace)
-                .ThenBy(t => t.Subtag));
+                .ThenBy(t => t.Subtag)
+                .Select(MapSuggestion));
 
             await InvokeStateHasChanged();
         }
@@ -165,13 +166,17 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         await NotifyQueryChangedAsync();
     }
 
-    public async Task ApplySuggestion(Tag tag)
+    public async Task ApplySuggestion(QuerySuggestionDto tag)
     {
         Current = $"{tag.Namespace}:{tag.Subtag}";
 
         await InvokeStateHasChanged();
         await AddCurrentAsync();
     }
+
+    private static QuerySuggestionDto MapSuggestion(DataTag tag) => new(
+        tag.Namespace.Value,
+        tag.Subtag.Value);
 
     private async Task NotifyQueryChangedAsync()
     {
@@ -199,3 +204,5 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         _requestCts?.Dispose();
     }
 }
+
+public sealed record QuerySuggestionDto(string Namespace, string Subtag);

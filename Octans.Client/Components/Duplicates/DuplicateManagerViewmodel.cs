@@ -79,11 +79,11 @@ public class DuplicateManagerViewmodel(
         }
     }
 
-    public async Task Resolve(int candidateId, DuplicateResolution resolution, int? keepHashId)
+    public async Task Resolve(int candidateId, DuplicateCandidateResolution resolution, int? keepHashId)
     {
         try
         {
-            await duplicateService.Resolve(candidateId, resolution, keepHashId);
+            await duplicateService.Resolve(candidateId, MapResolution(resolution), keepHashId);
 
             // Remove from local list
             var candidate = Candidates.FirstOrDefault(c => c.Id == candidateId);
@@ -107,4 +107,12 @@ public class DuplicateManagerViewmodel(
             snackbar.Add("Failed to resolve", Severity.Error);
         }
     }
+
+    private static DuplicateResolution MapResolution(DuplicateCandidateResolution resolution) =>
+        resolution switch
+        {
+            DuplicateCandidateResolution.Distinct => DuplicateResolution.Distinct,
+            DuplicateCandidateResolution.KeepBoth => DuplicateResolution.KeepBoth,
+            _ => throw new ArgumentOutOfRangeException(nameof(resolution), resolution, "Unknown duplicate resolution.")
+        };
 }

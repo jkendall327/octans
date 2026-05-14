@@ -5,17 +5,18 @@ namespace Octans.Core.Notes;
 
 public class NoteService(ServerDbContext context, TimeProvider timeProvider) : INoteService
 {
-    public async Task<List<Note>> GetNotesAsync(string hash)
+    public async Task<List<NoteDto>> GetNotesAsync(string hash)
     {
         var bytes = Convert.FromHexString(hash);
         var hashItem = await context.Hashes
             .Include(h => h.Notes)
+            .AsNoTracking()
             .FirstOrDefaultAsync(h => h.Hash == bytes);
 
-        return hashItem?.Notes.ToList() ?? new List<Note>();
+        return hashItem?.Notes.Select(MapNote).ToList() ?? new List<NoteDto>();
     }
 
-    public async Task<Note> AddNoteAsync(string hash, string content)
+    public async Task<NoteDto> AddNoteAsync(string hash, string content)
     {
         var bytes = Convert.FromHexString(hash);
         var hashItem = await context.Hashes
@@ -32,7 +33,7 @@ public class NoteService(ServerDbContext context, TimeProvider timeProvider) : I
 
         context.Notes.Add(note);
         await context.SaveChangesAsync();
-        return note;
+        return MapNote(note);
     }
 
     public async Task UpdateNoteAsync(int noteId, string content)
@@ -52,4 +53,10 @@ public class NoteService(ServerDbContext context, TimeProvider timeProvider) : I
             await context.SaveChangesAsync();
         }
     }
+
+    private static NoteDto MapNote(Note note) => new(
+        note.Id,
+        note.Content,
+        note.CreatedAt,
+        note.LastModifiedAt);
 }

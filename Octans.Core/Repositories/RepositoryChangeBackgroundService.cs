@@ -54,7 +54,7 @@ public sealed class RepositoryChangeBackgroundService(
                     continue;
                 }
 
-                hashItem.RepositoryId = (int)req.Destination;
+                hashItem.RepositoryId = MapRepositoryId(req.Destination);
                 processed++;
                 await progressReporter.Report(handle.Id, processed);
             }
@@ -73,4 +73,13 @@ public sealed class RepositoryChangeBackgroundService(
             logger.LogError(ex, "Error processing repository changes");
         }
     }
+
+    private static int MapRepositoryId(RepositoryDestination destination) =>
+        destination switch
+        {
+            RepositoryDestination.Inbox => (int)RepositoryType.Inbox,
+            RepositoryDestination.Archive => (int)RepositoryType.Archive,
+            RepositoryDestination.Trash => (int)RepositoryType.Trash,
+            _ => throw new ArgumentOutOfRangeException(nameof(destination), destination, "Unknown repository destination.")
+        };
 }

@@ -6,7 +6,6 @@ using Octans.Core.Communication;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
-using Octans.Data.Models;
 
 namespace Octans.Client.Components.Gallery;
 
@@ -142,7 +141,7 @@ public sealed class GalleryViewmodel(
             try
             {
                 var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Archive));
+                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Archive));
             }
             catch (Exception e)
             {
@@ -160,7 +159,7 @@ public sealed class GalleryViewmodel(
             try
             {
                 var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Inbox));
+                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Inbox));
             }
             catch (Exception e)
             {
@@ -178,7 +177,7 @@ public sealed class GalleryViewmodel(
             try
             {
                 var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryType.Trash));
+                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Trash));
                 ImageUrls.Remove(url);
             }
             catch (Exception e)
@@ -287,9 +286,9 @@ public sealed class GalleryViewmodel(
 
             var destination = choice switch
             {
-                ImageViewer.FilterChoice.Archive => RepositoryType.Archive,
-                ImageViewer.FilterChoice.Delete => RepositoryType.Trash,
-                _ => RepositoryType.Inbox
+                ImageViewer.FilterChoice.Archive => RepositoryDestination.Archive,
+                ImageViewer.FilterChoice.Delete => RepositoryDestination.Trash,
+                _ => RepositoryDestination.Inbox
             };
 
             await repositoryChannel.WriteAsync(new(hex, destination));
