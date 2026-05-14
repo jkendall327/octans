@@ -1,4 +1,3 @@
-using Mediator;
 using Octans.Core.Downloads;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
@@ -6,16 +5,23 @@ using Octans.Data.Models;
 namespace Octans.Client.Components.Downloads;
 
 public sealed class DownloadsViewmodel(
-    IDownloadStateService stateService) :
-    INotificationHandler<DownloadsChanged>,
-    INotificationHandler<DownloadStatusChanged>
+    IDownloadStateService stateService) : IDisposable
 {
+    private bool _subscribed;
+
     public List<DownloadStatusDto> ActiveDownloads { get; private set; } = [];
 
     public event Func<Task>? StateChanged;
 
     public async Task InitializeAsync()
     {
+        if (!_subscribed)
+        {
+            stateService.DownloadsChanged += Handle;
+            stateService.DownloadStatusChanged += Handle;
+            _subscribed = true;
+        }
+
         ActiveDownloads = stateService.GetAllDownloads().Select(MapStatus).ToList();
         await Task.CompletedTask;
     }
@@ -47,6 +53,15 @@ public sealed class DownloadsViewmodel(
         {
             await handler();
         }
+    }
+
+    public void Dispose()
+    {
+        if (!_subscribed) return;
+
+        stateService.DownloadsChanged -= Handle;
+        stateService.DownloadStatusChanged -= Handle;
+        _subscribed = false;
     }
 
     private static DownloadStatusDto MapStatus(DownloadStatus status) => new(

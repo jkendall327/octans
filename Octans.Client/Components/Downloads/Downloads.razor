@@ -48,5 +48,6 @@ else
     public void Dispose()
     {
         Viewmodel.StateChanged -= Refresh;
+        Viewmodel.Dispose();
     }
 }

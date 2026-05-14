@@ -9,6 +9,9 @@ namespace Octans.Core.Downloads;
 
 public interface IDownloadStateService
 {
+    event DownloadsChangedHandler? DownloadsChanged;
+    event DownloadStatusChangedHandler? DownloadStatusChanged;
+
     Task InitializeFromDbAsync();
     IReadOnlyList<DownloadStatus> GetAllDownloads();
     DownloadStatus? GetDownloadById(Guid id);
@@ -18,6 +21,12 @@ public interface IDownloadStateService
     Task RemoveDownloadAsync(Guid id);
 }
 
+public delegate ValueTask DownloadsChangedHandler(DownloadsChanged notification, CancellationToken cancellationToken);
+
+public delegate ValueTask DownloadStatusChangedHandler(
+    DownloadStatusChanged notification,
+    CancellationToken cancellationToken);
+
 public class DownloadStatusTracker(
     IPublisher publisher,
     IDbContextFactory<ServerDbContext> contextFactory,
@@ -25,6 +34,9 @@ public class DownloadStatusTracker(
     ILogger<DownloadStatusTracker> logger) : IDownloadStateService
 {
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _activeDownloads = new();
+
+    public event DownloadsChangedHandler? DownloadsChanged;
+    public event DownloadStatusChangedHandler? DownloadStatusChanged;
 
     public async Task InitializeFromDbAsync()
     {
@@ -39,7 +51,7 @@ public class DownloadStatusTracker(
             _activeDownloads[status.Id] = status;
         }
 
-        await publisher.Publish(new DownloadsChanged
+        await Raise(new DownloadsChanged
         {
             ChangeType = DownloadChangeType.Updated
         });
@@ -64,8 +76,7 @@ public class DownloadStatusTracker(
         status.CurrentSpeed = speed;
         status.LastUpdated = timeProvider.GetUtcNow();
 
-        // Notify subscribers
-        await publisher.Publish(new DownloadStatusChanged { Status = status });
+        await Raise(new DownloadStatusChanged { Status = status });
     }
 
     public async Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null)
@@ -116,10 +127,9 @@ public class DownloadStatusTracker(
             logger.LogError(ex, "Failed to persist download state change");
         }
 
-        // Notify subscribers
-        await publisher.Publish(new DownloadStatusChanged { Status = status });
+        await Raise(new DownloadStatusChanged { Status = status });
 
-        await publisher.Publish(new DownloadsChanged
+        await Raise(new DownloadsChanged
         {
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Updated
@@ -153,8 +163,7 @@ public class DownloadStatusTracker(
             logger.LogError(ex, "Failed to persist download status");
         }
 
-        // Notification occurs after all operations are complete
-        await publisher.Publish(new DownloadsChanged
+        await Raise(new DownloadsChanged
         {
             AffectedDownloadId = status.Id,
             ChangeType = DownloadChangeType.Added
@@ -184,11 +193,36 @@ public class DownloadStatusTracker(
             logger.LogError(ex, "Failed to remove download status from database");
         }
 
-        // Notify after everything is complete
-        await publisher.Publish(new DownloadsChanged
+        await Raise(new DownloadsChanged
         {
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Removed
         });
+    }
+
+    private async Task Raise(DownloadsChanged notification)
+    {
+        await publisher.Publish(notification);
+
+        var handler = DownloadsChanged;
+        if (handler is null) return;
+
+        foreach (DownloadsChangedHandler subscriber in handler.GetInvocationList())
+        {
+            await subscriber(notification, CancellationToken.None);
+        }
+    }
+
+    private async Task Raise(DownloadStatusChanged notification)
+    {
+        await publisher.Publish(notification);
+
+        var handler = DownloadStatusChanged;
+        if (handler is null) return;
+
+        foreach (DownloadStatusChangedHandler subscriber in handler.GetInvocationList())
+        {
+            await subscriber(notification, CancellationToken.None);
+        }
     }
 }
