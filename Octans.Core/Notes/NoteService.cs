@@ -3,7 +3,7 @@ using Octans.Core.Models;
 
 namespace Octans.Core.Notes;
 
-public class NoteService(ServerDbContext context) : INoteService
+public class NoteService(ServerDbContext context, TimeProvider timeProvider) : INoteService
 {
     public async Task<List<Note>> GetNotesAsync(string hash)
     {
@@ -21,12 +21,13 @@ public class NoteService(ServerDbContext context) : INoteService
         var hashItem = await context.Hashes
             .FirstOrDefaultAsync(h => h.Hash == bytes) ?? throw new ArgumentException("Hash not found");
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         var note = new Note
         {
             HashItemId = hashItem.Id,
             Content = content,
-            CreatedAt = DateTime.UtcNow,
-            LastModifiedAt = DateTime.UtcNow
+            CreatedAt = now,
+            LastModifiedAt = now
         };
 
         context.Notes.Add(note);
@@ -38,7 +39,7 @@ public class NoteService(ServerDbContext context) : INoteService
     {
         var note = await context.Notes.FindAsync(noteId) ?? throw new ArgumentException("Note not found");
         note.Content = content;
-        note.LastModifiedAt = DateTime.UtcNow;
+        note.LastModifiedAt = timeProvider.GetUtcNow().UtcDateTime;
         await context.SaveChangesAsync();
     }
 

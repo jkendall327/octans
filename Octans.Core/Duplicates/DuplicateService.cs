@@ -12,6 +12,7 @@ public class DuplicateService(
     IPerceptualHashProvider hashProvider,
     SubfolderManager subfolderManager,
     FileDeleter fileDeleter,
+    TimeProvider timeProvider,
     ILogger<DuplicateService> logger)
 {
     public async Task<int> CalculateMissingHashes(CancellationToken cancellationToken = default)
@@ -112,7 +113,7 @@ public class DuplicateService(
                         HashId1 = pair.Item1,
                         HashId2 = pair.Item2,
                         Distance = similarity,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = timeProvider.GetUtcNow().UtcDateTime
                     });
                     candidateSet.Add(pair); // Prevent re-adding in same loop
                     found++;
@@ -139,7 +140,7 @@ public class DuplicateService(
             HashId1 = candidate.HashId1,
             HashId2 = candidate.HashId2,
             Resolution = resolution,
-            DecidedAt = DateTime.UtcNow
+            DecidedAt = timeProvider.GetUtcNow().UtcDateTime
         };
         context.DuplicateDecisions.Add(decision);
 

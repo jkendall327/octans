@@ -15,7 +15,7 @@ public class Note
 
     public required string Content { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime LastModifiedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastModifiedAt { get; set; }
 }

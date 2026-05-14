@@ -7,7 +7,7 @@ public record DeleteResult(int Id, bool Success, string? Error);
 public record DeleteRequest(IEnumerable<int> Ids);
 public record DeleteResponse(List<DeleteResult> Results);
 
-public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext context)
+public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext context, TimeProvider timeProvider)
 {
     public async Task<List<DeleteResult>> ProcessDeletion(IEnumerable<int> request)
     {
@@ -49,7 +49,7 @@ public class FileDeleter(SubfolderManager subfolderManager, ServerDbContext cont
             thumbnail.Delete();
         }
 
-        entry.DeletedAt = DateTime.Now;
+        entry.DeletedAt = timeProvider.GetUtcNow().UtcDateTime;
 
         return new(id, true, null);
     }

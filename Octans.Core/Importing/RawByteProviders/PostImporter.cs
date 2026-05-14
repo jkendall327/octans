@@ -1,4 +1,4 @@
-using System.IO;
+using System.IO.Abstractions;
 using Octans.Core.Downloaders;
 using Octans.Core.Downloads;
 
@@ -6,7 +6,8 @@ namespace Octans.Core.Importing;
 
 public class PostImporter(
     DownloaderService downloaderService,
-    IDownloadService downloadService)
+    IDownloadService downloadService,
+    IFileSystem fileSystem)
 {
     public async Task<ImportItemResult> Import(ImportItem item)
     {
@@ -16,7 +17,9 @@ public class PostImporter(
 
         foreach (var direct in urls)
         {
-            var destination = Path.Combine(Path.GetTempPath(), Path.GetFileName(direct.LocalPath));
+            var destination = fileSystem.Path.Combine(
+                fileSystem.Path.GetTempPath(),
+                fileSystem.Path.GetFileName(direct.LocalPath));
 
             await downloadService.QueueDownloadAsync(new()
             {
@@ -30,4 +33,3 @@ public class PostImporter(
             : new ImportItemResult { Ok = false, Message = "No downloadable URLs found." };
     }
 }
-

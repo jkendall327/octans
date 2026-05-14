@@ -2,10 +2,11 @@ using Octans.Core;
 using Octans.Core.Models;
 using Octans.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Abstractions;
 
 namespace Octans.Server;
 
-public class FileFinder(SubfolderManager subfolderManager, ServerDbContext context)
+public class FileFinder(SubfolderManager subfolderManager, ServerDbContext context, IFileSystem fileSystem)
 {
     public async Task<List<HashItem>> GetAll()
     {
@@ -25,7 +26,7 @@ public class FileFinder(SubfolderManager subfolderManager, ServerDbContext conte
 
         var subfolder = subfolderManager.GetSubfolder(hashed);
 
-        return Directory
+        return fileSystem.Directory
             .EnumerateFiles(subfolder.AbsolutePath)
             .SingleOrDefault(x => x.Contains(hashed.Hexadecimal, StringComparison.Ordinal));
     }

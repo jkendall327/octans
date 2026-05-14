@@ -293,7 +293,7 @@ public class HashSearcherTests : IAsyncLifetime
         return new()
         {
             Hash = GenerateRandomHash(),
-            DeletedAt = random.Next(2) == 0 ? null : DateTime.UtcNow.AddDays(-random.Next(1, 365)),
+            DeletedAt = random.Next(2) == 0 ? null : TestClock.UtcNow.AddDays(-random.Next(1, 365)),
             RepositoryId = (int)RepositoryType.Inbox
         };
     }

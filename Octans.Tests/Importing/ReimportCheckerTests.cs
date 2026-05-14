@@ -67,7 +67,7 @@ public class ReimportCheckerTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         var hashItem = new HashItem
         {
             Hash = hashed.Bytes,
-            DeletedAt = DateTime.UtcNow.AddDays(-1)
+            DeletedAt = TestClock.UtcNow.AddDays(-1)
         };
         _dbContext.Hashes.Add(hashItem);
         await _dbContext.SaveChangesAsync();

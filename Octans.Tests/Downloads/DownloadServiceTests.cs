@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core.Downloads;
 using Octans.Core.Downloaders;
@@ -15,7 +16,8 @@ public class DownloadServiceTests
 
     public DownloadServiceTests()
     {
-        _service = new(_mockQueue, _mockStateService, _logger);
+        var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
+        _service = new(_mockQueue, _mockStateService, timeProvider, _logger);
     }
 
     [Fact]

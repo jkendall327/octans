@@ -100,8 +100,8 @@ public class DownloadsViewmodelTests
             TotalBytes = 100,
             BytesDownloaded = bytesDownloaded,
             State = DownloadState.InProgress,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
     }
 }

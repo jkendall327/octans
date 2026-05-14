@@ -7,6 +7,7 @@ using Octans.Core.Models;
 using System.Data.Common;
 using Mediator;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Octans.Tests.Downloads;
 
@@ -41,7 +42,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             .CreateDbContextAsync(Arg.Any<CancellationToken>())
             .Returns(_ => new(_contextOptions));
 
-        _service = new(_publisher, contextFactory, NullLogger<DownloadStatusTracker>.Instance);
+        var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
+        _service = new(_publisher, contextFactory, timeProvider, NullLogger<DownloadStatusTracker>.Instance);
     }
 
     [Fact]
@@ -55,8 +57,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         var completedDownload = new DownloadStatus
@@ -67,9 +69,9 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/completed.zip",
             Domain = "example.com",
             State = DownloadState.Completed,
-            CreatedAt = DateTime.UtcNow.AddHours(-1),
-            LastUpdated = DateTime.UtcNow,
-            CompletedAt = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow.AddHours(-1),
+            LastUpdated = TestClock.UtcNow,
+            CompletedAt = TestClock.UtcNow
         };
 
         await using (var context = new ServerDbContext(_contextOptions))
@@ -100,8 +102,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
@@ -133,8 +135,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.InProgress,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow,
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow,
             BytesDownloaded = 0,
             TotalBytes = 1000,
             CurrentSpeed = 0
@@ -172,8 +174,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
@@ -209,9 +211,9 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.InProgress,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow,
+            StartedAt = TestClock.UtcNow
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
@@ -238,8 +240,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.InProgress,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
@@ -266,8 +268,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
         
         // Act
@@ -301,8 +303,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         await using (var context = new ServerDbContext(_contextOptions))
@@ -320,8 +322,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             Domain = download.Domain,
             State = DownloadState.InProgress,
             CreatedAt = download.CreatedAt,
-            LastUpdated = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow
+            LastUpdated = TestClock.UtcNow,
+            StartedAt = TestClock.UtcNow
         };
 
         // Act
@@ -353,8 +355,8 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.zip",
             Domain = "example.com",
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
         };
 
         await using (var context = new ServerDbContext(_contextOptions))

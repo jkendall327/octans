@@ -55,7 +55,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.jpg",
             Domain = string.Empty, // Will be set by the queue
             Priority = 5,
-            QueuedAt = DateTime.UtcNow
+            QueuedAt = TestClock.UtcNow
         };
 
         var id = await _sut.EnqueueAsync(download);
@@ -83,7 +83,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file1.jpg",
             Domain = "example.com",
             Priority = 3,
-            QueuedAt = DateTime.UtcNow.AddMinutes(-5)
+            QueuedAt = TestClock.UtcNow.AddMinutes(-5)
         };
 
         var download2 = new QueuedDownload
@@ -93,7 +93,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file2.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTime.UtcNow
+            QueuedAt = TestClock.UtcNow
         };
 
         context.QueuedDownloads.AddRange(download1, download2);
@@ -122,7 +122,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTime.UtcNow
+            QueuedAt = TestClock.UtcNow
         };
 
         context.QueuedDownloads.Add(download);
@@ -156,7 +156,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
                 DestinationPath = "/downloads/file1.jpg",
                 Domain = "example.com",
                 Priority = 1,
-                QueuedAt = DateTime.UtcNow
+                QueuedAt = TestClock.UtcNow
             },
             new QueuedDownload
             {
@@ -165,7 +165,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
                 DestinationPath = "/downloads/file2.jpg",
                 Domain = "example.com",
                 Priority = 2,
-                QueuedAt = DateTime.UtcNow
+                QueuedAt = TestClock.UtcNow
             }
         };
 
@@ -194,7 +194,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTime.UtcNow
+            QueuedAt = TestClock.UtcNow
         };
 
         context.QueuedDownloads.Add(download);
@@ -225,7 +225,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file1.jpg",
             Domain = "example.com",
             Priority = 5,
-            QueuedAt = DateTime.UtcNow.AddMinutes(-5) // Older
+            QueuedAt = TestClock.UtcNow.AddMinutes(-5) // Older
         };
 
         var download2 = new QueuedDownload
@@ -235,7 +235,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
             DestinationPath = "/downloads/file2.jpg",
             Domain = "example.com",
             Priority = 5, // Same priority
-            QueuedAt = DateTime.UtcNow // Newer
+            QueuedAt = TestClock.UtcNow // Newer
         };
 
         context.QueuedDownloads.AddRange(download1, download2);

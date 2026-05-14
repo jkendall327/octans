@@ -232,7 +232,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         {
             Hash = HashedBytes.FromUnhashed(TestingConstants.MinimalJpeg)
                 .Bytes,
-            DeletedAt = DateTime.UtcNow.AddDays(-1)
+            DeletedAt = TestClock.UtcNow.AddDays(-1)
         };
 
         db.Hashes.Add(hash);

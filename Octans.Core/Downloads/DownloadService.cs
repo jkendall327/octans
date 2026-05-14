@@ -17,6 +17,7 @@ public interface IDownloadService
 public sealed class DownloadService(
     IDownloadQueue queue,
     IDownloadStateService stateService,
+    TimeProvider timeProvider,
     ILogger<DownloadService> logger) : IDownloadService, IDisposable, IAsyncDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();
@@ -37,6 +38,7 @@ public sealed class DownloadService(
 
         logger.LogInformation("Queueing download for {Filename}", filename);
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         var status = new DownloadStatus
         {
             Id = id,
@@ -44,8 +46,8 @@ public sealed class DownloadService(
             Filename = filename,
             DestinationPath = request.DestinationPath,
             State = DownloadState.Queued,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdated = DateTime.UtcNow,
+            CreatedAt = now,
+            LastUpdated = now,
             Domain = domain
         };
 
@@ -58,7 +60,7 @@ public sealed class DownloadService(
             Id = id,
             Url = request.Url.ToString(),
             DestinationPath = request.DestinationPath,
-            QueuedAt = DateTime.UtcNow,
+            QueuedAt = now,
             Priority = request.Priority,
             Domain = domain
         });
@@ -113,7 +115,7 @@ public sealed class DownloadService(
                 Id = id,
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
-                QueuedAt = DateTime.UtcNow,
+                QueuedAt = timeProvider.GetUtcNow().UtcDateTime,
                 Domain = status.Domain
             });
 
@@ -147,7 +149,7 @@ public sealed class DownloadService(
                 Id = id,
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
-                QueuedAt = DateTime.UtcNow,
+                QueuedAt = timeProvider.GetUtcNow().UtcDateTime,
                 Domain = status.Domain
             });
 

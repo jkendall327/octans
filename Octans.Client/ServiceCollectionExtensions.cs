@@ -42,12 +42,16 @@ public static class ServiceCollectionExtensions
 {
     public static void AddKeyProtection(this WebApplicationBuilder builder)
     {
-        var keysFolder = Path.Combine(builder.Environment.ContentRootPath, "keys");
+        var fileSystem = new FileSystem();
+        var keysFolder = fileSystem.Path.Combine(builder.Environment.ContentRootPath, "keys");
 
-        Directory.CreateDirectory(keysFolder);
+        fileSystem.Directory.CreateDirectory(keysFolder);
 
+        // ASP.NET Data Protection requires a physical DirectoryInfo for persisted keys.
+#pragma warning disable RS0030
         builder.Services.AddDataProtection()
-            .PersistKeysToFileSystem(new(keysFolder));
+            .PersistKeysToFileSystem(new DirectoryInfo(keysFolder));
+#pragma warning restore RS0030
     }
     
     public static IServiceCollection AddOctansServices(this IServiceCollection services)
@@ -237,7 +241,9 @@ public static class ServiceCollectionExtensions
         var globalSettings = serviceProvider.GetRequiredService<IOptions<GlobalSettings>>()
             .Value;
 
-        if (string.IsNullOrEmpty(globalSettings.AppRoot) || !Directory.Exists(globalSettings.AppRoot))
+        var fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
+
+        if (string.IsNullOrEmpty(globalSettings.AppRoot) || !fileSystem.Directory.Exists(globalSettings.AppRoot))
         {
             return app;
         }
@@ -245,11 +251,11 @@ public static class ServiceCollectionExtensions
         app.MapGet("/approot/{**path}",
             async (string path, HttpContext context) =>
             {
-                var fullPath = Path.Combine(globalSettings.AppRoot, path);
+                var fullPath = fileSystem.Path.Combine(globalSettings.AppRoot, path);
 
-                if (File.Exists(fullPath))
+                if (fileSystem.File.Exists(fullPath))
                 {
-                    var contentType = GetContentType(Path.GetExtension(fullPath));
+                    var contentType = GetContentType(fileSystem.Path.GetExtension(fullPath));
                     context.Response.ContentType = contentType;
                     await context.Response.SendFileAsync(fullPath);
 

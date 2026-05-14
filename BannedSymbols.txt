@@ -1,0 +1,15 @@
+// Ambient clock access makes code harder to test. Inject TimeProvider instead.
+P:System.DateTime.Now;Inject TimeProvider and use GetLocalNow() or GetUtcNow().
+P:System.DateTime.UtcNow;Inject TimeProvider and use GetUtcNow().
+P:System.DateTime.Today;Inject TimeProvider instead of reading the system clock.
+P:System.DateTimeOffset.Now;Inject TimeProvider and use GetLocalNow().
+P:System.DateTimeOffset.UtcNow;Inject TimeProvider and use GetUtcNow().
+
+// Ambient filesystem access makes code harder to test. Inject System.IO.Abstractions.IFileSystem instead.
+T:System.IO.File;Inject IFileSystem and use fileSystem.File.
+T:System.IO.Directory;Inject IFileSystem and use fileSystem.Directory.
+T:System.IO.FileInfo;Inject IFileSystem and use fileSystem.FileInfo.
+T:System.IO.DirectoryInfo;Inject IFileSystem and use fileSystem.DirectoryInfo.
+T:System.IO.FileStream;Inject IFileSystem and use fileSystem.FileStream.
+M:System.IO.Path.GetTempPath;Inject IFileSystem and use fileSystem.Path.GetTempPath().
+M:System.IO.Path.GetTempFileName;Inject IFileSystem and use fileSystem.Path.GetTempFileName().

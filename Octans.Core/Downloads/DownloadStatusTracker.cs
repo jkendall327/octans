@@ -21,6 +21,7 @@ public interface IDownloadStateService
 public class DownloadStatusTracker(
     IPublisher publisher,
     IDbContextFactory<ServerDbContext> contextFactory,
+    TimeProvider timeProvider,
     ILogger<DownloadStatusTracker> logger) : IDownloadStateService
 {
     private readonly ConcurrentDictionary<Guid, DownloadStatus> _activeDownloads = new();
@@ -61,7 +62,7 @@ public class DownloadStatusTracker(
         status.BytesDownloaded = bytesDownloaded;
         status.TotalBytes = totalBytes;
         status.CurrentSpeed = speed;
-        status.LastUpdated = DateTime.UtcNow;
+        status.LastUpdated = timeProvider.GetUtcNow().UtcDateTime;
 
         // Notify subscribers
         await publisher.Publish(new DownloadStatusChanged { Status = status});
@@ -71,16 +72,17 @@ public class DownloadStatusTracker(
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         status.State = newState;
-        status.LastUpdated = DateTime.UtcNow;
+        status.LastUpdated = now;
 
         switch (newState)
         {
             case DownloadState.InProgress:
-                status.StartedAt ??= DateTime.UtcNow;
+                status.StartedAt ??= now;
                 break;
             case DownloadState.Completed:
-                status.CompletedAt = DateTime.UtcNow;
+                status.CompletedAt = now;
                 break;
             case DownloadState.Failed:
                 status.ErrorMessage = errorMessage;

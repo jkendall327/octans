@@ -49,7 +49,7 @@ public class SubscriptionsViewmodelTests
         });
 
         var timeProvider = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
-        timeProvider.SetUtcNow(DateTime.UtcNow);
+        timeProvider.SetUtcNow(TestClock.UtcNow);
 
         var reporter = Substitute.For<IBackgroundProgressReporter>();
         var executor = Substitute.For<ISubscriptionExecutor>();
@@ -79,7 +79,7 @@ public class SubscriptionsViewmodelTests
             Provider = provider,
             Query = "TestQuery",
             CheckPeriod = TimeSpan.FromMinutes(60),
-            NextCheck = DateTime.UtcNow
+            NextCheck = TestClock.UtcNow
         });
         await _dbContext.SaveChangesAsync();
 
@@ -144,7 +144,7 @@ public class SubscriptionsViewmodelTests
             Provider = provider,
             Query = "TestQuery",
             CheckPeriod = TimeSpan.FromMinutes(60),
-            NextCheck = DateTime.UtcNow
+            NextCheck = TestClock.UtcNow
         };
         _dbContext.Subscriptions.Add(sub);
         await _dbContext.SaveChangesAsync();

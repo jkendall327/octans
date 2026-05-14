@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core;
 using Octans.Core.Duplicates;
@@ -39,6 +40,7 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
         _fileSystem = new MockFileSystem();
         services.AddSingleton<IFileSystem>(_fileSystem);
+        services.AddSingleton<TimeProvider>(new FakeTimeProvider(TestClock.UtcNow));
         services.Configure<GlobalSettings>(s => s.AppRoot = _appRoot);
         services.AddSingleton<SubfolderManager>();
 

@@ -19,7 +19,7 @@ public class XUnitLogger(ITestOutputHelper testOutputHelper, string categoryName
         }
 
         var message = formatter(state, exception);
-        testOutputHelper.WriteLine($"{DateTime.UtcNow:o} {logLevel} {categoryName} - {message}");
+        testOutputHelper.WriteLine($"{TestClock.UtcNow:o} {logLevel} {categoryName} - {message}");
     }
 }
 

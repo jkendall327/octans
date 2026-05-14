@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using Octans.Core.Models;
 using Octans.Core.Notes;
 using Xunit;
@@ -10,6 +11,7 @@ public class NoteServiceTests
 {
     private readonly ServerDbContext _context;
     private readonly NoteService _service;
+    private readonly FakeTimeProvider _timeProvider = new(TestClock.UtcNow);
 
     public NoteServiceTests()
     {
@@ -20,7 +22,7 @@ public class NoteServiceTests
         _context = new ServerDbContext(options);
         _context.Database.OpenConnection();
         _context.Database.EnsureCreated();
-        _service = new NoteService(_context);
+        _service = new NoteService(_context, _timeProvider);
     }
 
     [Fact]
@@ -81,6 +83,7 @@ public class NoteServiceTests
         var note = await _service.AddNoteAsync(hex, "Original");
 
         // Act
+        _timeProvider.Advance(TimeSpan.FromMinutes(1));
         await _service.UpdateNoteAsync(note.Id, "Updated");
 
         // Assert
