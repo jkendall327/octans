@@ -42,7 +42,9 @@ public class SubscriptionServiceTests
             .Returns(callInfo =>
             {
                 var ctx = new ServerDbContext(contextOptions);
+#pragma warning disable CA2025
                 return Task.FromResult(ctx);
+#pragma warning restore CA2025
             });
 
         _timeProvider = new FakeTimeProvider();
