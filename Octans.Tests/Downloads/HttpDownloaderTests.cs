@@ -97,21 +97,15 @@ public class HttpDownloaderTests
         };
 
         // Setup a cancellation token that will be triggered during download
-        var downloadCts = new CancellationTokenSource();
+        using var downloadCts = new CancellationTokenSource();
         _downloadService.GetDownloadToken(downloadId).Returns(downloadCts.Token);
 
-        // Configure HTTP response to be slow
-        _messageHandler.DelayBeforeResponse = TimeSpan.FromMilliseconds(100);
-        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
-        {
-            Content = new ByteArrayContent(new byte[1024])
-        };
+        _messageHandler.WaitForCancellation = true;
 
         // Start the download
         var downloadTask = _sut.ProcessDownloadAsync(download, _cts.Token);
 
-        // Cancel the download after a short delay
-        await Task.Delay(50);
+        await _messageHandler.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
         await downloadCts.CancelAsync();
 
         // Wait for the download to complete
@@ -121,6 +115,7 @@ public class HttpDownloaderTests
         // Verify state updates
         await _stateService.Received(1).UpdateState(downloadId, DownloadState.InProgress);
         await _stateService.Received(1).UpdateState(downloadId, DownloadState.Canceled);
+        await _stateService.DidNotReceive().UpdateState(downloadId, DownloadState.Completed);
     }
 }
 
@@ -129,11 +124,21 @@ public class TestHttpMessageHandler : HttpMessageHandler
     public HttpResponseMessage? ResponseToReturn { get; set; }
     public Exception? ExceptionToThrow { get; set; }
     public TimeSpan DelayBeforeResponse { get; set; } = TimeSpan.Zero;
+    public bool WaitForCancellation { get; set; }
+    public TaskCompletionSource RequestStarted { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        RequestStarted.TrySetResult();
+
+        if (WaitForCancellation)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
         if (DelayBeforeResponse > TimeSpan.Zero)
         {
             await Task.Delay(DelayBeforeResponse, cancellationToken);

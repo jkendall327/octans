@@ -58,7 +58,7 @@ public class HashSearcherTests : IAsyncLifetime
     {
         await SeedData();
 
-        var items = await GetRandomItems(3);
+        var items = await GetItems(3);
 
         var firstSubtag = items.Take(2).ToArray();
         var secondSubtag = items.Except(firstSubtag).ToArray();
@@ -87,7 +87,7 @@ public class HashSearcherTests : IAsyncLifetime
     {
         await SeedData();
 
-        var items = await GetRandomItems(1);
+        var items = await GetItems(1);
 
         var item = items.Single();
 
@@ -108,7 +108,7 @@ public class HashSearcherTests : IAsyncLifetime
     {
         await SeedData();
 
-        var items = await GetRandomItems(2);
+        var items = await GetItems(2);
 
         await AddMappings("character", "mario", items.ToArray());
 
@@ -191,7 +191,7 @@ public class HashSearcherTests : IAsyncLifetime
     [Fact]
     public async Task ExcludesTrash_ByDefault()
     {
-        var item = GenerateRandomHashItem();
+        var item = CreateHashItem(1);
         item.RepositoryId = (int)RepositoryType.Trash;
         _db.Hashes.Add(item);
         await _db.SaveChangesAsync();
@@ -205,7 +205,7 @@ public class HashSearcherTests : IAsyncLifetime
     [Fact]
     public async Task IncludesTrash_WhenTrashFilterSpecified()
     {
-        var item = GenerateRandomHashItem();
+        var item = CreateHashItem(1);
         item.RepositoryId = (int)RepositoryType.Trash;
         _db.Hashes.Add(item);
         await _db.SaveChangesAsync();
@@ -222,10 +222,10 @@ public class HashSearcherTests : IAsyncLifetime
     [Fact]
     public async Task OnlyIncludesInbox_WhenInboxFilterSpecified()
     {
-        var inboxItem = GenerateRandomHashItem();
+        var inboxItem = CreateHashItem(1);
         inboxItem.RepositoryId = (int)RepositoryType.Inbox;
 
-        var archiveItem = GenerateRandomHashItem();
+        var archiveItem = CreateHashItem(2);
         archiveItem.RepositoryId = (int)RepositoryType.Archive;
 
         _db.Hashes.AddRange(inboxItem, archiveItem);
@@ -245,11 +245,11 @@ public class HashSearcherTests : IAsyncLifetime
     {
         var all = new List<HashItem>
         {
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem(),
-            GenerateRandomHashItem(),
+            CreateHashItem(1),
+            CreateHashItem(2),
+            CreateHashItem(3),
+            CreateHashItem(4),
+            CreateHashItem(5),
         };
 
         _db.AddRange(all);
@@ -257,11 +257,14 @@ public class HashSearcherTests : IAsyncLifetime
         await _db.SaveChangesAsync();
     }
 
-    private async Task<List<HashItem>> GetRandomItems(int count)
+    private async Task<List<HashItem>> GetItems(int count)
     {
         // Must exclude trash to match default search behavior
-        var all = await _db.Hashes.Where(h => h.RepositoryId != (int)RepositoryType.Trash).ToListAsync();
-        return all.OrderBy(i => Guid.NewGuid()).Take(count).ToList();
+        return await _db.Hashes
+            .Where(h => h.RepositoryId != (int)RepositoryType.Trash)
+            .OrderBy(h => h.Id)
+            .Take(count)
+            .ToListAsync();
     }
 
     private async Task AddMappings(string @namespace, string subtag, params HashItem[] items)
@@ -286,22 +289,21 @@ public class HashSearcherTests : IAsyncLifetime
         await _db.SaveChangesAsync();
     }
 
-    private static HashItem GenerateRandomHashItem()
+    private static HashItem CreateHashItem(int marker)
     {
-        var random = Random.Shared;
-
         return new()
         {
-            Hash = GenerateRandomHash(),
-            DeletedAt = random.Next(2) == 0 ? null : TestClock.UtcNow.AddDays(-random.Next(1, 365)),
+            Hash = CreateHash(marker),
             RepositoryId = (int)RepositoryType.Inbox
         };
     }
 
-    private static byte[] GenerateRandomHash()
+    private static byte[] CreateHash(int marker)
     {
         var hash = new byte[32];
-        Random.Shared.NextBytes(hash);
+        var markerBytes = BitConverter.GetBytes(marker);
+        Array.Copy(markerBytes, 0, hash, hash.Length - markerBytes.Length, markerBytes.Length);
+
         return hash;
     }
 }
