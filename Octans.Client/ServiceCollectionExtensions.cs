@@ -12,6 +12,7 @@ using Octans.Client.Components.Importing;
 using Octans.Client.Components.MainToolbar;
 using Octans.Client.Components.Settings;
 using Octans.Client.Components.StatusBar;
+using Octans.Client.Components.Subscriptions;
 using Octans.Client.Services;
 using Octans.Client.Settings;
 using Octans.Core;
@@ -207,7 +208,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ProgressStore>();
         services.AddScoped<DownloadersViewmodel>();
         services.AddScoped<DownloadsViewmodel>();
-        services.AddScoped<Octans.Client.Components.Subscriptions.SubscriptionsViewmodel>();
+        services.AddScoped<SubscriptionsViewmodel>();
         services.AddScoped<DuplicateManagerViewmodel>();
 
         return services;
