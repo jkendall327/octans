@@ -24,7 +24,9 @@ public class PostImporter(
             await downloadService.QueueDownloadAsync(new()
             {
                 Url = direct,
-                DestinationPath = destination
+                DestinationPath = destination,
+                SourceType = nameof(ImportType.Post),
+                SourceId = uri.ToString()
             });
         }
 

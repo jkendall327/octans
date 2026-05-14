@@ -29,6 +29,9 @@ public class DownloadServiceTests
         {
             Url = new("https://example.com/file.zip"),
             DestinationPath = "/downloads/file.zip",
+            DisplayName = "Example file",
+            SourceType = "Test",
+            SourceId = "test-source",
             Priority = 1
         };
 
@@ -40,15 +43,21 @@ public class DownloadServiceTests
             ds.Id == id &&
             ds.Url == request.Url.ToString() &&
             ds.DestinationPath == request.DestinationPath &&
+            ds.DisplayName == request.DisplayName &&
             ds.State == DownloadState.Queued &&
-            ds.Domain == "example.com"));
+            ds.Domain == "example.com" &&
+            ds.SourceType == request.SourceType &&
+            ds.SourceId == request.SourceId));
 
         await _mockQueue.Received(1).EnqueueAsync(Arg.Is<QueuedDownload>(qd =>
             qd.Id == id &&
             qd.Url == request.Url.ToString() &&
             qd.DestinationPath == request.DestinationPath &&
+            qd.DisplayName == request.DisplayName &&
             qd.Priority == request.Priority &&
-            qd.Domain == "example.com"));
+            qd.Domain == "example.com" &&
+            qd.SourceType == request.SourceType &&
+            qd.SourceId == request.SourceId));
     }
 
     [Fact]

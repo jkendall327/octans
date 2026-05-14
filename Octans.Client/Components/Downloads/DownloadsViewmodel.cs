@@ -67,7 +67,7 @@ public sealed class DownloadsViewmodel(
     private static DownloadStatusDto MapStatus(DownloadStatus status) => new(
         status.Id,
         status.Domain,
-        status.Filename,
+        status.DisplayName ?? status.Filename,
         status.TotalBytes,
         status.BytesDownloaded,
         status.ProgressPercentage,

@@ -45,11 +45,14 @@ public sealed class DownloadService(
             Id = id,
             Url = request.Url.ToString(),
             Filename = filename,
+            DisplayName = request.DisplayName,
             DestinationPath = request.DestinationPath,
             State = DownloadState.Queued,
             CreatedAt = now,
             LastUpdated = now,
-            Domain = domain
+            Domain = domain,
+            SourceType = request.SourceType,
+            SourceId = request.SourceId
         };
 
         // Add to state service for UI visibility
@@ -63,7 +66,10 @@ public sealed class DownloadService(
             DestinationPath = request.DestinationPath,
             QueuedAt = now,
             Priority = request.Priority,
-            Domain = domain
+            Domain = domain,
+            DisplayName = request.DisplayName,
+            SourceType = request.SourceType,
+            SourceId = request.SourceId
         });
 
         logger.LogDebug("Download queued successfully");
@@ -117,7 +123,10 @@ public sealed class DownloadService(
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
                 QueuedAt = timeProvider.GetUtcNow(),
-                Domain = status.Domain
+                Domain = status.Domain,
+                DisplayName = status.DisplayName,
+                SourceType = status.SourceType,
+                SourceId = status.SourceId
             });
 
             await stateService.UpdateState(id, DownloadState.Queued);
@@ -151,7 +160,10 @@ public sealed class DownloadService(
                 Url = status.Url,
                 DestinationPath = status.DestinationPath,
                 QueuedAt = timeProvider.GetUtcNow(),
-                Domain = status.Domain
+                Domain = status.Domain,
+                DisplayName = status.DisplayName,
+                SourceType = status.SourceType,
+                SourceId = status.SourceId
             });
 
             await stateService.UpdateState(id, DownloadState.Queued);

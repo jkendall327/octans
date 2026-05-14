@@ -4,6 +4,9 @@ public class DownloadRequest
 {
     public required Uri Url { get; set; }
     public required string DestinationPath { get; set; }
+    public string? DisplayName { get; set; }
+    public string? SourceType { get; set; }
+    public string? SourceId { get; set; }
 
     /// <summary>
     /// Higher numbers = higher priority

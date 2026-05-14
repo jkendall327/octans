@@ -10,7 +10,10 @@ public class QueuedDownload
     public Guid Id { get; set; }
     public required string Url { get; set; }
     public required string DestinationPath { get; set; }
+    public string? DisplayName { get; set; }
     public DateTimeOffset QueuedAt { get; set; }
     public int Priority { get; set; }
     public required string Domain { get; set; }
+    public string? SourceType { get; set; }
+    public string? SourceId { get; set; }
 }

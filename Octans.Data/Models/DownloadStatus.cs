@@ -10,6 +10,7 @@ public class DownloadStatus
     public Guid Id { get; set; }
     public required string Url { get; set; }
     public required string Filename { get; set; }
+    public string? DisplayName { get; set; }
     public required string DestinationPath { get; set; }
     public long TotalBytes { get; set; }
     public long BytesDownloaded { get; set; }
@@ -22,4 +23,6 @@ public class DownloadStatus
     public DateTimeOffset LastUpdated { get; set; }
     public string? ErrorMessage { get; set; }
     public required string Domain { get; set; }
+    public string? SourceType { get; set; }
+    public string? SourceId { get; set; }
 }
