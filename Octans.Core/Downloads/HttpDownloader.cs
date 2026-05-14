@@ -11,7 +11,7 @@ namespace Octans.Core.Downloads;
 public class HttpDownloader(
     IBandwidthLimiter bandwidthLimiter,
     IDownloadStateService stateService,
-    IDownloadService downloadService,
+    IActiveDownloadRegistry activeDownloads,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
     TimeProvider timeProvider,
@@ -20,7 +20,7 @@ public class HttpDownloader(
     public async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
     {
         var downloadId = download.Id;
-        var downloadToken = downloadService.GetDownloadToken(downloadId);
+        var downloadToken = activeDownloads.GetToken(downloadId);
 
         // Create a combined token for this specific download
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, downloadToken);

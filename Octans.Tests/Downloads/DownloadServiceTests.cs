@@ -13,13 +13,14 @@ public class DownloadServiceTests
 {
     private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
+    private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly ILogger<DownloadService> _logger = NullLogger<DownloadService>.Instance;
     private readonly DownloadService _service;
 
     public DownloadServiceTests()
     {
         var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
-        _service = new(_mockQueue, _mockStateService, timeProvider, _logger);
+        _service = new(_mockQueue, _mockStateService, _activeDownloads, timeProvider, _logger);
     }
 
     [Fact]
@@ -69,6 +70,7 @@ public class DownloadServiceTests
         await _service.CancelDownloadAsync(id);
 
         await _mockQueue.Received(1).RemoveAsync(id);
+        _activeDownloads.Received(1).Cancel(id);
         await _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
     }
 
@@ -80,6 +82,7 @@ public class DownloadServiceTests
         await _service.PauseDownloadAsync(id);
 
         await _mockQueue.Received(1).RemoveAsync(id);
+        _activeDownloads.Received(1).Cancel(id);
         await _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 
@@ -213,36 +216,4 @@ public class DownloadServiceTests
         await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
     }
 
-    [Fact]
-    public void GetDownloadToken_ShouldReturnCancellationToken()
-    {
-        var id = Guid.NewGuid();
-
-        var token = _service.GetDownloadToken(id);
-
-        Assert.False(token == CancellationToken.None);
-        Assert.False(token.IsCancellationRequested);
-    }
-
-    [Fact]
-    public async Task CancelDownloadAsync_ShouldCancelToken()
-    {
-        var id = Guid.NewGuid();
-        var token = _service.GetDownloadToken(id);
-
-        await _service.CancelDownloadAsync(id);
-
-        Assert.True(token.IsCancellationRequested);
-    }
-
-    [Fact]
-    public void DisposingTheService_ShouldCancelAllActiveDownloads()
-    {
-        var id = Guid.NewGuid();
-        var token = _service.GetDownloadToken(id);
-
-        _service.Dispose();
-
-        Assert.True(token.IsCancellationRequested);
-    }
 }

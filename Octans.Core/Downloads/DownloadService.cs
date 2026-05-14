@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
@@ -12,18 +11,15 @@ public interface IDownloadService
     Task PauseDownloadAsync(Guid id);
     Task ResumeDownloadAsync(Guid id);
     Task RetryDownloadAsync(Guid id);
-    CancellationToken GetDownloadToken(Guid downloadId);
 }
 
 public sealed class DownloadService(
     IDownloadQueue queue,
     IDownloadStateService stateService,
+    IActiveDownloadRegistry activeDownloads,
     TimeProvider timeProvider,
-    ILogger<DownloadService> logger) : IDownloadService, IDisposable, IAsyncDisposable
+    ILogger<DownloadService> logger) : IDownloadService
 {
-    private readonly CancellationTokenSource _globalCancellation = new();
-    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _downloadCancellations = new();
-
     public async Task<Guid> QueueDownloadAsync(DownloadRequest request)
     {
         var id = Guid.NewGuid();
@@ -86,7 +82,7 @@ public sealed class DownloadService(
         await queue.RemoveAsync(id);
 
         // Then cancel if it's in progress
-        CancelDownloadToken(id);
+        activeDownloads.Cancel(id);
 
         // Update state
         await stateService.UpdateState(id, DownloadState.Canceled);
@@ -103,7 +99,7 @@ public sealed class DownloadService(
 
         // Pause currently stops active transfer and resumes from the beginning later.
         // Range-based partial resume will need explicit temp-file support.
-        CancelDownloadToken(id);
+        activeDownloads.Cancel(id);
         await stateService.UpdateState(id, DownloadState.Paused);
 
         logger.LogDebug("Download paused");
@@ -177,60 +173,4 @@ public sealed class DownloadService(
         }
     }
 
-    private void CancelDownloadToken(Guid id)
-    {
-        if (!_downloadCancellations.TryGetValue(id, out var cts))
-        {
-            logger.LogDebug("No active cancellation token found for download {DownloadId}", id);
-            return;
-        }
-
-        logger.LogDebug("Canceling download token for {DownloadId}", id);
-
-        cts.Cancel();
-        cts.Dispose();
-
-        _downloadCancellations.Remove(id, out var _);
-    }
-
-    public CancellationToken GetDownloadToken(Guid downloadId)
-    {
-        if (_downloadCancellations.TryGetValue(downloadId, out var cts))
-        {
-            logger.LogDebug("Reusing existing cancellation token for download {DownloadId}", downloadId);
-            return cts.Token;
-        }
-
-        logger.LogDebug("Creating new cancellation token for download {DownloadId}", downloadId);
-
-        cts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellation.Token);
-
-        _downloadCancellations[downloadId] = cts;
-
-        return cts.Token;
-    }
-
-    public void Dispose()
-    {
-        logger.LogInformation("Disposing DownloadService and canceling all downloads");
-
-        _globalCancellation.Cancel();
-        _globalCancellation.Dispose();
-
-        foreach (var cts in _downloadCancellations.Values)
-        {
-            cts.Dispose();
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _globalCancellation.CancelAsync();
-        _globalCancellation.Dispose();
-
-        foreach (var cts in _downloadCancellations.Values)
-        {
-            cts.Dispose();
-        }
-    }
 }

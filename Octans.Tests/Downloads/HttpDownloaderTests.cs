@@ -13,7 +13,7 @@ public class HttpDownloaderTests
 {
     private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
-    private readonly IDownloadService _downloadService = Substitute.For<IDownloadService>();
+    private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly HttpDownloader _sut;
@@ -34,15 +34,15 @@ public class HttpDownloaderTests
         _sut = new(
             _bandwidthLimiter,
             _stateService,
-            _downloadService,
+            _activeDownloads,
             factory,
             _fileSystem,
             _timeProvider,
             NullLogger<HttpDownloader>.Instance);
 
         // Setup download token
-        _downloadService
-            .GetDownloadToken(Arg.Any<Guid>())
+        _activeDownloads
+            .GetToken(Arg.Any<Guid>())
             .Returns(CancellationToken.None);
     }
 
@@ -98,7 +98,7 @@ public class HttpDownloaderTests
 
         // Setup a cancellation token that will be triggered during download
         using var downloadCts = new CancellationTokenSource();
-        _downloadService.GetDownloadToken(downloadId).Returns(downloadCts.Token);
+        _activeDownloads.GetToken(downloadId).Returns(downloadCts.Token);
 
         _messageHandler.WaitForCancellation = true;
 
