@@ -29,6 +29,9 @@ But if I need to start up a new database for something really radical, it's not 
 
 Run after your changes: `dotnet build && dotnet test`.
 
+For EF migrations, use the data project as both the project and startup project so the design-time factory is used:
+`DOTNET_ROOT=/home/jackkendall/.dotnet /home/jackkendall/.dotnet/tools/dotnet-ef migrations add <MigrationName> --project Octans.Data --startup-project Octans.Data`.
+
 ## Code style
 Use `var`.
 
