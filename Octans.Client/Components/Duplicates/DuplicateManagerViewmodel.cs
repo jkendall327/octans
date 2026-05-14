@@ -96,8 +96,8 @@ public class DuplicateManagerViewmodel(
                 // We'll just reload or remove locally.
                 if (keepHashId.HasValue)
                 {
-                     var deletedId = candidate.HashId1 == keepHashId ? candidate.HashId2 : candidate.HashId1;
-                     Candidates.RemoveAll(c => c.HashId1 == deletedId || c.HashId2 == deletedId);
+                    var deletedId = candidate.HashId1 == keepHashId ? candidate.HashId2 : candidate.HashId1;
+                    Candidates.RemoveAll(c => c.HashId1 == deletedId || c.HashId2 == deletedId);
                 }
             }
         }

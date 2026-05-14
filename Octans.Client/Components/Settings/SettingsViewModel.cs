@@ -67,11 +67,11 @@ public sealed class SettingsViewModel(
         SaveError = false;
 
         await OnStateChanged();
-        
+
         try
         {
             logger.LogInformation("Saving configuration settings");
-            
+
             await settingsService.SaveAsync(Settings);
 
             SaveSuccess = true;

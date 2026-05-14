@@ -73,7 +73,7 @@ public class NoteServiceTests
     [Fact]
     public async Task UpdateNote_ShouldUpdateContent()
     {
-         // Arrange
+        // Arrange
         var hash = new byte[] { 0xCC };
         var hex = Convert.ToHexString(hash);
         var hashItem = new HashItem { Hash = hash };

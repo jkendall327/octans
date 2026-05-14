@@ -168,7 +168,7 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     [Fact]
     public async Task FindDuplicates_ShouldRespectDecisions()
     {
-         // Arrange
+        // Arrange
         var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
         var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2);

@@ -64,7 +64,7 @@ public class HttpDownloader(
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength ?? -1;
-        
+
         await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
@@ -104,12 +104,12 @@ public class HttpDownloader(
 
         // Final progress update and state change
         var totalElapsed = timeProvider.GetElapsedTime(startTime);
-        
+
         await stateService.UpdateProgress(downloadId,
             bytesDownloaded,
             totalBytes,
             bytesDownloaded / totalElapsed.TotalSeconds);
-        
+
         await stateService.UpdateState(downloadId, DownloadState.Completed);
 
         // Record bandwidth usage

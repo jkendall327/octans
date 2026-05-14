@@ -48,9 +48,9 @@ public sealed class ProgressStore : INotificationHandler<ProgressStatus>, INotif
     public async ValueTask Handle(ProgressMessage e, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
-        
+
         _messages[id] = new(id, e.Message, e.IsError);
-        
+
         if (OnChange != null)
         {
             await OnChange();

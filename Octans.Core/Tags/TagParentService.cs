@@ -31,7 +31,7 @@ public class TagParentService(ServerDbContext context)
         // If we add this link, then parent -> ... -> child -> parent (cycle).
         if (await IsDescendantAsync(childTag.Id, parentTag.Id, cancellationToken))
         {
-             throw new InvalidOperationException("Cannot add parent as it would create a cycle.");
+            throw new InvalidOperationException("Cannot add parent as it would create a cycle.");
         }
 
         var relationship = new TagParent

@@ -154,11 +154,11 @@ public class DuplicateService(
         }
         else if (resolution == DuplicateResolution.Distinct)
         {
-             // Nothing else to do (marked as distinct)
+            // Nothing else to do (marked as distinct)
         }
         // else if (resolution == DuplicateResolution.Ignored) // Not used in UI yet?
         // {
-             // Just skip
+        // Just skip
         // }
 
         // If we are keeping one, we delete the other.

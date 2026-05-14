@@ -135,7 +135,7 @@ public class SubscriptionsViewmodelTests
     [Fact]
     public async Task DeleteSubscriptionAsync_ShouldRemoveSubscription()
     {
-         // Arrange
+        // Arrange
         var provider = new Provider { Name = "TestDownloader" };
         _dbContext.Providers.Add(provider);
         var sub = new Subscription

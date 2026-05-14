@@ -100,22 +100,22 @@ public class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> log
 
         if (potentialExistingTags.Count > 0)
         {
-             // We need to fetch tags that match the (Namespace, Subtag) pairs.
-             // EF Core doesn't support Where(t => pairs.Contains(..)) easily for composite keys or pairs without client eval or complex predicates.
-             // We can fetch tags where Namespace matches ANY of the potential namespaces AND Subtag matches ANY of the potential subtags, then filter in memory.
-             var potentialNsIds = potentialExistingTags.Select(t => existingNamespaces[t.Namespace ?? string.Empty].Id).Distinct().ToList();
-             var potentialSubIds = potentialExistingTags.Select(t => existingSubtags[t.Subtag].Id).Distinct().ToList();
+            // We need to fetch tags that match the (Namespace, Subtag) pairs.
+            // EF Core doesn't support Where(t => pairs.Contains(..)) easily for composite keys or pairs without client eval or complex predicates.
+            // We can fetch tags where Namespace matches ANY of the potential namespaces AND Subtag matches ANY of the potential subtags, then filter in memory.
+            var potentialNsIds = potentialExistingTags.Select(t => existingNamespaces[t.Namespace ?? string.Empty].Id).Distinct().ToList();
+            var potentialSubIds = potentialExistingTags.Select(t => existingSubtags[t.Subtag].Id).Distinct().ToList();
 
-             var candidateTags = await context.Tags
-                 .Include(t => t.Namespace)
-                 .Include(t => t.Subtag)
-                 .Where(t => potentialNsIds.Contains(t.Namespace.Id) && potentialSubIds.Contains(t.Subtag.Id))
-                 .ToListAsync();
+            var candidateTags = await context.Tags
+                .Include(t => t.Namespace)
+                .Include(t => t.Subtag)
+                .Where(t => potentialNsIds.Contains(t.Namespace.Id) && potentialSubIds.Contains(t.Subtag.Id))
+                .ToListAsync();
 
-             foreach (var t in candidateTags)
-             {
-                 existingTagsMap[(t.Namespace.Value, t.Subtag.Value)] = t;
-             }
+            foreach (var t in candidateTags)
+            {
+                existingTagsMap[(t.Namespace.Value, t.Subtag.Value)] = t;
+            }
         }
 
         foreach (var tagModel in uniqueTags)

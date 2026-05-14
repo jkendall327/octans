@@ -144,18 +144,18 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
-        
+
         // Act
         await _service.UpdateProgress(download.Id, 500, 1000, 100.0);
-        
+
         // Assert
         await _publisher
             .Received()
-            .Publish(Arg.Is<DownloadStatusChanged>(ds => 
+            .Publish(Arg.Is<DownloadStatusChanged>(ds =>
                 ds.Status.BytesDownloaded == 500
                 && ds.Status.TotalBytes == 1000
                 && ds.Status.CurrentSpeed == 100.0));
-        
+
         var updated = _service.GetDownloadById(download.Id);
         Assert.NotNull(updated);
         Assert.Equal(500, updated.BytesDownloaded);
@@ -180,7 +180,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         };
 
         await _service.AddOrUpdateDownloadAsync(download);
-        
+
         // Act
         await _service.UpdateState(download.Id, DownloadState.InProgress);
 
@@ -194,7 +194,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             .Publish(Arg.Is<DownloadStatusChanged>(ds => ds.Status.State == DownloadState.InProgress));
 
         var updated = _service.GetDownloadById(download.Id);
-        
+
         Assert.NotNull(updated);
         Assert.Equal(DownloadState.InProgress, updated.State);
         Assert.NotNull(updated.StartedAt);
@@ -272,7 +272,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
             CreatedAt = TestClock.UtcNow,
             LastUpdated = TestClock.UtcNow
         };
-        
+
         // Act
         await _service.AddOrUpdateDownloadAsync(download);
 
@@ -280,7 +280,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         var result = _service.GetDownloadById(download.Id);
         Assert.NotNull(result);
         Assert.Equal(download.Id, result.Id);
-        
+
         await _publisher
             .Received(1)
             .Publish(Arg.Any<DownloadsChanged>());
@@ -367,13 +367,13 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
         }
 
         await _service.AddOrUpdateDownloadAsync(download);
-        
+
         // Act
         await _service.RemoveDownloadAsync(download.Id);
 
         // Assert
         var result = _service.GetDownloadById(download.Id);
-        
+
         Assert.Null(result);
 
         await _publisher

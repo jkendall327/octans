@@ -54,7 +54,7 @@ public class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter
         var namespaceIds = namespaces.Select(n => n.Id).ToList();
 
         IQueryable<Tag> tagsForFoundNamespaces;
-        
+
         if (namespaceIds.Count > 0)
         {
             tagsForFoundNamespaces = context.Tags.Where(t => namespaceIds.Contains(t.Namespace.Id));

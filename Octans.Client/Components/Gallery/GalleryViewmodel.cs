@@ -44,7 +44,7 @@ public sealed class GalleryViewmodel(
 
     private int _total;
     private int _processed;
-    public int ProgressPercent => _total == 0 ? 0 : (int) Math.Round(_processed * 100.0 / _total);
+    public int ProgressPercent => _total == 0 ? 0 : (int)Math.Round(_processed * 100.0 / _total);
 
     public async Task OnInitialized()
     {
@@ -137,7 +137,7 @@ public sealed class GalleryViewmodel(
 
     public async Task OnArchive(List<string> imageUrls)
     {
-         foreach (var url in imageUrls)
+        foreach (var url in imageUrls)
         {
             try
             {
@@ -155,7 +155,7 @@ public sealed class GalleryViewmodel(
 
     public async Task OnInbox(List<string> imageUrls)
     {
-         foreach (var url in imageUrls)
+        foreach (var url in imageUrls)
         {
             try
             {

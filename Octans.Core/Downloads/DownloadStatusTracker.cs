@@ -65,7 +65,7 @@ public class DownloadStatusTracker(
         status.LastUpdated = timeProvider.GetUtcNow().UtcDateTime;
 
         // Notify subscribers
-        await publisher.Publish(new DownloadStatusChanged { Status = status});
+        await publisher.Publish(new DownloadStatusChanged { Status = status });
     }
 
     public async Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null)
@@ -117,8 +117,8 @@ public class DownloadStatusTracker(
         }
 
         // Notify subscribers
-        await publisher.Publish(new DownloadStatusChanged { Status = status});
-        
+        await publisher.Publish(new DownloadStatusChanged { Status = status });
+
         await publisher.Publish(new DownloadsChanged
         {
             AffectedDownloadId = id,

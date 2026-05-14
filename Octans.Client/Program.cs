@@ -33,7 +33,7 @@ builder.Services.AddDatabase();
 builder.Services.AddBandwidthLimiter(options =>
 {
     // 1 MB/s
-    options.DefaultBytesPerSecond = 1024 * 1024; 
+    options.DefaultBytesPerSecond = 1024 * 1024;
 });
 
 builder.Services.AddDownloadManager(options =>

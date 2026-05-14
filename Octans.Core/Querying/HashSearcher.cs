@@ -104,7 +104,7 @@ public class HashSearcher(ServerDbContext context, TagParentService tagParentSer
                 .Select(t => t.Id)
                 .ToListAsync(cancellationToken);
 
-            foreach(var id in ids) includeIds.Add(id);
+            foreach (var id in ids) includeIds.Add(id);
         }
 
         // 2. Handle wildcard namespaces
@@ -115,7 +115,7 @@ public class HashSearcher(ServerDbContext context, TagParentService tagParentSer
                 .Select(t => t.Id)
                 .ToListAsync(cancellationToken);
 
-            foreach(var id in wildcardIds) includeIds.Add(id);
+            foreach (var id in wildcardIds) includeIds.Add(id);
         }
 
         // 3. Expand with descendants
@@ -131,13 +131,13 @@ public class HashSearcher(ServerDbContext context, TagParentService tagParentSer
             var excludeIds = new HashSet<int>();
             foreach (var tag in request.TagsToExclude)
             {
-                 var ns = tag.Namespace ?? string.Empty;
-                 var sub = tag.Subtag;
-                 var ids = await context.Tags
-                    .Where(t => t.Namespace.Value == ns && t.Subtag.Value == sub)
-                    .Select(t => t.Id)
-                    .ToListAsync(cancellationToken);
-                 foreach(var id in ids) excludeIds.Add(id);
+                var ns = tag.Namespace ?? string.Empty;
+                var sub = tag.Subtag;
+                var ids = await context.Tags
+                   .Where(t => t.Namespace.Value == ns && t.Subtag.Value == sub)
+                   .Select(t => t.Id)
+                   .ToListAsync(cancellationToken);
+                foreach (var id in ids) excludeIds.Add(id);
             }
 
             includeIds.ExceptWith(excludeIds);

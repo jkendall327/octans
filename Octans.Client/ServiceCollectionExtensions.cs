@@ -54,7 +54,7 @@ public static class ServiceCollectionExtensions
             .PersistKeysToFileSystem(new DirectoryInfo(keysFolder));
 #pragma warning restore RS0030
     }
-    
+
     public static IServiceCollection AddOctansServices(this IServiceCollection services)
     {
         services.AddHostedService<ImportFolderBackgroundService>();
