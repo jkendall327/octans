@@ -1,0 +1,50 @@
+.input-group {
+    display: block;
+}
+
+.url-input {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 116px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+    border-radius: 5px;
+    outline: none;
+    background: color-mix(in srgb, var(--background-color) 92%, var(--text-color));
+    color: var(--text-color);
+    font: inherit;
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.url-input::placeholder {
+    color: color-mix(in srgb, var(--text-color) 48%, transparent);
+}
+
+.url-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 20%, transparent);
+}
+
+.import-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    margin: 14px 0 12px;
+}
+
+::deep .mud-checkbox,
+::deep .mud-input-control,
+::deep .mud-input-control-label {
+    color: var(--text-color);
+}
+
+::deep .send-button {
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 5px;
+    font-weight: 700;
+    text-transform: none;
+}
