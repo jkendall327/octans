@@ -11,7 +11,7 @@
 <div class="image-viewer"
      tabindex="0"
      @ref="_root"
-     @onkeydown="@OnKeyDown"
+     @onkeydown="@(() => OnKeyDown)"
 >
     <section class="toolbar">
         <MudButton
@@ -76,7 +76,7 @@
                 }
             }
         </div>
-        <div class="image-display" @onmousedown="@OnImageMouseDown" @oncontextmenu:preventDefault>
+        <div class="image-display" @onmousedown="@(() => OnImageMouseDown)" @oncontextmenu:preventDefault>
             @if (CurrentImage is null)
             {
                 <p>Loading...</p>

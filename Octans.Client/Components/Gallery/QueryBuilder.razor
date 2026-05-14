@@ -29,8 +29,8 @@
       class="qb-input"
       placeholder="Type a parameter and press Enter"
       value="@ViewModel.Current"
-      @oninput="@(async e => await ViewModel.OnInputAsync(e.Value?.ToString()))"
-      @onkeydown="@(async e => await ViewModel.HandleKeyDownAsync(e.Key))"/>
+      @oninput="@(async (ChangeEventArgs e) => await ViewModel.OnInputAsync(e.Value?.ToString()))"
+      @onkeydown="@(async (KeyboardEventArgs e) => await ViewModel.HandleKeyDownAsync(e.Key))"/>
 
     <!-- Placeholder buttons -->
     <button class="qb-btn" title="Reserved"><span aria-hidden="true">📄</span></button>
