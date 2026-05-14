@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Octans.Core.Repositories;
 using Octans.Data.Models;
 
 namespace Octans.Core.Querying;

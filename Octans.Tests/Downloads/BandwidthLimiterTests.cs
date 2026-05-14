@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
-using Octans.Core.Downloads;
 using Octans.Core.Downloads.Bandwidth;
 
 namespace Octans.Tests.Downloads;

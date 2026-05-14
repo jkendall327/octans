@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using System.IO.Abstractions;
+using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Data.Models;
 

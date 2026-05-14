@@ -1,17 +1,13 @@
 using Bunit;
-using FluentAssertions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using Microsoft.JSInterop;
 using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Settings;
 using Octans.Client.Services;
 using Octans.Client.Settings;
-using Xunit;
 
 namespace Octans.Tests.Client.Components.Settings;
 

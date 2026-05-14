@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Repositories;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 

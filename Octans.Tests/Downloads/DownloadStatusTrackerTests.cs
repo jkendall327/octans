@@ -1,11 +1,11 @@
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using NSubstitute;
-using Octans.Core.Downloads;
 using System.Data.Common;
 using Mediator;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using NSubstitute;
+using Octans.Core.Downloads;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;

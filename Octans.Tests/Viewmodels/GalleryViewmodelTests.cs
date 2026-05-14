@@ -4,10 +4,10 @@ using NSubstitute;
 using Octans.Client;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
+using Octans.Client.Services;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
-using Octans.Client.Services;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
 

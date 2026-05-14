@@ -1,4 +1,3 @@
-using Octans.Core;
 using Octans.Core.Tags;
 
 namespace Octans.Tests.Tags;

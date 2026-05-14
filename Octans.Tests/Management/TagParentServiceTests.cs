@@ -2,12 +2,9 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Octans.Client;
-using Octans.Core;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
-using Octans.Tests.Infrastructure;
 using Xunit.Abstractions;
 
 namespace Octans.Tests.Management;

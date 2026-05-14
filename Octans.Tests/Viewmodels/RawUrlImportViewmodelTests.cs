@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Octans.Client;
 using Octans.Client.Components.Importing;
 using Octans.Core.Importing;
 

@@ -2,12 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
-using Octans.Client;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
 using Octans.Data.Models;
 using Octans.Data.Models.Subscriptions;
-using Xunit;
 
 namespace Octans.Tests.Subscriptions;
 

@@ -1,12 +1,10 @@
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Core.Querying;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
 using Octans.Tests.Helpers;
-using Xunit;
 
 namespace Octans.Tests.Querying;
 

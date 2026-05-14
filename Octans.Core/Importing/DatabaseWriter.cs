@@ -1,6 +1,5 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Repositories;
+using Microsoft.Extensions.Logging;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;

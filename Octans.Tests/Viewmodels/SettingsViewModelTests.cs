@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices.JavaScript;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -7,8 +6,6 @@ using Octans.Client;
 using Octans.Client.Components.Settings;
 using Octans.Client.Services;
 using Octans.Client.Settings;
-using Octans.Core.Communication;
-using Xunit;
 
 namespace Octans.Tests.Viewmodels;
 

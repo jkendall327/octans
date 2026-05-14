@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Components;
 using Octans.Client.Components.MainToolbar;
-using Xunit;
 
 namespace Octans.Tests.Viewmodels;
 

@@ -1,2 +1,2 @@
-global using Xunit;
 global using Octans.Tests;
+global using Xunit;
