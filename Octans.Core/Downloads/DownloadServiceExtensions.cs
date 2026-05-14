@@ -19,6 +19,7 @@ public static class DownloadServiceExtensions
 
         services.TryAddSingleton<IDownloadStateService, DownloadStatusTracker>();
         services.TryAddSingleton<IActiveDownloadRegistry, ActiveDownloadRegistry>();
+        services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
         services.TryAddSingleton<HttpDownloader>();
         services.TryAddSingleton<IDownloadService, DownloadService>();
         services.TryAddSingleton<IDownloadQueue, DatabaseDownloadQueue>();

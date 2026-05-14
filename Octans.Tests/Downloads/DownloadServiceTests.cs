@@ -14,13 +14,19 @@ public class DownloadServiceTests
     private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
-    private readonly ILogger<DownloadService> _logger = NullLogger<DownloadService>.Instance;
     private readonly DownloadService _service;
 
     public DownloadServiceTests()
     {
         var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
-        _service = new(_mockQueue, _mockStateService, _activeDownloads, timeProvider, _logger);
+        var lifecycle = new DownloadLifecycleService(
+            _mockQueue,
+            _mockStateService,
+            _activeDownloads,
+            timeProvider,
+            NullLogger<DownloadLifecycleService>.Instance);
+
+        _service = new(lifecycle);
     }
 
     [Fact]
