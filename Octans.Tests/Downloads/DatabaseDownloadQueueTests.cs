@@ -75,6 +75,76 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
+    public async Task EnsureQueuedAsync_ShouldRestoreMissingQueueRowFromStatus()
+    {
+        var downloadId = Guid.NewGuid();
+        var status = new DownloadStatus
+        {
+            Id = downloadId,
+            Url = "https://example.com/file.jpg",
+            Filename = "file.jpg",
+            DisplayName = "Nice file",
+            DestinationPath = "/downloads/file.jpg",
+            Priority = 7,
+            State = DownloadState.InProgress,
+            LastUpdated = TestClock.UtcNow,
+            Domain = "example.com",
+            SourceType = "Import",
+            SourceId = "import-1"
+        };
+
+        await _sut.EnsureQueuedAsync(status);
+
+        await using var context = CreateContext();
+        var savedDownload = await context.QueuedDownloads.FindAsync(downloadId);
+
+        Assert.NotNull(savedDownload);
+        Assert.Equal(status.Url, savedDownload.Url);
+        Assert.Equal(status.DestinationPath, savedDownload.DestinationPath);
+        Assert.Equal(status.DisplayName, savedDownload.DisplayName);
+        Assert.Equal(status.Priority, savedDownload.Priority);
+        Assert.Equal(status.Domain, savedDownload.Domain);
+        Assert.Equal(status.SourceType, savedDownload.SourceType);
+        Assert.Equal(status.SourceId, savedDownload.SourceId);
+    }
+
+    [Fact]
+    public async Task EnsureQueuedAsync_ShouldNotDuplicateExistingQueueRow()
+    {
+        var downloadId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            context.QueuedDownloads.Add(new()
+            {
+                Id = downloadId,
+                Url = "https://example.com/file.jpg",
+                DestinationPath = "/downloads/file.jpg",
+                QueuedAt = TestClock.UtcNow,
+                Domain = "example.com"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var status = new DownloadStatus
+        {
+            Id = downloadId,
+            Url = "https://example.com/file.jpg",
+            Filename = "file.jpg",
+            DestinationPath = "/downloads/file.jpg",
+            State = DownloadState.Queued,
+            LastUpdated = TestClock.UtcNow,
+            Domain = "example.com"
+        };
+
+        await _sut.EnsureQueuedAsync(status);
+
+        await using var verificationContext = CreateContext();
+        var count = await verificationContext.QueuedDownloads.CountAsync(d => d.Id == downloadId);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
     public async Task DequeueNextEligibleAsync_ShouldReturnHighestPriorityDownload()
     {
         await using var context = CreateContext();

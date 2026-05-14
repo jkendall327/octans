@@ -10,6 +10,7 @@ namespace Octans.Core.Downloads;
 public interface IDownloadQueue
 {
     Task<Guid> EnqueueAsync(QueuedDownload download);
+    Task EnsureQueuedAsync(DownloadStatus status, CancellationToken cancellationToken = default);
     Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken);
     Task<int> GetQueuedCountAsync();
     Task RemoveAsync(Guid id);
@@ -46,6 +47,39 @@ public class DatabaseDownloadQueue(
 
         logger.LogDebug("Download successfully added to queue");
         return download.Id;
+    }
+
+    public async Task EnsureQueuedAsync(DownloadStatus status, CancellationToken cancellationToken = default)
+    {
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = status.Id,
+            ["Url"] = status.Url
+        });
+
+        await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var exists = await db.QueuedDownloads.AnyAsync(d => d.Id == status.Id, cancellationToken);
+        if (exists)
+        {
+            logger.LogDebug("Download already has a queued row");
+            return;
+        }
+
+        db.QueuedDownloads.Add(new()
+        {
+            Id = status.Id,
+            Url = status.Url,
+            DestinationPath = status.DestinationPath,
+            DisplayName = status.DisplayName,
+            QueuedAt = status.LastUpdated,
+            Priority = status.Priority,
+            Domain = status.Domain,
+            SourceType = status.SourceType,
+            SourceId = status.SourceId
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Restored download to queue");
     }
 
     public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)

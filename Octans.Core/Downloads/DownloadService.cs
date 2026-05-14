@@ -47,6 +47,7 @@ public sealed class DownloadService(
             Filename = filename,
             DisplayName = request.DisplayName,
             DestinationPath = request.DestinationPath,
+            Priority = request.Priority,
             State = DownloadState.Queued,
             CreatedAt = now,
             LastUpdated = now,

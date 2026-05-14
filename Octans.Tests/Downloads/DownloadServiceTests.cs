@@ -44,6 +44,7 @@ public class DownloadServiceTests
             ds.Url == request.Url.ToString() &&
             ds.DestinationPath == request.DestinationPath &&
             ds.DisplayName == request.DisplayName &&
+            ds.Priority == request.Priority &&
             ds.State == DownloadState.Queued &&
             ds.Domain == "example.com" &&
             ds.SourceType == request.SourceType &&

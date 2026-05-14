@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
@@ -24,6 +25,7 @@ public sealed class DownloadBackgroundService(
     {
         logger.LogInformation("Download Manager started with max concurrency: {Concurrency}", _maxConcurrentDownloads);
         await stateService.InitializeFromDbAsync();
+        await RestoreInterruptedDownloads(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -62,5 +64,22 @@ public sealed class DownloadBackgroundService(
         }
 
         logger.LogInformation("Download Manager stopping");
+    }
+
+    private async Task RestoreInterruptedDownloads(CancellationToken stoppingToken)
+    {
+        var downloads = stateService.GetAllDownloads()
+            .Where(d => d.State is DownloadState.Queued or DownloadState.WaitingForBandwidth or DownloadState.InProgress)
+            .ToList();
+
+        foreach (var download in downloads)
+        {
+            await downloadQueue.EnsureQueuedAsync(download, stoppingToken);
+
+            if (download.State is DownloadState.InProgress or DownloadState.WaitingForBandwidth)
+            {
+                await stateService.UpdateState(download.Id, DownloadState.Queued);
+            }
+        }
     }
 }
