@@ -21,6 +21,7 @@ public sealed class DownloadLifecycleService(
     IDownloadQueue queue,
     IDownloadStateService stateService,
     IActiveDownloadRegistry activeDownloads,
+    IDownloadCompletionNotifier completionNotifier,
     TimeProvider timeProvider,
     ILogger<DownloadLifecycleService> logger) : IDownloadLifecycleService
 {
@@ -141,6 +142,12 @@ public sealed class DownloadLifecycleService(
     {
         await stateService.UpdateState(id, DownloadState.Completed);
         activeDownloads.Release(id);
+
+        var status = stateService.GetDownloadById(id);
+        if (status is not null)
+        {
+            await completionNotifier.DownloadCompletedAsync(status);
+        }
     }
 
     public async Task MarkFailedAsync(Guid id, string errorMessage)

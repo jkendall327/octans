@@ -13,6 +13,7 @@ public class DownloadServiceTests
     private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
+    private readonly IDownloadCompletionNotifier _completionNotifier = Substitute.For<IDownloadCompletionNotifier>();
     private readonly DownloadLifecycleService _lifecycle;
     private readonly DownloadService _service;
 
@@ -23,6 +24,7 @@ public class DownloadServiceTests
             _mockQueue,
             _mockStateService,
             _activeDownloads,
+            _completionNotifier,
             timeProvider,
             NullLogger<DownloadLifecycleService>.Instance);
 
@@ -226,11 +228,23 @@ public class DownloadServiceTests
     public async Task MarkCompletedAsync_ShouldUpdateStateAndReleaseActiveToken()
     {
         var id = Guid.NewGuid();
+        var status = new DownloadStatus
+        {
+            Id = id,
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            State = DownloadState.InProgress,
+            Domain = "example.com"
+        };
+
+        _mockStateService.GetDownloadById(id).Returns(status);
 
         await _lifecycle.MarkCompletedAsync(id);
 
         await _mockStateService.Received(1).UpdateState(id, DownloadState.Completed);
         _activeDownloads.Received(1).Release(id);
+        await _completionNotifier.Received(1).DownloadCompletedAsync(status);
     }
 
     [Fact]
