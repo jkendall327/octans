@@ -13,7 +13,10 @@ public sealed class DownloadBackgroundService(
     DownloadManagerOptions options) : BackgroundService
 {
     private readonly SemaphoreSlim _concurrencyLimiter = new(options.MaxConcurrentDownloads);
+    private readonly Lock _activeDomainsLock = new();
+    private readonly Dictionary<string, int> _activeDomainCounts = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _maxConcurrentDownloads = options.MaxConcurrentDownloads;
+    private readonly int _maxConcurrentDownloadsPerDomain = options.MaxConcurrentDownloadsPerDomain;
 
     public override void Dispose()
     {
@@ -35,13 +38,14 @@ public sealed class DownloadBackgroundService(
                 await _concurrencyLimiter.WaitAsync(stoppingToken);
 
                 // Get next eligible download
-                var nextDownload = await downloadQueue.DequeueNextEligibleAsync(stoppingToken);
+                var nextDownload = await downloadQueue.DequeueNextEligibleAsync(
+                    stoppingToken,
+                    GetSaturatedDomains());
 
                 if (nextDownload != null)
                 {
-                    // Start download in background
-                    _ = processor.ProcessDownloadAsync(nextDownload, stoppingToken)
-                        .ContinueWith(_ => _concurrencyLimiter.Release(), TaskScheduler.Default);
+                    TrackDomainStarted(nextDownload.Domain);
+                    _ = ProcessDownload(nextDownload, stoppingToken);
                 }
                 else
                 {
@@ -80,6 +84,73 @@ public sealed class DownloadBackgroundService(
             {
                 await stateService.UpdateState(download.Id, DownloadState.Queued);
             }
+        }
+    }
+
+    private async Task ProcessDownload(QueuedDownload download, CancellationToken stoppingToken)
+    {
+        try
+        {
+            await processor.ProcessDownloadAsync(download, stoppingToken);
+        }
+        finally
+        {
+            TrackDomainFinished(download.Domain);
+            _concurrencyLimiter.Release();
+        }
+    }
+
+    private HashSet<string>? GetSaturatedDomains()
+    {
+        if (_maxConcurrentDownloadsPerDomain <= 0)
+        {
+            return null;
+        }
+
+        lock (_activeDomainsLock)
+        {
+            return _activeDomainCounts
+                .Where(kvp => kvp.Value >= _maxConcurrentDownloadsPerDomain)
+                .Select(kvp => kvp.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private void TrackDomainStarted(string domain)
+    {
+        if (_maxConcurrentDownloadsPerDomain <= 0)
+        {
+            return;
+        }
+
+        lock (_activeDomainsLock)
+        {
+            _activeDomainCounts.TryGetValue(domain, out var count);
+            _activeDomainCounts[domain] = count + 1;
+        }
+    }
+
+    private void TrackDomainFinished(string domain)
+    {
+        if (_maxConcurrentDownloadsPerDomain <= 0)
+        {
+            return;
+        }
+
+        lock (_activeDomainsLock)
+        {
+            if (!_activeDomainCounts.TryGetValue(domain, out var count))
+            {
+                return;
+            }
+
+            if (count <= 1)
+            {
+                _activeDomainCounts.Remove(domain);
+                return;
+            }
+
+            _activeDomainCounts[domain] = count - 1;
         }
     }
 }

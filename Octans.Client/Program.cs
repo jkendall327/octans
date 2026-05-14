@@ -40,6 +40,7 @@ builder.Services.AddBandwidthLimiter(options =>
 builder.Services.AddDownloadManager(options =>
 {
     options.MaxConcurrentDownloads = 5;
+    options.MaxConcurrentDownloadsPerDomain = 2;
 });
 
 builder.SetupConfiguration();

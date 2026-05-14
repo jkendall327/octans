@@ -225,6 +225,45 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
+    public async Task DequeueNextEligibleAsync_ShouldSkipExcludedDomains()
+    {
+        await using var context = CreateContext();
+
+        var blockedDomainDownload = new QueuedDownload
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://busy.example/file.jpg",
+            DestinationPath = "/downloads/busy.jpg",
+            Domain = "busy.example",
+            Priority = 10,
+            QueuedAt = TestClock.UtcNow
+        };
+
+        var availableDomainDownload = new QueuedDownload
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://free.example/file.jpg",
+            DestinationPath = "/downloads/free.jpg",
+            Domain = "free.example",
+            Priority = 1,
+            QueuedAt = TestClock.UtcNow
+        };
+
+        context.QueuedDownloads.AddRange(blockedDomainDownload, availableDomainDownload);
+        await context.SaveChangesAsync();
+
+        var result = await _sut.DequeueNextEligibleAsync(
+            CancellationToken.None,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "BUSY.EXAMPLE" });
+
+        Assert.NotNull(result);
+        Assert.Equal(availableDomainDownload.Id, result.Id);
+
+        var blockedStillQueued = await context.QueuedDownloads.AnyAsync(d => d.Id == blockedDomainDownload.Id);
+        Assert.True(blockedStillQueued);
+    }
+
+    [Fact]
     public async Task DequeueNextEligibleAsync_ShouldNotRepeatWaitingStateWhenAlreadyWaitingForBandwidth()
     {
         await using var context = CreateContext();

@@ -11,7 +11,9 @@ public interface IDownloadQueue
 {
     Task<Guid> EnqueueAsync(QueuedDownload download);
     Task EnsureQueuedAsync(DownloadStatus status, CancellationToken cancellationToken = default);
-    Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken);
+    Task<QueuedDownload?> DequeueNextEligibleAsync(
+        CancellationToken cancellationToken,
+        IReadOnlySet<string>? excludedDomains = null);
     Task<int> GetQueuedCountAsync();
     Task RemoveAsync(Guid id);
 }
@@ -82,7 +84,9 @@ public class DatabaseDownloadQueue(
         logger.LogInformation("Restored download to queue");
     }
 
-    public async Task<QueuedDownload?> DequeueNextEligibleAsync(CancellationToken cancellationToken)
+    public async Task<QueuedDownload?> DequeueNextEligibleAsync(
+        CancellationToken cancellationToken,
+        IReadOnlySet<string>? excludedDomains = null)
     {
         logger.LogDebug("Attempting to dequeue next eligible download");
 
@@ -103,6 +107,12 @@ public class DatabaseDownloadQueue(
                 ["DownloadId"] = download.Id,
                 ["Domain"] = download.Domain
             });
+
+            if (excludedDomains?.Contains(download.Domain) is true)
+            {
+                logger.LogDebug("Skipping download because domain {Domain} is already at concurrency limit", download.Domain);
+                continue;
+            }
 
             // Check if bandwidth is available for this domain
             if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
