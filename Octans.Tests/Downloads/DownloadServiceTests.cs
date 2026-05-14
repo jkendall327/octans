@@ -79,6 +79,7 @@ public class DownloadServiceTests
 
         await _service.PauseDownloadAsync(id);
 
+        await _mockQueue.Received(1).RemoveAsync(id);
         await _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 

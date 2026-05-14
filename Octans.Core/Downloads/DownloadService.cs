@@ -94,18 +94,19 @@ public sealed class DownloadService(
         logger.LogDebug("Download canceled");
     }
 
-    public Task PauseDownloadAsync(Guid id)
+    public async Task PauseDownloadAsync(Guid id)
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Pausing download");
 
-        // TODO: Implement true pause/resume logic.
-        // TODO: Implement true pause/resume logic. For now, pause is implemented as cancel since we don't support resuming partial downloads.
+        await queue.RemoveAsync(id);
+
+        // Pause currently stops active transfer and resumes from the beginning later.
+        // Range-based partial resume will need explicit temp-file support.
         CancelDownloadToken(id);
-        stateService.UpdateState(id, DownloadState.Paused);
+        await stateService.UpdateState(id, DownloadState.Paused);
 
         logger.LogDebug("Download paused");
-        return Task.CompletedTask;
     }
 
     public async Task ResumeDownloadAsync(Guid id)
