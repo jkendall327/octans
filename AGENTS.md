@@ -22,7 +22,8 @@
 ## General notes
 
 This is not a production app yet.
-We can go crazy changing things; nobody has important data stored in this app yet.
+I have a dev database I don't want to explore, so use proper EF migrations.
+But if I need to start up a new database for something really radical, it's not the end of the world.
 
 ## Verification
 
