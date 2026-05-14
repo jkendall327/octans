@@ -4,13 +4,16 @@
 
 <section class="import-jobs-panel">
     <div class="import-jobs-header">
-        <h4>Import Jobs</h4>
+        <div>
+            <p>Activity</p>
+            <h2>Import jobs</h2>
+        </div>
         <button type="button" @onclick="Refresh">Refresh</button>
     </div>
 
     @if (_jobs.Count == 0)
     {
-        <p>No import jobs yet.</p>
+        <p class="import-jobs-empty">No import jobs yet.</p>
     }
     else
     {
@@ -18,9 +21,9 @@
             @foreach (var job in _jobs)
             {
                 <article class="import-job">
-                    <div>
-                        <strong>@job.Status</strong>
-                        <span>@job.Phase</span>
+                    <div class="import-job-title">
+                        <span class="@StatusClass(job.Status)">@job.Status</span>
+                        <strong>@job.Phase</strong>
                     </div>
                     <progress value="@job.ProcessedItems" max="@Math.Max(job.TotalItems, 1)"></progress>
                     <div class="import-job-summary">
@@ -114,6 +117,15 @@
     private static bool CanPause(ImportJobDto job) => job.Status is "Queued" or "Running";
     private static bool CanResume(ImportJobDto job) => job.Status is "Paused" or "PauseRequested";
     private static bool CanCancel(ImportJobDto job) => job.Status is "Queued" or "Paused" or "Running" or "PauseRequested";
+    private static string StatusClass(string status) => status switch
+    {
+        "Completed" => "status-pill status-completed",
+        "Failed" => "status-pill status-failed",
+        "Cancelled" => "status-pill status-cancelled",
+        "Running" => "status-pill status-running",
+        "Paused" or "PauseRequested" => "status-pill status-paused",
+        _ => "status-pill"
+    };
 
     public ValueTask DisposeAsync()
     {

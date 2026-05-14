@@ -29,6 +29,8 @@
 
 <MudButton
     Class="send-button"
+    Variant="Variant.Filled"
+    Color="Color.Primary"
     OnClick="@Viewmodel.SendUrlsToServer"
     Disabled="@(string.IsNullOrWhiteSpace(Viewmodel.RawInputs))">
     Import
@@ -72,12 +74,3 @@
             .ToList();
     }
 }
-
-<style>
-    .import-options {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin: 1rem 0;
-    }
-</style>

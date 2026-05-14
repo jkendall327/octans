@@ -8,6 +8,7 @@
     <MudFileUpload T="IReadOnlyList<IBrowserFile>" @bind-Files="Viewmodel.LocalFiles">
         <ActivatorContent>
             <MudButton
+                Class="choose-files-button"
                 Variant="Variant.Filled"
                 Color="Color.Primary"
                 StartIcon="@Icons.Material.Filled.CloudUpload">
@@ -20,7 +21,7 @@
 @if (Viewmodel.LocalFiles.Count > 0)
 {
     <div class="file-list">
-        <h5>Selected Files (@Viewmodel.LocalFiles.Count):</h5>
+        <h5>Selected files <span>@Viewmodel.LocalFiles.Count</span></h5>
         @foreach (var file in Viewmodel.LocalFiles)
         {
             <div class="file-item">
@@ -45,6 +46,8 @@
 
 <MudButton
     Class="send-button"
+    Variant="Variant.Filled"
+    Color="Color.Primary"
     OnClick="@ImportFiles"
     Disabled="@(Viewmodel.LocalFiles.Count == 0)">
     Import
@@ -99,11 +102,3 @@
         }
     }
 }
-
-<style>
-    .import-actions {
-        margin-top: 1rem;
-        display: flex;
-        gap: 0.5rem;
-    }
-</style>

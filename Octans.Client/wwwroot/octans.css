@@ -4,8 +4,12 @@
 :root {
     --primary-color: #0078d4;
     --background-color: #ffffff;
+    --surface-color: #ffffff;
+    --surface-soft-color: #f5f7fa;
     --text-color: #212529;
-    --border-color: #0078d4;
+    --muted-text-color: #5f6875;
+    --border-color: #d9dee7;
+    --strong-border-color: #aab4c0;
 }
 
 /* 2. System Preference for Dark Mode */
@@ -14,7 +18,12 @@
     :root {
         --primary-color: #4dabf7;
         --background-color: #121212;
+        --surface-color: #17181b;
+        --surface-soft-color: #1f2126;
         --text-color: #e9ecef;
+        --muted-text-color: #9ba3ad;
+        --border-color: #30343b;
+        --strong-border-color: #4d5662;
     }
 }
 
@@ -23,15 +32,23 @@
 [data-theme='light'] {
     --primary-color: #0078d4;
     --background-color: #ffffff;
+    --surface-color: #ffffff;
+    --surface-soft-color: #f5f7fa;
     --text-color: #212529;
-    /* ... other light theme variables (repeat from :root) */
+    --muted-text-color: #5f6875;
+    --border-color: #d9dee7;
+    --strong-border-color: #aab4c0;
 }
 
 [data-theme='dark'] {
     --primary-color: #4dabf7;
     --background-color: #121212;
+    --surface-color: #17181b;
+    --surface-soft-color: #1f2126;
     --text-color: #e9ecef;
-    /* ... other dark theme variables (repeat from media query) */
+    --muted-text-color: #9ba3ad;
+    --border-color: #30343b;
+    --strong-border-color: #4d5662;
 }
 
 [data-theme='red'] {

@@ -1,5 +1,6 @@
 .import-jobs-panel {
-    margin-top: 24px;
+    margin-top: 18px;
+    color: var(--text-color);
 }
 
 .import-jobs-header,
@@ -12,24 +13,148 @@
 
 .import-jobs-header {
     justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+}
+
+.import-jobs-header p {
+    margin: 0 0 3px;
+    color: color-mix(in srgb, var(--text-color) 58%, transparent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.import-jobs-header h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+}
+
+.import-jobs-header button,
+.import-job-actions button {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--background-color) 92%, var(--text-color));
+    color: var(--text-color);
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.import-jobs-header button:hover,
+.import-job-actions button:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .import-job-list {
     display: grid;
-    gap: 12px;
+    gap: 10px;
+}
+
+.import-jobs-empty {
+    margin: 0;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 14%, transparent);
+    border-radius: 8px;
+    color: color-mix(in srgb, var(--text-color) 64%, transparent);
+    background: color-mix(in srgb, var(--background-color) 92%, var(--text-color));
 }
 
 .import-job {
-    border: 1px solid #ccc;
+    display: grid;
+    gap: 8px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
     border-radius: 8px;
-    padding: 12px;
+    padding: 11px 12px;
+    background: color-mix(in srgb, var(--background-color) 94%, var(--text-color));
+}
+
+.import-job-title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.import-job-title strong {
+    font-size: 0.92rem;
+    font-weight: 650;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 20%, transparent);
+    border-radius: 999px;
+    color: color-mix(in srgb, var(--text-color) 76%, transparent);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.status-completed {
+    border-color: color-mix(in srgb, #70d06f 50%, transparent);
+    color: #70d06f;
+}
+
+.status-failed {
+    border-color: color-mix(in srgb, #ff7b72 55%, transparent);
+    color: #ff7b72;
+}
+
+.status-running {
+    border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
+    color: var(--primary-color);
+}
+
+.status-paused,
+.status-cancelled {
+    border-color: color-mix(in srgb, #f0b86a 50%, transparent);
+    color: #f0b86a;
 }
 
 .import-job progress {
     width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-color) 14%, transparent);
+}
+
+.import-job progress::-webkit-progress-bar {
+    background: color-mix(in srgb, var(--text-color) 14%, transparent);
+}
+
+.import-job progress::-webkit-progress-value {
+    border-radius: 999px;
+    background: var(--primary-color);
+}
+
+.import-job progress::-moz-progress-bar {
+    border-radius: 999px;
+    background: var(--primary-color);
+}
+
+.import-job-summary {
+    color: color-mix(in srgb, var(--text-color) 70%, transparent);
+    font-size: 0.84rem;
 }
 
 .import-job small {
     display: block;
     overflow-wrap: anywhere;
+    color: color-mix(in srgb, var(--text-color) 62%, transparent);
+    font-size: 0.78rem;
+}
+
+.import-job-actions {
+    margin-top: 2px;
 }

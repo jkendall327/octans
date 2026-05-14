@@ -2,10 +2,19 @@
 @inject NavigationManager NavigationManager
 
 <div class="imports-container">
-    <h3>Import Content</h3>
+    <header class="imports-header">
+        <div>
+            <p class="imports-kicker">Repository</p>
+            <h1>Import</h1>
+        </div>
+    </header>
 
     <div class="import-tabs">
-        <MudTabs @bind-ActivePanelIndex="_activeTabIndex">
+        <MudTabs
+            @bind-ActivePanelIndex="_activeTabIndex"
+            Rounded="false"
+            Elevation="0"
+            Class="imports-tabs-control">
             <MudTabPanel Text="Files">
                 <div class="upload-section">
                     <LocalFileImport/>
@@ -18,15 +27,15 @@
             </MudTabPanel>
             <MudTabPanel Text="Post">
                 <!-- TODO: Implement Post Import tab -->
-                <p>Sorry, this isn't implemented yet.</p>
+                <p class="import-placeholder">Post imports are not implemented yet.</p>
             </MudTabPanel>
             <MudTabPanel Text="Gallery">
                 <!-- TODO: Implement Gallery Import tab -->
-                <p>Sorry, this isn't implemented yet.</p>
+                <p class="import-placeholder">Gallery imports are not implemented yet.</p>
             </MudTabPanel>
             <MudTabPanel Text="Watchable">
                 <!-- TODO: Implement Watchable Import tab -->
-                <p>Sorry, this isn't implemented yet.</p>
+                <p class="import-placeholder">Watchable imports are not implemented yet.</p>
             </MudTabPanel>
         </MudTabs>
     </div>
