@@ -7,10 +7,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core;
+using Octans.Core.Deletion;
 using Octans.Core.Duplicates;
-using Octans.Core.Models;
-using Octans.Core.Models.Duplicates;
-using Octans.Server.Services;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
+using Octans.Data.Models.Duplicates;
+using Octans.Tests.Helpers;
 using Xunit.Abstractions;
 
 namespace Octans.Tests.Duplicates;

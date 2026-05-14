@@ -1,4 +1,4 @@
-namespace Octans.Core.Downloads;
+namespace Octans.Core.Downloads.Bandwidth;
 
 public class BandwidthLimiterOptions
 {

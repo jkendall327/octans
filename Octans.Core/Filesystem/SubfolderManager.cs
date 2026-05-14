@@ -2,7 +2,7 @@ using System.IO.Abstractions;
 using Microsoft.Extensions.Options;
 using MimeDetective.InMemory;
 
-namespace Octans.Core;
+namespace Octans.Core.Filesystem;
 
 public class SubfolderManager
 {

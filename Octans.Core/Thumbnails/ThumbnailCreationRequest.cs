@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
-using Octans.Core;
 
-namespace Octans.Server;
+namespace Octans.Core.Thumbnails;
 
 [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "DTO")]
 public record ThumbnailCreationRequest(byte[] Bytes, HashedBytes Hashed)

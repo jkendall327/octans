@@ -2,13 +2,8 @@ using System.Text.Json.Serialization;
 using MudBlazor.Services;
 using Octans.Client;
 using Octans.Client.Components;
-using Octans.Core;
-using Octans.Core.Models;
-using Octans.Server;
-using Microsoft.AspNetCore.DataProtection;
-using System.IO;
-using Microsoft.EntityFrameworkCore;
 using Octans.Core.Downloads;
+using Octans.Core.Downloads.Bandwidth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,4 +73,7 @@ await app.PerformAppInitialisation();
 
 await app.RunAsync();
 
-public partial class Program;
+namespace Octans.Client
+{
+    public partial class Program;
+}

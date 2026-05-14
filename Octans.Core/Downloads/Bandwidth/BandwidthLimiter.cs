@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Octans.Core.Downloads;
+namespace Octans.Core.Downloads.Bandwidth;
 
 public interface IBandwidthLimiter
 {

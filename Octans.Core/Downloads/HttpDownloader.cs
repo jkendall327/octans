@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
-using Octans.Core.Downloaders;
 using System.IO.Abstractions;
+using Octans.Core.Downloads.Bandwidth;
+using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 

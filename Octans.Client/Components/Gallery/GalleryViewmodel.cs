@@ -1,14 +1,14 @@
 using System.Threading.Channels;
 using MudBlazor;
-using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
+using Octans.Client.Services;
+using Octans.Core.Communication;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
-using Octans.Core.Communication;
-using Octans.Client.Services;
+using Octans.Data.Models;
 
-namespace Octans.Client.Components.Pages;
+namespace Octans.Client.Components.Gallery;
 
 public record GalleryContextMenuItem(
     string Text,

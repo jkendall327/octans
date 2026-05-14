@@ -1,9 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
-using Octans.Core.Repositories;
-using Octans.Core.Models.Ratings;
+using Octans.Data.Models.Ratings;
 
-namespace Octans.Core.Models;
+namespace Octans.Data.Models;
 
 [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "DTO")]
 public class HashItem

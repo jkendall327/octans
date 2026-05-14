@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Octans.Core.Communication;
+namespace Octans.Core.Stats;
 
 public class HomeStats
 {

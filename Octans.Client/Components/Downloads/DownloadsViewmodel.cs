@@ -1,8 +1,9 @@
 using Mediator;
-using Octans.Core.Downloaders;
 using Octans.Core.Downloads;
+using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
 
-namespace Octans.Client.Downloads;
+namespace Octans.Client.Components.Downloads;
 
 public sealed class DownloadsViewmodel(
     IDownloadStateService stateService) :

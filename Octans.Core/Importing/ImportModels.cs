@@ -1,3 +1,5 @@
+using Octans.Core.Tags;
+
 namespace Octans.Core.Importing;
 
 public enum ImportType

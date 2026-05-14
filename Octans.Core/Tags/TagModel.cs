@@ -1,4 +1,6 @@
-namespace Octans.Core;
+using Octans.Core.Querying;
+
+namespace Octans.Core.Tags;
 
 public record TagModel(string Namespace, string Subtag)
 {

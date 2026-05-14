@@ -1,4 +1,4 @@
-namespace Octans.Core.Repositories;
+namespace Octans.Data.Models;
 
 public enum RepositoryType
 {

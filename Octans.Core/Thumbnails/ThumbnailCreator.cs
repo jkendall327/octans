@@ -1,11 +1,10 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Octans.Core;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-namespace Octans.Server;
+namespace Octans.Core.Thumbnails;
 
 public class ThumbnailCreator(
     IFileSystem fileSystem,

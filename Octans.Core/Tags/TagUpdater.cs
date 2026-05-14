@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
+using Octans.Data.Models;
+using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Tags;
 

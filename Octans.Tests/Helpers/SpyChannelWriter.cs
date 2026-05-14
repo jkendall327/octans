@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Threading.Channels;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Helpers;
 
 /// <summary>
 /// Channel that lets us see what items are written to it for the sake of testing.

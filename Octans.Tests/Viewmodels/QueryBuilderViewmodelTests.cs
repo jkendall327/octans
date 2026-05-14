@@ -3,10 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Octans.Client.Components.Gallery;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
 using Octans.Core.Tags;
+using Octans.Data.Models;
+using Octans.Data.Models.Tagging;
+using Octans.Tests.Helpers;
 using Xunit;
 
 namespace Octans.Tests.Viewmodels;

@@ -1,8 +1,8 @@
 using System.IO.Abstractions;
-using Octans.Core.Downloaders;
 using Octans.Core.Downloads;
+using Octans.Core.Downloads.Downloaders;
 
-namespace Octans.Core.Importing;
+namespace Octans.Core.Importing.RawByteProviders;
 
 public class PostImporter(
     DownloaderService downloaderService,

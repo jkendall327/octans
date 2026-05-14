@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Octans.Core.Models;
+namespace Octans.Data.Models.Subscriptions;
 
 public class Provider
 {

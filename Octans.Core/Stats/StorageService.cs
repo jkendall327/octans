@@ -1,7 +1,7 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace Octans.Core.Infrastructure;
+namespace Octans.Core.Stats;
 
 public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> settings)
 {

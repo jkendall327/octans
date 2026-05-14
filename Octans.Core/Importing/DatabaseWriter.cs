@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Repositories;
+using Octans.Core.Tags;
+using Octans.Data.Models;
+using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Importing;
 

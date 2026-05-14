@@ -1,4 +1,4 @@
-namespace Octans.Core.Models.Ratings;
+namespace Octans.Data.Models.Ratings;
 
 public enum RatingSystemType
 {

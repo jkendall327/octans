@@ -3,8 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Core.Downloads;
-using Octans.Core.Downloaders;
-using Octans.Core.Models;
+using Octans.Core.Downloads.Bandwidth;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Downloads;
 

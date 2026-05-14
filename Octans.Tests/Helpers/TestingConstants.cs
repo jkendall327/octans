@@ -1,4 +1,4 @@
-namespace Octans.Tests;
+namespace Octans.Tests.Helpers;
 
 public static class TestingConstants
 {

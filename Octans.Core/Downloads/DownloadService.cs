@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
-using Octans.Core.Downloaders;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 

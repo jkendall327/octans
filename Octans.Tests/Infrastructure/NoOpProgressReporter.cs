@@ -1,6 +1,6 @@
 using Octans.Core.Progress;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Infrastructure;
 
 public sealed class NoOpProgressReporter : IBackgroundProgressReporter
 {

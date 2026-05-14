@@ -2,14 +2,14 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Client;
-using Octans.Client.Components.Pages;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Components.StatusBar;
-using Octans.Core.Models;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Octans.Client.Services;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Viewmodels;
 

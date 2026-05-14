@@ -2,8 +2,8 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using Octans.Core.Duplicates;
-using Octans.Core.Models;
-using Octans.Core.Models.Duplicates;
+using Octans.Data.Models;
+using Octans.Data.Models.Duplicates;
 
 namespace Octans.Client.Components.Duplicates;
 

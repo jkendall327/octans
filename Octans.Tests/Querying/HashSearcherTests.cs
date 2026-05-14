@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
-using Octans.Core.Repositories;
 using Octans.Core.Tags;
+using Octans.Data.Models;
+using Octans.Data.Models.Tagging;
+using Octans.Tests.Helpers;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Querying;
 
 public class HashSearcherTests : IAsyncLifetime
 {

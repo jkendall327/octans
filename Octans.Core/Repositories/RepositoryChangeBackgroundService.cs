@@ -2,8 +2,8 @@ using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Models;
 using Octans.Core.Progress;
+using Octans.Data.Models;
 
 namespace Octans.Core.Repositories;
 

@@ -7,10 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Client;
 using Octans.Core;
-using Octans.Core.Models;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
 using Octans.Server;
 using Xunit.Abstractions;
 using Octans.Tests;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Importing;
 

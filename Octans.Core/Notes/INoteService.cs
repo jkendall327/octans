@@ -1,4 +1,4 @@
-using Octans.Core.Models;
+using Octans.Data.Models;
 
 namespace Octans.Core.Notes;
 

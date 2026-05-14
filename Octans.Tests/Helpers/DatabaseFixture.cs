@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Octans.Core.Models;
+using Octans.Data.Models;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Helpers;
 
 public class DatabaseFixture : IAsyncLifetime
 {

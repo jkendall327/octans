@@ -1,6 +1,6 @@
 using Mediator;
 
-namespace Octans.Core.Downloads;
+namespace Octans.Core.Downloads.Models;
 
 public class DownloadsChanged : INotification
 {

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Octans.Core.Models.Ratings;
+namespace Octans.Data.Models.Ratings;
 
 public class RatingSystem
 {

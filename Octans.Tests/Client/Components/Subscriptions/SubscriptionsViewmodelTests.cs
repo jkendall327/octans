@@ -5,14 +5,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MudBlazor;
 using NSubstitute;
 using Octans.Client.Components.Subscriptions;
-using Octans.Core.Downloaders;
-using Octans.Core.Models;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
 using Octans.Client;
 using Octans.Core;
 using Xunit;
 using Microsoft.Extensions.Options;
+using Octans.Core.Downloads.Downloaders;
+using Octans.Data.Models;
+using Octans.Data.Models.Subscriptions;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Client.Components.Subscriptions;
 

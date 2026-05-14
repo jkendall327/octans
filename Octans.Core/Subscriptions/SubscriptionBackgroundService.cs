@@ -1,9 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Subscriptions;
 
-namespace Octans.Client;
+namespace Octans.Core.Subscriptions;
 
 public class SubscriptionBackgroundService(
     IServiceProvider serviceProvider,

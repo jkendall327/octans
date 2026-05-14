@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Octans.Core;
-using Octans.Core.Downloaders;
+using Octans.Core.Downloads.Downloaders;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Importing;
 
 public class DownloaderFactoryTests
 {

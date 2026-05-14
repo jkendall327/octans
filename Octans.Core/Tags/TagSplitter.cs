@@ -1,3 +1,5 @@
+using Octans.Core.Querying;
+
 namespace Octans.Core.Tags;
 
 public class TagSplitter

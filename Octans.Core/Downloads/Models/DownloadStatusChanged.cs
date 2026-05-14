@@ -1,7 +1,7 @@
 using Mediator;
-using Octans.Core.Downloaders;
+using Octans.Data.Models;
 
-namespace Octans.Core.Downloads;
+namespace Octans.Core.Downloads.Models;
 
 public class DownloadStatusChanged : INotification
 {

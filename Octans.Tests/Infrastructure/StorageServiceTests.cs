@@ -2,7 +2,7 @@ using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Extensions.Options;
 using Octans.Core;
-using Octans.Core.Infrastructure;
+using Octans.Core.Stats;
 
 namespace Octans.Tests.Infrastructure;
 

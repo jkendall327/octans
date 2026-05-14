@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
-using Octans.Core.Importing;
 
-namespace Octans.Server;
+namespace Octans.Core.Importing.Filters;
 
 public sealed class ImportFilterService(ILogger<ImportFilterService> logger)
 {

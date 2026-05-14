@@ -1,6 +1,6 @@
-using Octans.Core.Models;
+using Octans.Data.Models.Subscriptions;
 
-namespace Octans.Client;
+namespace Octans.Core.Subscriptions;
 
 public interface ISubscriptionExecutor
 {

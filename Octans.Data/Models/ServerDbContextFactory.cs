@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace Octans.Core.Models;
+namespace Octans.Data.Models;
 
 public class ServerDbContextFactory : IDesignTimeDbContextFactory<ServerDbContext>
 {

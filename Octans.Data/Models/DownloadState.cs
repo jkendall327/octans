@@ -1,4 +1,4 @@
-namespace Octans.Core.Downloaders;
+namespace Octans.Data.Models;
 
 public enum DownloadState
 {

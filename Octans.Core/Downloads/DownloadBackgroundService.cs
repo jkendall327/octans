@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Downloads;
+using Octans.Core.Downloads.Models;
 
-namespace Octans.Server;
+namespace Octans.Core.Downloads;
 
 public sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,

@@ -1,9 +1,10 @@
 using CoenM.ImageHash;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Models;
-using Octans.Core.Models.Duplicates;
-using Octans.Server.Services;
+using Octans.Core.Deletion;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
+using Octans.Data.Models.Duplicates;
 
 namespace Octans.Core.Duplicates;
 

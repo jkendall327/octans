@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Progress;
 
-namespace Octans.Server;
+namespace Octans.Core.Thumbnails;
 
 public sealed class ThumbnailCreationBackgroundService(
     ThumbnailCreator creator,

@@ -1,7 +1,6 @@
-using Octans.Client.Components.Pages;
 using Octans.Core.Communication;
-using Octans.Core.Models.Tagging;
 using Octans.Core.Querying;
+using Octans.Data.Models.Tagging;
 
 namespace Octans.Client.Components.Gallery;
 

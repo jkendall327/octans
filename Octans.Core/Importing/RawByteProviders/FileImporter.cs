@@ -1,8 +1,7 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Importing.RawByteProviders;
 
-namespace Octans.Core.Importing;
+namespace Octans.Core.Importing.RawByteProviders;
 
 public class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) : IRawByteProvider
 {

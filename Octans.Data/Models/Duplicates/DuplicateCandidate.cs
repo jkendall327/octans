@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Octans.Core.Models;
 
-namespace Octans.Core.Models.Duplicates;
+namespace Octans.Data.Models.Duplicates;
 
 public class DuplicateCandidate
 {

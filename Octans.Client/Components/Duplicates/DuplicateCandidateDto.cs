@@ -1,6 +1,3 @@
-using Octans.Core.Models;
-using Octans.Core.Models.Duplicates;
-
 namespace Octans.Client.Components.Duplicates;
 
 public class DuplicateCandidateDto

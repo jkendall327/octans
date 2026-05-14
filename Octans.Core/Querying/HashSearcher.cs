@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
 using Octans.Core.Repositories;
 using Octans.Core.Tags;
+using Octans.Data.Models;
 
 namespace Octans.Core.Querying;
 

@@ -1,4 +1,4 @@
-namespace Octans.Core.Models.Tagging;
+namespace Octans.Data.Models.Tagging;
 
 public class TagSibling
 {

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NLua;
 
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads.Downloaders;
 
 public class DownloaderFactory(
     IFileSystem fileSystem,

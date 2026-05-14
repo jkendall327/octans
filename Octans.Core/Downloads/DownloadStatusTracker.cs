@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Downloaders;
-using Octans.Core.Models;
 using System.Collections.Concurrent;
 using Mediator;
+using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 

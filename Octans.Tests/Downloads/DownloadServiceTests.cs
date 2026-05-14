@@ -3,7 +3,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core.Downloads;
-using Octans.Core.Downloaders;
+using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Downloads;
 

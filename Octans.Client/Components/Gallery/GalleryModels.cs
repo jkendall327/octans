@@ -1,4 +1,4 @@
-namespace Octans.Client.Components.Pages;
+namespace Octans.Client.Components.Gallery;
 
 public enum QueryKind
 {

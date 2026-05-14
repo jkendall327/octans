@@ -1,7 +1,9 @@
 using NSubstitute;
-using Octans.Client.Downloads;
-using Octans.Core.Downloaders;
+using Octans.Client.Components.Downloads;
 using Octans.Core.Downloads;
+using Octans.Core.Downloads.Models;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Viewmodels;
 

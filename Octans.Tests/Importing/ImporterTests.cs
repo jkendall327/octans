@@ -1,19 +1,23 @@
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Channels;
-using Octans.Core.Importing;
-using Microsoft.EntityFrameworkCore;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Client;
 using Octans.Core;
-using Octans.Core.Models;
-using Octans.Server;
+using Octans.Core.Filesystem;
+using Octans.Core.Importing;
 using Octans.Core.Progress;
+using Octans.Core.Tags;
+using Octans.Core.Thumbnails;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
+using Octans.Tests.Infrastructure;
 using Xunit.Abstractions;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Importing;
 
 public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {

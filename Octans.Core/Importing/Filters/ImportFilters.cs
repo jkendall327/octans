@@ -1,7 +1,7 @@
 using MimeDetective.InMemory;
 using SixLabors.ImageSharp;
 
-namespace Octans.Core.Importing;
+namespace Octans.Core.Importing.Filters;
 
 public interface IImportFilter
 {

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
 

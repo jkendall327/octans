@@ -1,4 +1,4 @@
-namespace Octans.Core.Communication;
+namespace Octans.Core.Subscriptions;
 
 public class SubscriptionRequest
 {

@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using Octans.Core.Downloaders;
-using Octans.Core.Models.Tagging;
-using Octans.Core.Repositories;
-using Octans.Core.Models.Ratings;
-using Octans.Core.Importing.Jobs;
-using Octans.Core.Models.Duplicates;
+using Octans.Data.Models.Duplicates;
+using Octans.Data.Models.Importing;
+using Octans.Data.Models.Ratings;
+using Octans.Data.Models.Subscriptions;
+using Octans.Data.Models.Tagging;
 
-namespace Octans.Core.Models;
+namespace Octans.Data.Models;
 
 public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbContext(context)
 {

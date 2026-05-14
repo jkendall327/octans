@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Helpers;
 
 
 public class XUnitLogger(ITestOutputHelper testOutputHelper, string categoryName) : ILogger

@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Downloaders;
-using Octans.Core.Models;
+using Octans.Core.Downloads.Bandwidth;
+using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 

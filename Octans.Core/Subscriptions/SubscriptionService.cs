@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Client;
-using Octans.Core.Models;
 using Octans.Core.Progress;
+using Octans.Data.Models;
+using Octans.Data.Models.Subscriptions;
 
 namespace Octans.Core.Subscriptions;
 

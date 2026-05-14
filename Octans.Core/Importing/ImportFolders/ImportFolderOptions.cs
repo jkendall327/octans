@@ -1,4 +1,4 @@
-namespace Octans.Core.Importing;
+namespace Octans.Core.Importing.ImportFolders;
 
 public class ImportFolderOptions
 {

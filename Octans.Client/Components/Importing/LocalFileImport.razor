@@ -1,4 +1,5 @@
-@using Octans.Core.Infrastructure
+@using Octans.Core.Stats
+@using Octans.Core.Tags
 @inject ILocalFileImportViewmodel Viewmodel
 @inject StorageService StorageService
 @inject IDialogService DialogService
@@ -66,14 +67,14 @@
 
     private async Task ImportFiles()
     {
-        Dictionary<string, IEnumerable<Octans.Core.TagModel>>? tags = null;
+        Dictionary<string, IEnumerable<TagModel>>? tags = null;
         if (TagChooserResult is not null)
         {
             tags = TagChooserResult
                 .GenerateTagsForPaths()
                 .ToDictionary(
                     k => k.Path,
-                    v => v.Tags.Select(t => new Octans.Core.TagModel(t.Namespace, t.Subtag))
+                    v => v.Tags.Select(t => new TagModel(t.Namespace, t.Subtag))
                 );
         }
 

@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Models;
 using Octans.Core.Progress;
-using Octans.Core.Importing.Jobs;
+using Octans.Data.Models;
+using Octans.Data.Models.Importing;
 
 namespace Octans.Core.Importing;
 

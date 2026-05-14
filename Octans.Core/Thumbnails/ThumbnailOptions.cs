@@ -1,4 +1,4 @@
-namespace Octans.Client.Options;
+namespace Octans.Core.Thumbnails;
 
 public sealed class ThumbnailOptions
 {

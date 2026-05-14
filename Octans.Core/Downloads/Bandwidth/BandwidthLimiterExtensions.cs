@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Octans.Core.Downloads;
+namespace Octans.Core.Downloads.Bandwidth;
 
 public static class BandwidthLimiterExtensions
 {

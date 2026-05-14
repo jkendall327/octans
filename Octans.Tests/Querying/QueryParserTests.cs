@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Octans.Core.Querying;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Querying;
 
 public class QueryParserTests
 {

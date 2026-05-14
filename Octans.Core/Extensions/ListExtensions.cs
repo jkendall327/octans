@@ -1,6 +1,6 @@
 using Octans.Core.Querying;
 
-namespace Octans.Core;
+namespace Octans.Core.Extensions;
 
 public static class ListExtensions
 {

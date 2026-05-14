@@ -6,11 +6,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Client;
 using Octans.Core;
-using Octans.Core.Models;
-using Octans.Server.Services;
+using Octans.Core.Deletion;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 using Xunit.Abstractions;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Management;
 
 public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {

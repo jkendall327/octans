@@ -1,6 +1,4 @@
-using System.Linq;
-
-namespace Octans.Core.Downloaders;
+namespace Octans.Core.Downloads.Downloaders;
 
 public class DownloaderService(
     IHttpClientFactory clientFactory,

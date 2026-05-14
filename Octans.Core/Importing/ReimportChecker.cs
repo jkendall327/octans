@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Models;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
 
 namespace Octans.Core.Importing;
 

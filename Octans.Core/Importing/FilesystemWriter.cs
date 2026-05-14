@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Filesystem;
 
 namespace Octans.Core.Importing;
 

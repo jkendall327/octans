@@ -7,15 +7,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Client;
 using Octans.Core;
+using Octans.Core.Deletion;
+using Octans.Core.Filesystem;
 using Octans.Core.Importing;
-using Octans.Core.Models;
 using Octans.Core.Progress;
 using Octans.Core.Tags;
-using Octans.Server;
-using Octans.Server.Services;
+using Octans.Core.Thumbnails;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 using Xunit.Abstractions;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Infrastructure;
 
 public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {

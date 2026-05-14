@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Octans.Core.Importing.Jobs;
+namespace Octans.Data.Models.Importing;
 
 public class ImportItem
 {

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Octans.Core.Models;
+namespace Octans.Data.Models.Subscriptions;
 
 public class SubscriptionExecution
 {

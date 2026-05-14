@@ -1,8 +1,9 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
-using Octans.Core.Models;
 using Octans.Core.Notes;
+using Octans.Data.Models;
+using Octans.Tests.Helpers;
 using Xunit;
 
 namespace Octans.Tests.Notes;

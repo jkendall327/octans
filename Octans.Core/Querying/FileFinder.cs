@@ -1,10 +1,10 @@
-using Octans.Core;
-using Octans.Core.Models;
-using Octans.Core.Models.Tagging;
-using Microsoft.EntityFrameworkCore;
 using System.IO.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Octans.Core.Filesystem;
+using Octans.Data.Models;
+using Octans.Data.Models.Tagging;
 
-namespace Octans.Server;
+namespace Octans.Core.Querying;
 
 public class FileFinder(SubfolderManager subfolderManager, ServerDbContext context, IFileSystem fileSystem)
 {

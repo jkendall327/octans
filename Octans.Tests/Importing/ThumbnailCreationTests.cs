@@ -1,13 +1,15 @@
 using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
-using Octans.Core;
-using Octans.Server;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Octans.Core;
+using Octans.Core.Filesystem;
+using Octans.Core.Thumbnails;
+using Octans.Tests.Helpers;
 using SixLabors.ImageSharp;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Importing;
 
 public class ThumbnailCreationTests
 {

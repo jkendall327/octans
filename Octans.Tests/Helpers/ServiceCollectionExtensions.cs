@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Octans.Tests;
+namespace Octans.Tests.Helpers;
 
 public static class ServiceCollectionExtensions
 {

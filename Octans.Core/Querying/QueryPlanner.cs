@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using Octans.Core.Extensions;
 
 namespace Octans.Core.Querying;
 

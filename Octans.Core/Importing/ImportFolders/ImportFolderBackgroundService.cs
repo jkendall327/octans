@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octans.Core.Progress;
 
-namespace Octans.Core.Importing;
+namespace Octans.Core.Importing.ImportFolders;
 
 public sealed class ImportFolderBackgroundService(
     IOptions<ImportFolderOptions> options,
