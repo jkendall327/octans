@@ -9,7 +9,6 @@ namespace Octans.Core.Downloads;
 /// Handles the actual HTTP machinery of downloading content.
 /// </summary>
 public class HttpDownloader(
-    IBandwidthLimiter bandwidthLimiter,
     IDownloadBandwidthGate bandwidthGate,
     IDownloadStateService stateService,
     IDownloadLifecycleService lifecycle,
@@ -93,9 +92,6 @@ public class HttpDownloader(
                 bytesDownloaded / totalElapsed.TotalSeconds);
 
             await lifecycle.MarkCompletedAsync(downloadId);
-
-            // Record bandwidth usage
-            bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);
 
             logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
                 download.Url,

@@ -11,7 +11,6 @@ namespace Octans.Tests.Downloads;
 
 public class HttpDownloaderTests
 {
-    private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
     private readonly IDownloadBandwidthGate _bandwidthGate = Substitute.For<IDownloadBandwidthGate>();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadLifecycleService _lifecycle = Substitute.For<IDownloadLifecycleService>();
@@ -34,7 +33,6 @@ public class HttpDownloaderTests
         factory.CreateClient("DownloadClient").Returns(httpClient);
 
         _sut = new(
-            _bandwidthLimiter,
             _bandwidthGate,
             _stateService,
             _lifecycle,
@@ -81,7 +79,7 @@ public class HttpDownloaderTests
         Assert.False(_fileSystem.File.Exists(stagingPath));
         Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(destinationPath));
         await _lifecycle.Received(1).MarkCompletedAsync(downloadId);
-        _bandwidthLimiter.Received(1).RecordDownload("example.com", 5);
+        await _bandwidthGate.Received(2).WaitForBytesAsync("example.com", Arg.Any<long>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

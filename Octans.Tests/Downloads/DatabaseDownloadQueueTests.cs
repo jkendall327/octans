@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Core.Downloads;
-using Octans.Core.Downloads.Bandwidth;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
 
@@ -13,8 +12,6 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 {
     private readonly SqliteConnection _connection = new("Filename=:memory:");
     private readonly IDbContextFactory<ServerDbContext> _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
-    private readonly IBandwidthLimiter _bandwidthLimiter = Substitute.For<IBandwidthLimiter>();
-    private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly DatabaseDownloadQueue _sut;
 
     public DatabaseDownloadQueueTests()
@@ -25,13 +22,8 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         // Configure the context factory to use SQLite
         _contextFactory.CreateDbContextAsync().ReturnsForAnyArgs(CreateContext());
 
-        // Configure the bandwidth limiter
-        _bandwidthLimiter.IsBandwidthAvailable(default!).ReturnsForAnyArgs(true);
-
         _sut = new(
             _contextFactory,
-            _bandwidthLimiter,
-            _stateService,
             NullLogger<DatabaseDownloadQueue>.Instance);
     }
 
@@ -184,47 +176,6 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
-    public async Task DequeueNextEligibleAsync_ShouldRespectBandwidthLimits()
-    {
-        await using var context = CreateContext();
-
-        var download = new QueuedDownload
-        {
-            Id = Guid.NewGuid(),
-            Url = "https://example.com/file.jpg",
-            DestinationPath = "/downloads/file.jpg",
-            Domain = "example.com",
-            Priority = 5,
-            QueuedAt = TestClock.UtcNow
-        };
-
-        context.QueuedDownloads.Add(download);
-        await context.SaveChangesAsync();
-
-        // Set bandwidth limiter to reject this domain
-        _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
-        _stateService.GetDownloadById(download.Id).Returns(new DownloadStatus
-        {
-            Id = download.Id,
-            Url = download.Url,
-            Filename = "file.jpg",
-            DestinationPath = download.DestinationPath,
-            State = DownloadState.Queued,
-            Domain = download.Domain
-        });
-
-        var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
-
-        // Should not dequeue anything
-        Assert.Null(result);
-
-        // Verify it's still in the queue
-        var remainingCount = await context.QueuedDownloads.CountAsync();
-        Assert.Equal(1, remainingCount);
-        await _stateService.Received(1).UpdateState(download.Id, DownloadState.WaitingForBandwidth);
-    }
-
-    [Fact]
     public async Task DequeueNextEligibleAsync_ShouldSkipExcludedDomains()
     {
         await using var context = CreateContext();
@@ -261,41 +212,6 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 
         var blockedStillQueued = await context.QueuedDownloads.AnyAsync(d => d.Id == blockedDomainDownload.Id);
         Assert.True(blockedStillQueued);
-    }
-
-    [Fact]
-    public async Task DequeueNextEligibleAsync_ShouldNotRepeatWaitingStateWhenAlreadyWaitingForBandwidth()
-    {
-        await using var context = CreateContext();
-
-        var download = new QueuedDownload
-        {
-            Id = Guid.NewGuid(),
-            Url = "https://example.com/file.jpg",
-            DestinationPath = "/downloads/file.jpg",
-            Domain = "example.com",
-            Priority = 5,
-            QueuedAt = TestClock.UtcNow
-        };
-
-        context.QueuedDownloads.Add(download);
-        await context.SaveChangesAsync();
-
-        _bandwidthLimiter.IsBandwidthAvailable("example.com").Returns(false);
-        _stateService.GetDownloadById(download.Id).Returns(new DownloadStatus
-        {
-            Id = download.Id,
-            Url = download.Url,
-            Filename = "file.jpg",
-            DestinationPath = download.DestinationPath,
-            State = DownloadState.WaitingForBandwidth,
-            Domain = download.Domain
-        });
-
-        var result = await _sut.DequeueNextEligibleAsync(CancellationToken.None);
-
-        Assert.Null(result);
-        await _stateService.DidNotReceive().UpdateState(download.Id, DownloadState.WaitingForBandwidth);
     }
 
     [Fact]

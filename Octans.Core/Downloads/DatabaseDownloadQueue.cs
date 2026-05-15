@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Octans.Core.Downloads.Bandwidth;
 using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
@@ -21,8 +20,6 @@ public interface IDownloadQueue
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
-    IBandwidthLimiter bandwidthLimiter,
-    IDownloadStateService stateService,
     ILogger<DatabaseDownloadQueue> logger) : IDownloadQueue
 {
     public async Task<Guid> EnqueueAsync(QueuedDownload download)
@@ -111,19 +108,6 @@ public class DatabaseDownloadQueue(
             if (excludedDomains?.Contains(download.Domain) is true)
             {
                 logger.LogDebug("Skipping download because domain {Domain} is already at concurrency limit", download.Domain);
-                continue;
-            }
-
-            // Check if bandwidth is available for this domain
-            if (!bandwidthLimiter.IsBandwidthAvailable(download.Domain))
-            {
-                logger.LogDebug("Skipping download due to bandwidth limitations for domain {Domain}", download.Domain);
-                var status = stateService.GetDownloadById(download.Id);
-                if (status?.State != DownloadState.WaitingForBandwidth)
-                {
-                    await stateService.UpdateState(download.Id, DownloadState.WaitingForBandwidth);
-                }
-
                 continue;
             }
 

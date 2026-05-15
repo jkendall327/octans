@@ -44,7 +44,11 @@ builder.Services.AddDownloadManager(options =>
 
 - `IDownloadService` accepts feature-level download requests and exposes cancel/pause/resume/retry commands.
 - `IDownloadStateService` owns atomic status-plus-queue transitions for new, paused, canceled, resumed, and retried downloads.
-- `IDownloadQueue` restores queued work and chooses the next bandwidth-eligible job.
+- `IDownloadQueue` restores queued work and chooses the next job by priority, queued time, and saturated-domain exclusions.
 - `DownloadBackgroundService` is registered by `AddDownloadManager` and runs the worker loop.
-- `HttpDownloader` performs the HTTP request, waits for byte-level bandwidth budget, streams bytes to disk, and reports progress.
+- `HttpDownloader` performs the HTTP request, waits for byte-level bandwidth budget while streaming, writes bytes to disk, and reports progress.
 - `IDownloadStateService` tracks active status in memory, persists state transitions, and raises UI notifications.
+
+Bandwidth limiting is byte-aware. The queue does not block future downloads
+based on completed download totals; active streams are paced through
+`IDownloadBandwidthGate`.
