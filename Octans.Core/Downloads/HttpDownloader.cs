@@ -19,6 +19,7 @@ public class HttpDownloader(
     IDownloadStateService stateService,
     IDownloadLifecycleService lifecycle,
     IActiveDownloadRegistry activeDownloads,
+    IInFlightDownloadCoordinator inFlightDownloads,
     IDownloadHostCircuitRegistry hostCircuitRegistry,
     IHttpClientFactory httpClientFactory,
     IDownloadRequestHeaderProvider requestHeaderProvider,
@@ -39,7 +40,7 @@ public class HttpDownloader(
 
         try
         {
-            await ProcessCore(download, downloadId, combinedToken);
+            await ProcessCore(download, downloadId, globalCancellation, downloadToken);
         }
         catch (OperationCanceledException)
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
@@ -128,7 +129,11 @@ public class HttpDownloader(
         }
     }
 
-    private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
+    private async Task ProcessCore(
+        QueuedDownload download,
+        Guid downloadId,
+        CancellationToken globalCancellation,
+        CancellationToken downloadToken)
     {
         var started = await lifecycle.MarkInProgressAsync(downloadId);
         if (!started)
@@ -139,7 +144,35 @@ public class HttpDownloader(
 
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
-        var stagingPath = stagingPaths.PrepareFreshStagingPath(download);
+        var deduplicationKey = GetDeduplicationKey(download);
+        var stagingPath = stagingPaths.GetSharedStagingPath(download, deduplicationKey);
+        await using var lease = inFlightDownloads.JoinOrStart(
+            deduplicationKey,
+            stagingPath,
+            (_, transferCancellation) => TransferToSharedStagingFile(download, deduplicationKey, globalCancellation, transferCancellation));
+
+        try
+        {
+            var result = await lease.TransferTask.WaitAsync(downloadToken);
+            await FinalizeSharedDownloadAsync(download, result, lease, downloadToken);
+        }
+        catch (OperationCanceledException) when (downloadToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
+        {
+            lease.ParticipantCanceled();
+            throw;
+        }
+    }
+
+    private async Task<SharedDownloadResult> TransferToSharedStagingFile(
+        QueuedDownload download,
+        string deduplicationKey,
+        CancellationToken globalCancellation,
+        CancellationToken transferCancellation)
+    {
+        var stagingPath = stagingPaths.PrepareFreshSharedStagingPath(download, deduplicationKey);
+
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, transferCancellation);
+        var combinedToken = linkedCts.Token;
 
         using var httpClient = httpClientFactory.CreateClient("DownloadClient");
         httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
@@ -173,6 +206,8 @@ public class HttpDownloader(
                     contentTypeValidation.ResponseContentType);
             }
 
+            _ = DownloadHashValidator.Create(download.ExpectedHashes);
+
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
             var maxDownloadSizeBytes = GetMaxDownloadSizeBytes(download);
             if (totalBytes >= 0 && maxDownloadSizeBytes is { } maxBytes && totalBytes > maxBytes)
@@ -182,12 +217,8 @@ public class HttpDownloader(
 
             if (totalBytes >= 0)
             {
-                diskSpaceGuard.EnsureSufficientSpace(download.DestinationPath, totalBytes);
+                diskSpaceGuard.EnsureSufficientSpace(stagingPath, totalBytes);
             }
-
-            await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
-
-            var hashValidators = DownloadHashValidator.Create(download.ExpectedHashes);
 
             var (bytesDownloaded, startTime) = await StreamToStagingFile(
                 download,
@@ -201,36 +232,92 @@ public class HttpDownloader(
                     $"Content-Length mismatch: download ended after {bytesDownloaded} bytes, but the server reported {totalBytes} bytes.");
             }
 
-            hashValidators.Validate(fileSystem, stagingPath);
-
-            stagingPaths.MoveToDestination(download, stagingPath);
-
-            // Final progress update and state change
-            var totalElapsed = timeProvider.GetElapsedTime(startTime);
-
-            await stateService.UpdateProgress(downloadId,
+            return new(
+                stagingPath,
                 bytesDownloaded,
                 totalBytes,
-                bytesDownloaded / totalElapsed.TotalSeconds);
-
-            await lifecycle.MarkCompletedAsync(downloadId, new()
-            {
-                Outcome = DownloadTerminalOutcome.Completed,
-                HttpStatusCode = (int)response.StatusCode,
-                ResponseContentType = response.Content.Headers.ContentType?.ToString(),
-                ResponseETag = response.Headers.ETag?.ToString(),
-                ResponseLastModified = response.Content.Headers.LastModified
-            });
-
-            logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
-                download.Url,
-                download.DestinationPath,
-                bytesDownloaded);
+                timeProvider.GetElapsedTime(startTime),
+                (int)response.StatusCode,
+                response.Content.Headers.ContentType?.ToString(),
+                response.Headers.ETag?.ToString(),
+                response.Content.Headers.LastModified);
         }
         catch
         {
-            DeleteStagingFileBestEffort(downloadId, download.DestinationPath);
+            DeleteStagingFileBestEffort(stagingPath);
             throw;
+        }
+    }
+
+    private async Task FinalizeSharedDownloadAsync(
+        QueuedDownload download,
+        SharedDownloadResult result,
+        InFlightDownloadLease lease,
+        CancellationToken downloadToken)
+    {
+        var parsedContentType = System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(
+            result.ResponseContentType,
+            out var mediaTypeHeader)
+            ? mediaTypeHeader
+            : null;
+        var contentTypeValidation = DownloadContentTypeValidator.Validate(
+            download,
+            parsedContentType,
+            options.Value.ContentTypeValidation);
+        if (!contentTypeValidation.Accepted)
+        {
+            throw new DownloadContentTypeException(
+                contentTypeValidation.Message ?? "Download content type did not match expectations.",
+                contentTypeValidation.ResponseContentType);
+        }
+
+        var hashValidators = DownloadHashValidator.Create(download.ExpectedHashes);
+        hashValidators.Validate(fileSystem, result.StagingPath);
+
+        if (result.TotalBytes >= 0)
+        {
+            diskSpaceGuard.EnsureSufficientSpace(download.DestinationPath, result.TotalBytes);
+        }
+
+        await lease.RunFinalizerAsync(() => CopySharedStagingToDestinationAsync(download, result), downloadToken);
+
+        await stateService.UpdateProgress(download.Id,
+            result.BytesDownloaded,
+            result.TotalBytes,
+            result.Elapsed.TotalSeconds <= 0 ? 0 : result.BytesDownloaded / result.Elapsed.TotalSeconds);
+
+        await lifecycle.MarkCompletedAsync(download.Id, new()
+        {
+            Outcome = DownloadTerminalOutcome.Completed,
+            HttpStatusCode = result.HttpStatusCode,
+            ResponseContentType = result.ResponseContentType,
+            ResponseETag = result.ResponseETag,
+            ResponseLastModified = result.ResponseLastModified
+        });
+
+        logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
+            download.Url,
+            download.DestinationPath,
+            result.BytesDownloaded);
+    }
+
+    private async Task CopySharedStagingToDestinationAsync(QueuedDownload download, SharedDownloadResult result)
+    {
+        var destinationDirectory = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??
+                                   throw new InvalidOperationException("Download destination must include a directory.");
+        fileSystem.Directory.CreateDirectory(destinationDirectory);
+
+        try
+        {
+            await using var source = fileSystem.File.OpenRead(result.StagingPath);
+            await using var destination = fileSystem.File.Create(download.DestinationPath);
+            await source.CopyToAsync(destination);
+        }
+        catch (IOException ex)
+        {
+            throw new DownloadDiskSpaceException(
+                "Download failed while writing to disk. The destination may not have enough free space.",
+                ex);
         }
     }
 
@@ -262,7 +349,7 @@ public class HttpDownloader(
 
             await bandwidthGate.WaitForBytesAsync(download.Domain, bytesRead, combinedToken);
             diskSpaceGuard.EnsureSufficientSpace(
-                download.DestinationPath,
+                stagingPath,
                 GetRequiredBytesBeforeWrite(response.Content.Headers.ContentLength, bytesDownloaded, bytesRead));
 
             try
@@ -458,6 +545,48 @@ public class HttpDownloader(
         {
             logger.LogWarning(ex, "Failed to delete staging file for {DestinationPath}", destinationPath);
         }
+    }
+
+    private void DeleteStagingFileBestEffort(string stagingPath)
+    {
+        try
+        {
+            if (fileSystem.File.Exists(stagingPath))
+            {
+                fileSystem.File.Delete(stagingPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete staging file {StagingPath}", stagingPath);
+        }
+    }
+
+
+    private string GetDeduplicationKey(QueuedDownload download)
+    {
+        if (!string.IsNullOrWhiteSpace(download.RequestFingerprint))
+        {
+            return download.RequestFingerprint;
+        }
+
+        var uri = new Uri(download.Url);
+        return requestHeaderProvider.GetRequestFingerprint(NormalizeUri(uri));
+    }
+
+    private static Uri NormalizeUri(Uri uri)
+    {
+        var builder = new UriBuilder(uri)
+        {
+            Host = uri.IdnHost.ToLowerInvariant()
+        };
+
+        if (uri.IsDefaultPort)
+        {
+            builder.Port = -1;
+        }
+
+        return builder.Uri;
     }
 
     private static DownloadFailureCategory CategorizeFailure(Exception ex)

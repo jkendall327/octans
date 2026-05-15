@@ -74,3 +74,11 @@ hosts or callers.
 Bandwidth limiting is byte-aware. The queue does not block future downloads
 based on completed download totals; active streams are paced through
 `IDownloadBandwidthGate`.
+
+In-flight downloads are coalesced by request fingerprint, which is derived from
+the normalized GET URL plus configured request headers and credential-bearing
+context. Jobs that request the same transfer share one HTTP stream into a shared
+staging file; each job still completes independently, validates its own content
+expectations, and copies the staged bytes to its requested destination. Canceling
+one interested job only cancels the shared stream when no other interested jobs
+remain.

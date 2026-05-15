@@ -58,6 +58,7 @@ public class HttpDownloaderTests
             _stateService,
             _lifecycle,
             _activeDownloads,
+            new InFlightDownloadCoordinator(_fileSystem, NullLogger<InFlightDownloadCoordinator>.Instance),
             _hostCircuitRegistry,
             factory,
             new DownloadRequestHeaderProvider(Options.Create(options ?? new DownloadManagerOptions())),
@@ -99,6 +100,70 @@ public class HttpDownloaderTests
                 update.Outcome == DownloadTerminalOutcome.Completed &&
                 update.HttpStatusCode == 200));
         await _bandwidthGate.Received(2).WaitForBytesAsync("example.com", Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenDuplicateUrlIsAlreadyInFlight_ReusesSingleHttpTransferForBothDestinations()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var first = CreateDownload(firstId, "/downloads/first.txt");
+        var second = CreateDownload(secondId, "/downloads/second.txt");
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var firstTask = _sut.ProcessDownloadAsync(first, _cts.Token);
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var secondTask = _sut.ProcessDownloadAsync(second, _cts.Token);
+
+        await Task.Delay(100);
+        Assert.Single(_messageHandler.Requests);
+
+        content.ReleaseSecondRead();
+        await Task.WhenAll(firstTask, secondTask);
+
+        Assert.Single(_messageHandler.Requests);
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(first.DestinationPath));
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(second.DestinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(firstId, Arg.Any<DownloadTerminalUpdate>());
+        await _lifecycle.Received(1).MarkCompletedAsync(secondId, Arg.Any<DownloadTerminalUpdate>());
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenOneDuplicateIsCanceled_SharedTransferContinuesForRemainingDownload()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var first = CreateDownload(firstId, "/downloads/first.txt");
+        var second = CreateDownload(secondId, "/downloads/second.txt");
+        using var firstCts = new CancellationTokenSource();
+        using var secondCts = new CancellationTokenSource();
+        _activeDownloads.GetToken(firstId).Returns(firstCts.Token);
+        _activeDownloads.GetToken(secondId).Returns(secondCts.Token);
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var firstTask = _sut.ProcessDownloadAsync(first, _cts.Token);
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var secondTask = _sut.ProcessDownloadAsync(second, _cts.Token);
+        await firstCts.CancelAsync();
+
+        await firstTask;
+        content.ReleaseSecondRead();
+        await secondTask;
+
+        Assert.Single(_messageHandler.Requests);
+        Assert.False(_fileSystem.File.Exists(first.DestinationPath));
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(second.DestinationPath));
+        await _lifecycle.Received(1).MarkCanceledAsync(firstId);
+        await _lifecycle.Received(1).MarkCompletedAsync(secondId, Arg.Any<DownloadTerminalUpdate>());
     }
 
     [Fact]
@@ -718,8 +783,12 @@ public class HttpDownloaderTests
     {
         var destinationDirectory = _fileSystem.Path.GetDirectoryName(destinationPath) ??
                                    throw new InvalidOperationException();
+        var provider = new DownloadRequestHeaderProvider(Options.Create(new DownloadManagerOptions()));
+        var key = provider.GetRequestFingerprint(new Uri("https://example.com/test.txt"));
+        var keyHash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(key)));
 
-        return _fileSystem.Path.Combine(destinationDirectory, ".octans-downloads", $"{downloadId}.part");
+        return _fileSystem.Path.Combine(destinationDirectory, ".octans-downloads", $"shared-{keyHash}.part");
     }
 }
 
