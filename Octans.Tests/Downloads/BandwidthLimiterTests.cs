@@ -223,4 +223,21 @@ public class BandwidthLimiterTests
         Assert.False(_sut.IsBandwidthAvailable(domain));
     }
 
+    [Fact]
+    public void RecordDownload_ConcurrentCalls_AccumulateCorrectly()
+    {
+        var domain = "example.com";
+        var bytesPerSecond = _options.DefaultBytesPerSecond;
+        var totalBytesAllowed = bytesPerSecond * _options.TrackingWindow.TotalSeconds;
+        var downloadCount = 64;
+        var bytesPerDownload = (long)Math.Ceiling(totalBytesAllowed / downloadCount);
+
+        Parallel.For(
+            0,
+            downloadCount + 1,
+            _ => _sut.RecordDownload(domain, bytesPerDownload));
+
+        Assert.False(_sut.IsBandwidthAvailable(domain));
+        Assert.True(_sut.GetDelayForDomain(domain) > TimeSpan.Zero);
+    }
 }

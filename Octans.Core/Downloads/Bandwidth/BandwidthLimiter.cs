@@ -18,7 +18,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
     private readonly TimeProvider _timeProvider;
 
     // Track downloads per domain with timestamps
-    private readonly ConcurrentDictionary<string, Queue<(DateTimeOffset Timestamp, long Bytes)>> _domainUsage = new();
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<(DateTimeOffset Timestamp, long Bytes)>> _domainUsage = new();
 
     // Track when a domain can next be used
     private readonly ConcurrentDictionary<string, DateTimeOffset> _domainNextAvailable = new();
@@ -86,17 +86,8 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
 
         var now = _timeProvider.GetUtcNow();
 
-        // Add to domain usage records
-        _domainUsage.AddOrUpdate(
-            domain,
-            // If key doesn't exist, create a new queue with this record
-            _ => new Queue<(DateTimeOffset, long)>([(now, bytes)]),
-            // If key exists, add to the existing queue
-            (_, queue) =>
-            {
-                queue.Enqueue((now, bytes));
-                return queue;
-            });
+        var usageQueue = _domainUsage.GetOrAdd(domain, _ => new());
+        usageQueue.Enqueue((now, bytes));
 
         // Calculate current bandwidth usage for this domain
         CalculateBandwidthUsage(domain);
@@ -104,7 +95,7 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
 
     private void CalculateBandwidthUsage(string domain)
     {
-        if (!_domainUsage.TryGetValue(domain, out var usageQueue) || usageQueue.Count == 0)
+        if (!_domainUsage.TryGetValue(domain, out var usageQueue) || usageQueue.IsEmpty)
         {
             return;
         }
@@ -172,14 +163,12 @@ public sealed class BandwidthLimiter : IBandwidthLimiter, IDisposable
             {
                 if (!_domainUsage.TryGetValue(domain, out var queue)) continue;
 
-                // Remove old records
-                while (queue.Count > 0 && queue.Peek().Timestamp < cutoff)
+                while (queue.TryPeek(out var record) && record.Timestamp < cutoff)
                 {
-                    queue.Dequeue();
+                    queue.TryDequeue(out _);
                 }
 
-                // If queue is empty, consider removing the domain entirely
-                if (queue.Count == 0)
+                if (queue.IsEmpty)
                 {
                     _domainUsage.TryRemove(domain, out _);
                 }
