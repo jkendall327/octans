@@ -267,6 +267,75 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
+    public async Task TryUpdateState_WhenCurrentStateMatches_UpdatesStatusAndDatabase()
+    {
+        var download = new DownloadStatus
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            Domain = "example.com",
+            State = DownloadState.InProgress,
+            BytesDownloaded = 1024,
+            TotalBytes = 2048,
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
+        };
+
+        await _service.AddOrUpdateDownloadAsync(download);
+
+        var updated = await _service.TryUpdateState(
+            download.Id,
+            new HashSet<DownloadState> { DownloadState.InProgress },
+            DownloadState.Completed);
+
+        Assert.True(updated);
+        Assert.Equal(DownloadState.Completed, _service.GetDownloadById(download.Id)?.State);
+
+        await using var context = new ServerDbContext(_contextOptions);
+        var savedStatus = await context.DownloadStatuses.FindAsync(download.Id);
+
+        Assert.NotNull(savedStatus);
+        Assert.Equal(DownloadState.Completed, savedStatus.State);
+        Assert.Equal(1024, savedStatus.BytesDownloaded);
+        Assert.Equal(2048, savedStatus.TotalBytes);
+        Assert.NotNull(savedStatus.CompletedAt);
+    }
+
+    [Fact]
+    public async Task TryUpdateState_WhenCurrentStateDoesNotMatch_LeavesPausedDownloadAlone()
+    {
+        var download = new DownloadStatus
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            Domain = "example.com",
+            State = DownloadState.Paused,
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
+        };
+
+        await _service.AddOrUpdateDownloadAsync(download);
+
+        var updated = await _service.TryUpdateState(
+            download.Id,
+            new HashSet<DownloadState> { DownloadState.InProgress },
+            DownloadState.Canceled);
+
+        Assert.False(updated);
+        Assert.Equal(DownloadState.Paused, _service.GetDownloadById(download.Id)?.State);
+
+        await using var context = new ServerDbContext(_contextOptions);
+        var savedStatus = await context.DownloadStatuses.FindAsync(download.Id);
+
+        Assert.NotNull(savedStatus);
+        Assert.Equal(DownloadState.Paused, savedStatus.State);
+    }
+
+    [Fact]
     public async Task AddOrUpdateDownload_AddsNewDownload()
     {
         // Arrange

@@ -16,6 +16,11 @@ public interface IDownloadStateService
     DownloadStatus? GetDownloadById(Guid id);
     Task UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
     Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
+    Task<bool> TryUpdateState(
+        Guid id,
+        IReadOnlySet<DownloadState> expectedStates,
+        DownloadState newState,
+        string? errorMessage = null);
     Task QueueDownloadAsync(DownloadStatus status);
     Task<bool> TryRequeuePausedDownloadAsync(Guid id);
     Task<bool> TryRequeueFailedOrCanceledDownloadAsync(Guid id);
@@ -118,6 +123,49 @@ public class DownloadStatusTracker(
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Updated
         });
+    }
+
+    public async Task<bool> TryUpdateState(
+        Guid id,
+        IReadOnlySet<DownloadState> expectedStates,
+        DownloadState newState,
+        string? errorMessage = null)
+    {
+        if (!_activeDownloads.TryGetValue(id, out var status) || !expectedStates.Contains(status.State))
+        {
+            return false;
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var updatedStatus = CopyStatus(status);
+        ApplyState(updatedStatus, newState, now, errorMessage);
+
+        await using (var db = await contextFactory.CreateDbContextAsync())
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync();
+
+            var dbStatus = await db.DownloadStatuses.FindAsync(id);
+            if (dbStatus is null || !expectedStates.Contains(dbStatus.State))
+            {
+                return false;
+            }
+
+            ApplyPersistedState(dbStatus, updatedStatus);
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+
+        _activeDownloads[id] = updatedStatus;
+
+        await Raise(new DownloadStatusChanged { Status = updatedStatus });
+        await Raise(new DownloadsChanged
+        {
+            AffectedDownloadId = id,
+            ChangeType = DownloadChangeType.Updated
+        });
+
+        return true;
     }
 
     public async Task AddOrUpdateDownloadAsync(DownloadStatus status)
@@ -322,6 +370,39 @@ public class DownloadStatusTracker(
                 status.ErrorMessage = errorMessage;
                 break;
         }
+    }
+
+    private static DownloadStatus CopyStatus(DownloadStatus status) => new()
+    {
+        Id = status.Id,
+        Url = status.Url,
+        Filename = status.Filename,
+        DisplayName = status.DisplayName,
+        DestinationPath = status.DestinationPath,
+        Priority = status.Priority,
+        TotalBytes = status.TotalBytes,
+        BytesDownloaded = status.BytesDownloaded,
+        CurrentSpeed = status.CurrentSpeed,
+        State = status.State,
+        CreatedAt = status.CreatedAt,
+        StartedAt = status.StartedAt,
+        CompletedAt = status.CompletedAt,
+        LastUpdated = status.LastUpdated,
+        ErrorMessage = status.ErrorMessage,
+        Domain = status.Domain,
+        SourceType = status.SourceType,
+        SourceId = status.SourceId
+    };
+
+    private static void ApplyPersistedState(DownloadStatus target, DownloadStatus source)
+    {
+        target.State = source.State;
+        target.BytesDownloaded = source.BytesDownloaded;
+        target.TotalBytes = source.TotalBytes;
+        target.LastUpdated = source.LastUpdated;
+        target.StartedAt = source.StartedAt;
+        target.CompletedAt = source.CompletedAt;
+        target.ErrorMessage = source.ErrorMessage;
     }
 
     private static async Task UpsertQueuedDownloadAsync(ServerDbContext db, DownloadStatus status, DateTimeOffset queuedAt)

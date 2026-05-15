@@ -47,7 +47,13 @@ public class HttpDownloader(
 
     private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
     {
-        await lifecycle.MarkInProgressAsync(downloadId);
+        var started = await lifecycle.MarkInProgressAsync(downloadId);
+        if (!started)
+        {
+            logger.LogDebug("Skipping download because it is no longer queued: {Url}", download.Url);
+            return;
+        }
+
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
         var directoryName = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??

@@ -223,10 +223,21 @@ public class DownloadServiceTests
         };
 
         _mockStateService.GetDownloadById(id).Returns(status);
+        _mockStateService
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Completed)
+            .Returns(true);
 
         await _lifecycle.MarkCompletedAsync(id);
 
-        await _mockStateService.Received(1).UpdateState(id, DownloadState.Completed);
+        await _mockStateService
+            .Received(1)
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Completed);
         _activeDownloads.Received(1).Release(id);
         await _completionNotifier.Received(1).DownloadCompletedAsync(status);
     }
@@ -238,7 +249,13 @@ public class DownloadServiceTests
 
         await _lifecycle.MarkFailedAsync(id, "Network broke");
 
-        await _mockStateService.Received(1).UpdateState(id, DownloadState.Failed, "Network broke");
+        await _mockStateService
+            .Received(1)
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Failed,
+                "Network broke");
         _activeDownloads.Received(1).Release(id);
     }
 
@@ -249,7 +266,35 @@ public class DownloadServiceTests
 
         await _lifecycle.MarkCanceledAsync(id);
 
-        await _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
+        await _mockStateService
+            .Received(1)
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Canceled);
         _activeDownloads.Received(1).Release(id);
+    }
+
+    [Fact]
+    public async Task MarkCompletedAsync_WhenStateTransitionIsRejected_DoesNotNotifyCompletion()
+    {
+        var id = Guid.NewGuid();
+
+        _mockStateService
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Completed)
+            .Returns(false);
+
+        await _lifecycle.MarkCompletedAsync(id);
+
+        _activeDownloads.Received(1).Release(id);
+        await _completionNotifier.DidNotReceive().DownloadCompletedAsync(Arg.Any<DownloadStatus>());
+    }
+
+    private static bool IsOnlyInProgress(IReadOnlySet<DownloadState> states)
+    {
+        return states.SetEquals(new[] { DownloadState.InProgress });
     }
 }

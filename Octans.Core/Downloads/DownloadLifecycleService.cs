@@ -11,7 +11,7 @@ public interface IDownloadLifecycleService
     Task PauseDownloadAsync(Guid id);
     Task ResumeDownloadAsync(Guid id);
     Task RetryDownloadAsync(Guid id);
-    Task MarkInProgressAsync(Guid id);
+    Task<bool> MarkInProgressAsync(Guid id);
     Task MarkCompletedAsync(Guid id);
     Task MarkFailedAsync(Guid id, string errorMessage);
     Task MarkCanceledAsync(Guid id);
@@ -25,6 +25,17 @@ public sealed class DownloadLifecycleService(
     TimeProvider timeProvider,
     ILogger<DownloadLifecycleService> logger) : IDownloadLifecycleService
 {
+    private static readonly HashSet<DownloadState> CanStartStates =
+    [
+        DownloadState.Queued,
+        DownloadState.WaitingForBandwidth
+    ];
+
+    private static readonly HashSet<DownloadState> ActiveState =
+    [
+        DownloadState.InProgress
+    ];
+
     public async Task<Guid> QueueDownloadAsync(DownloadRequest request)
     {
         var id = Guid.NewGuid();
@@ -69,8 +80,8 @@ public sealed class DownloadLifecycleService(
         logger.LogInformation("Canceling download");
 
         await queue.RemoveAsync(id);
-        activeDownloads.Cancel(id);
         await stateService.UpdateState(id, DownloadState.Canceled);
+        activeDownloads.Cancel(id);
 
         logger.LogDebug("Download canceled");
     }
@@ -81,11 +92,11 @@ public sealed class DownloadLifecycleService(
         logger.LogInformation("Pausing download");
 
         await queue.RemoveAsync(id);
+        await stateService.UpdateState(id, DownloadState.Paused);
 
         // Pause currently stops active transfer and resumes from the beginning later.
         // Range-based partial resume will need explicit temp-file support.
         activeDownloads.Cancel(id);
-        await stateService.UpdateState(id, DownloadState.Paused);
 
         logger.LogDebug("Download paused");
     }
@@ -124,15 +135,21 @@ public sealed class DownloadLifecycleService(
         logger.LogDebug("Download reset and re-queued");
     }
 
-    public Task MarkInProgressAsync(Guid id)
+    public Task<bool> MarkInProgressAsync(Guid id)
     {
-        return stateService.UpdateState(id, DownloadState.InProgress);
+        return stateService.TryUpdateState(id, CanStartStates, DownloadState.InProgress);
     }
 
     public async Task MarkCompletedAsync(Guid id)
     {
-        await stateService.UpdateState(id, DownloadState.Completed);
+        var completed = await stateService.TryUpdateState(id, ActiveState, DownloadState.Completed);
         activeDownloads.Release(id);
+
+        if (!completed)
+        {
+            logger.LogDebug("Skipped completion because download is no longer active");
+            return;
+        }
 
         var status = stateService.GetDownloadById(id);
         if (status is not null)
@@ -143,13 +160,13 @@ public sealed class DownloadLifecycleService(
 
     public async Task MarkFailedAsync(Guid id, string errorMessage)
     {
-        await stateService.UpdateState(id, DownloadState.Failed, errorMessage);
+        await stateService.TryUpdateState(id, ActiveState, DownloadState.Failed, errorMessage);
         activeDownloads.Release(id);
     }
 
     public async Task MarkCanceledAsync(Guid id)
     {
-        await stateService.UpdateState(id, DownloadState.Canceled);
+        await stateService.TryUpdateState(id, ActiveState, DownloadState.Canceled);
         activeDownloads.Release(id);
     }
 

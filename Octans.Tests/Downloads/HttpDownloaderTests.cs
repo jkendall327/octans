@@ -48,6 +48,10 @@ public class HttpDownloaderTests
         _activeDownloads
             .GetToken(Arg.Any<Guid>())
             .Returns(CancellationToken.None);
+
+        _lifecycle
+            .MarkInProgressAsync(Arg.Any<Guid>())
+            .Returns(true);
     }
 
     [Fact]
@@ -79,6 +83,28 @@ public class HttpDownloaderTests
 
         // Verify file was not created
         Assert.False(_fileSystem.File.Exists(destinationPath));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenStartIsRejected_DoesNotStartHttpRequest()
+    {
+        var downloadId = Guid.NewGuid();
+        var download = new QueuedDownload
+        {
+            Id = downloadId,
+            Url = "https://example.com/test.txt",
+            DestinationPath = "/downloads/test.txt",
+            Domain = "example.com"
+        };
+
+        _lifecycle.MarkInProgressAsync(downloadId).Returns(false);
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkFailedAsync(downloadId, Arg.Any<string>());
+        Assert.False(_messageHandler.RequestStarted.Task.IsCompleted);
     }
 
     [Fact]
