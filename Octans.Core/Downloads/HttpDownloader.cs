@@ -19,6 +19,7 @@ public class HttpDownloader(
     IActiveDownloadRegistry activeDownloads,
     IDownloadHostCircuitRegistry hostCircuitRegistry,
     IHttpClientFactory httpClientFactory,
+    IDownloadRequestHeaderProvider requestHeaderProvider,
     IFileSystem fileSystem,
     DownloadStagingPaths stagingPaths,
     TimeProvider timeProvider,
@@ -65,6 +66,16 @@ public class HttpDownloader(
                 downloadId,
                 message,
                 DownloadFailureCategory.Network);
+        }
+        catch (MissingDownloadCredentialsException ex)
+        {
+            logger.LogWarning(ex, "Download cannot start because required credentials are missing: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Authentication,
+                DownloadTerminalOutcome.ValidationFailed,
+                validationMessage: ex.Message);
         }
         catch (DownloadContentTypeException ex)
         {
@@ -133,8 +144,11 @@ public class HttpDownloader(
 
         try
         {
-            using var response = await httpClient.GetAsync(
-                new Uri(download.Url),
+            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(download.Url));
+            requestHeaderProvider.ApplyHeaders(request);
+
+            using var response = await httpClient.SendAsync(
+                request,
                 HttpCompletionOption.ResponseHeadersRead,
                 combinedToken);
 

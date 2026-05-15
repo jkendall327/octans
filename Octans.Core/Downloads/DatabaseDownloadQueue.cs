@@ -75,7 +75,8 @@ public class DatabaseDownloadQueue(
             Priority = status.Priority,
             Domain = status.Domain,
             SourceType = status.SourceType,
-            SourceId = status.SourceId
+            SourceId = status.SourceId,
+            RequestFingerprint = status.RequestFingerprint
         });
 
         await db.SaveChangesAsync(cancellationToken);

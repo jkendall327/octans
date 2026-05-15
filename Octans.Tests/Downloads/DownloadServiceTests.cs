@@ -24,6 +24,7 @@ public class DownloadServiceTests
             _mockStateService,
             _activeDownloads,
             _completionNotifier,
+            new DownloadRequestHeaderProvider(Microsoft.Extensions.Options.Options.Create(new DownloadManagerOptions())),
             timeProvider,
             NullLogger<DownloadLifecycleService>.Instance);
 
@@ -93,7 +94,8 @@ public class DownloadServiceTests
             ds.State == DownloadState.Queued &&
             ds.Domain == "example.com" &&
             ds.SourceType == request.SourceType &&
-            ds.SourceId == request.SourceId));
+            ds.SourceId == request.SourceId &&
+            ds.RequestFingerprint != null));
     }
 
     [Fact]

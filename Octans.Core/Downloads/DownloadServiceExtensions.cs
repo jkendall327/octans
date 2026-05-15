@@ -28,6 +28,7 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadBandwidthGate, NoOpDownloadBandwidthGate>();
         services.TryAddSingleton<IDownloadDiskSpaceGuard, DownloadDiskSpaceGuard>();
         services.TryAddSingleton<IDownloadHostCircuitRegistry, DownloadHostCircuitRegistry>();
+        services.TryAddSingleton<IDownloadRequestHeaderProvider, DownloadRequestHeaderProvider>();
         services.TryAddSingleton<DownloadStagingPaths>();
         services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
         services.TryAddSingleton<HttpDownloader>();
@@ -35,10 +36,7 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DownloadBackgroundService>());
 
-        services.AddHttpClient("DownloadClient", client =>
-            {
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Octans/1.0");
-            })
+        services.AddHttpClient("DownloadClient")
             .AddStandardResilienceHandler()
             .Configure((resilienceOptions, provider) =>
                 ConfigureDownloadResilience(resilienceOptions, provider))
