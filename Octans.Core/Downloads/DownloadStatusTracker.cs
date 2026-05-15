@@ -16,6 +16,9 @@ public interface IDownloadStateService
     DownloadStatus? GetDownloadById(Guid id);
     Task UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
     Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
+    Task QueueDownloadAsync(DownloadStatus status);
+    Task<bool> TryRequeuePausedDownloadAsync(Guid id);
+    Task<bool> TryRequeueFailedOrCanceledDownloadAsync(Guid id);
     Task AddOrUpdateDownloadAsync(DownloadStatus status);
     Task RemoveDownloadAsync(Guid id);
 }
@@ -79,22 +82,7 @@ public class DownloadStatusTracker(
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 
-        var now = timeProvider.GetUtcNow();
-        status.State = newState;
-        status.LastUpdated = now;
-
-        switch (newState)
-        {
-            case DownloadState.InProgress:
-                status.StartedAt ??= now;
-                break;
-            case DownloadState.Completed:
-                status.CompletedAt = now;
-                break;
-            case DownloadState.Failed:
-                status.ErrorMessage = errorMessage;
-                break;
-        }
+        ApplyState(status, newState, timeProvider.GetUtcNow(), errorMessage);
 
         // Persist state change to database
         await using var db = await contextFactory.CreateDbContextAsync();
@@ -167,6 +155,66 @@ public class DownloadStatusTracker(
 
     }
 
+    public async Task QueueDownloadAsync(DownloadStatus status)
+    {
+        await using var db = await contextFactory.CreateDbContextAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        try
+        {
+            var existingStatus = await db.DownloadStatuses.FindAsync(status.Id);
+            if (existingStatus == null)
+            {
+                db.DownloadStatuses.Add(status);
+            }
+            else
+            {
+                db.Entry(existingStatus).CurrentValues.SetValues(status);
+            }
+
+            await UpsertQueuedDownloadAsync(db, status, status.LastUpdated);
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist queued download");
+            throw;
+        }
+
+        _activeDownloads[status.Id] = status;
+
+        await Raise(new DownloadsChanged
+        {
+            AffectedDownloadId = status.Id,
+            ChangeType = DownloadChangeType.Added
+        });
+    }
+
+    public Task<bool> TryRequeuePausedDownloadAsync(Guid id)
+    {
+        return TryRequeueExistingDownloadAsync(
+            id,
+            static status => status.State == DownloadState.Paused,
+            static _ => { });
+    }
+
+    public Task<bool> TryRequeueFailedOrCanceledDownloadAsync(Guid id)
+    {
+        return TryRequeueExistingDownloadAsync(
+            id,
+            static status => status.State is DownloadState.Failed or DownloadState.Canceled,
+            static status =>
+            {
+                status.BytesDownloaded = 0;
+                status.CurrentSpeed = 0;
+                status.ErrorMessage = null;
+                status.StartedAt = null;
+                status.CompletedAt = null;
+            });
+    }
+
     public async Task RemoveDownloadAsync(Guid id)
     {
         var removed = _activeDownloads.TryRemove(id, out _);
@@ -219,4 +267,94 @@ public class DownloadStatusTracker(
             await subscriber(notification);
         }
     }
+
+    private async Task<bool> TryRequeueExistingDownloadAsync(
+        Guid id,
+        Func<DownloadStatus, bool> canRequeue,
+        Action<DownloadStatus> prepareForQueue)
+    {
+        DownloadStatus? status;
+        await using (var db = await contextFactory.CreateDbContextAsync())
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync();
+
+            status = await db.DownloadStatuses.FindAsync(id);
+            if (status is null || !canRequeue(status))
+            {
+                return false;
+            }
+
+            var now = timeProvider.GetUtcNow();
+            prepareForQueue(status);
+            ApplyState(status, DownloadState.Queued, now);
+            await UpsertQueuedDownloadAsync(db, status, now);
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+
+        _activeDownloads[id] = status;
+
+        await Raise(new DownloadStatusChanged { Status = status });
+        await Raise(new DownloadsChanged
+        {
+            AffectedDownloadId = id,
+            ChangeType = DownloadChangeType.Updated
+        });
+
+        return true;
+    }
+
+    private static void ApplyState(DownloadStatus status, DownloadState newState, DateTimeOffset now, string? errorMessage = null)
+    {
+        status.State = newState;
+        status.LastUpdated = now;
+
+        switch (newState)
+        {
+            case DownloadState.InProgress:
+                status.StartedAt ??= now;
+                break;
+            case DownloadState.Completed:
+                status.CompletedAt = now;
+                break;
+            case DownloadState.Failed:
+                status.ErrorMessage = errorMessage;
+                break;
+        }
+    }
+
+    private static async Task UpsertQueuedDownloadAsync(ServerDbContext db, DownloadStatus status, DateTimeOffset queuedAt)
+    {
+        var queuedDownload = db.QueuedDownloads.Local.FirstOrDefault(d => d.Id == status.Id)
+                             ?? await db.QueuedDownloads.FindAsync(status.Id);
+
+        if (queuedDownload is null)
+        {
+            db.QueuedDownloads.Add(BuildQueuedDownload(status, queuedAt));
+            return;
+        }
+
+        queuedDownload.Url = status.Url;
+        queuedDownload.DestinationPath = status.DestinationPath;
+        queuedDownload.DisplayName = status.DisplayName;
+        queuedDownload.QueuedAt = queuedAt;
+        queuedDownload.Priority = status.Priority;
+        queuedDownload.Domain = status.Domain;
+        queuedDownload.SourceType = status.SourceType;
+        queuedDownload.SourceId = status.SourceId;
+    }
+
+    private static QueuedDownload BuildQueuedDownload(DownloadStatus status, DateTimeOffset queuedAt) => new()
+    {
+        Id = status.Id,
+        Url = status.Url,
+        DestinationPath = status.DestinationPath,
+        DisplayName = status.DisplayName,
+        QueuedAt = queuedAt,
+        Priority = status.Priority,
+        Domain = status.Domain,
+        SourceType = status.SourceType,
+        SourceId = status.SourceId
+    };
 }

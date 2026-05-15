@@ -57,8 +57,7 @@ public sealed class DownloadLifecycleService(
             SourceId = request.SourceId
         };
 
-        await stateService.AddOrUpdateDownloadAsync(status);
-        await queue.EnqueueAsync(BuildQueuedDownload(status, now));
+        await stateService.QueueDownloadAsync(status);
 
         logger.LogDebug("Download queued successfully");
         return id;
@@ -96,15 +95,14 @@ public sealed class DownloadLifecycleService(
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Resuming download");
 
-        var status = stateService.GetDownloadById(id);
-        if (status is not { State: DownloadState.Paused })
+        var queued = await stateService.TryRequeuePausedDownloadAsync(id);
+        if (!queued)
         {
-            logger.LogWarning("Cannot resume download - not in paused state. Current state: {State}", status?.State);
+            logger.LogWarning(
+                "Cannot resume download - not in paused state. Current state: {State}",
+                stateService.GetDownloadById(id)?.State);
             return;
         }
-
-        await queue.EnqueueAsync(BuildQueuedDownload(status, timeProvider.GetUtcNow()));
-        await stateService.UpdateState(id, DownloadState.Queued);
 
         logger.LogDebug("Download resumed and re-queued");
     }
@@ -114,21 +112,14 @@ public sealed class DownloadLifecycleService(
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Retrying download");
 
-        var status = stateService.GetDownloadById(id);
-        if (status is not { State: DownloadState.Failed or DownloadState.Canceled })
+        var queued = await stateService.TryRequeueFailedOrCanceledDownloadAsync(id);
+        if (!queued)
         {
-            logger.LogWarning("Cannot retry download - not in failed or canceled state. Current state: {State}", status?.State);
+            logger.LogWarning(
+                "Cannot retry download - not in failed or canceled state. Current state: {State}",
+                stateService.GetDownloadById(id)?.State);
             return;
         }
-
-        status.BytesDownloaded = 0;
-        status.CurrentSpeed = 0;
-        status.ErrorMessage = null;
-        status.StartedAt = null;
-        status.CompletedAt = null;
-
-        await queue.EnqueueAsync(BuildQueuedDownload(status, timeProvider.GetUtcNow()));
-        await stateService.UpdateState(id, DownloadState.Queued);
 
         logger.LogDebug("Download reset and re-queued");
     }
@@ -162,16 +153,4 @@ public sealed class DownloadLifecycleService(
         activeDownloads.Release(id);
     }
 
-    private static QueuedDownload BuildQueuedDownload(DownloadStatus status, DateTimeOffset queuedAt) => new()
-    {
-        Id = status.Id,
-        Url = status.Url,
-        DestinationPath = status.DestinationPath,
-        DisplayName = status.DisplayName,
-        QueuedAt = queuedAt,
-        Priority = status.Priority,
-        Domain = status.Domain,
-        SourceType = status.SourceType,
-        SourceId = status.SourceId
-    };
 }
