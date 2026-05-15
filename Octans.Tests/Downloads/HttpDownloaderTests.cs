@@ -302,6 +302,109 @@ public class HttpDownloaderTests
     }
 
     [Fact]
+    public async Task ProcessDownloadAsync_WhenKnownContentLengthExceedsSizeLimit_FailsBeforeStreaming()
+    {
+        var sut = CreateDownloader(new()
+        {
+            SizeLimits = new()
+            {
+                MaxBytes = 5
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[10])
+        };
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("reported 10 bytes") && s.Contains("max download size of 5 bytes")),
+            DownloadFailureCategory.SizeLimit,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s =>
+                s.Contains("reported 10 bytes") && s.Contains("max download size of 5 bytes")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        await _bandwidthGate.DidNotReceive().WaitForBytesAsync(
+            Arg.Any<string>(),
+            Arg.Any<long>(),
+            Arg.Any<CancellationToken>());
+        Assert.Equal(0, _diskSpaceGuard.CheckCount);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenUnknownLengthResponseExceedsSizeLimit_FailsDuringStreaming()
+    {
+        var sut = CreateDownloader(new()
+        {
+            SizeLimits = new()
+            {
+                MaxBytes = 5
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new UnknownLengthContent(new byte[10])
+        };
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("exceeded") && s.Contains("max download size of 5 bytes")),
+            DownloadFailureCategory.SizeLimit,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s =>
+                s.Contains("exceeded") && s.Contains("max download size of 5 bytes")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenContentLengthLiesBelowSizeLimit_FailsWhenStreamCrossesLimit()
+    {
+        var sut = CreateDownloader(new()
+        {
+            SizeLimits = new()
+            {
+                MaxBytes = 5
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new ByteArrayContent(new byte[10]);
+        content.Headers.ContentLength = 4;
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("exceeded") && s.Contains("max download size of 5 bytes")),
+            DownloadFailureCategory.SizeLimit,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s =>
+                s.Contains("exceeded") && s.Contains("max download size of 5 bytes")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
     public async Task ProcessDownloadAsync_WhenDiskSpaceRunsOutDuringStreaming_DeletesStagingAndDoesNotCreateFinalFile()
     {
         var downloadId = Guid.NewGuid();
@@ -481,9 +584,12 @@ public sealed class FakeDownloadDiskSpaceGuard : IDownloadDiskSpaceGuard
 {
     public long? FailWhenBytesNeededAtLeast { get; set; }
     public bool FailNextCheck { get; set; }
+    public int CheckCount { get; private set; }
 
     public void EnsureSufficientSpace(string destinationPath, long bytesNeeded)
     {
+        CheckCount++;
+
         if (FailNextCheck)
         {
             FailNextCheck = false;
@@ -655,5 +761,19 @@ public sealed class PausingReadStream(string body) : Stream
     public void ReleaseSecondRead()
     {
         _continueSecondRead.TrySetResult();
+    }
+}
+
+public sealed class UnknownLengthContent(byte[] body) : HttpContent
+{
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+    {
+        return stream.WriteAsync(body).AsTask();
+    }
+
+    protected override bool TryComputeLength(out long length)
+    {
+        length = 0;
+        return false;
     }
 }

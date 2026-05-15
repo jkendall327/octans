@@ -6,5 +6,6 @@ public enum DownloadFailureCategory
     Http,
     Network,
     Validation,
-    Filesystem
+    Filesystem,
+    SizeLimit
 }

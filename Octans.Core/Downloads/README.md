@@ -38,6 +38,7 @@ builder.Services.AddDownloadManager(options =>
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;
     options.DiskSpace.RequiredFreeSpaceHeadroomBytes = 250L * 1024 * 1024;
+    options.SizeLimits.MaxBytes = 10L * 1024 * 1024 * 1024;
     options.ContentTypeValidation.AllowMissingContentType = true;
     options.ContentTypeValidation.AllowGenericContentType = true;
 });
@@ -55,6 +56,11 @@ Downloads also perform best-effort disk-space checks before known-size transfers
 and while streaming chunks. `DownloadManagerOptions.DiskSpace` controls whether
 the checks run and how much free-space headroom remains reserved on the
 destination volume.
+
+Downloads enforce `DownloadManagerOptions.SizeLimits.MaxBytes` before streaming
+known oversized responses and while streaming unknown or misreported response
+bodies. Domain and source-type entries can override the global cap for specific
+hosts or callers.
 
 ## Components
 

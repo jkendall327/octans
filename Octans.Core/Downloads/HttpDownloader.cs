@@ -77,6 +77,16 @@ public class HttpDownloader(
                 validationMessage: ex.Message,
                 responseContentType: ex.ResponseContentType);
         }
+        catch (DownloadSizeLimitException ex)
+        {
+            logger.LogWarning(ex, "Download size limit validation failed: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.SizeLimit,
+                DownloadTerminalOutcome.ValidationFailed,
+                validationMessage: ex.Message);
+        }
         catch (InvalidDataException ex)
         {
             logger.LogWarning(ex, "Download validation failed: {Url}", download.Url);
@@ -148,6 +158,12 @@ public class HttpDownloader(
             }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
+            var maxDownloadSizeBytes = GetMaxDownloadSizeBytes(download);
+            if (totalBytes >= 0 && maxDownloadSizeBytes is { } maxBytes && totalBytes > maxBytes)
+            {
+                throw DownloadSizeLimitException.ForReportedSize(totalBytes, maxBytes);
+            }
+
             if (totalBytes >= 0)
             {
                 diskSpaceGuard.EnsureSufficientSpace(download.DestinationPath, totalBytes);
@@ -155,7 +171,12 @@ public class HttpDownloader(
 
             await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
-            var (bytesDownloaded, startTime) = await StreamToStagingFile(download, stagingPath, response, combinedToken);
+            var (bytesDownloaded, startTime) = await StreamToStagingFile(
+                download,
+                stagingPath,
+                response,
+                maxDownloadSizeBytes,
+                combinedToken);
             if (totalBytes >= 0 && bytesDownloaded != totalBytes)
             {
                 throw new InvalidDataException(
@@ -197,6 +218,7 @@ public class HttpDownloader(
         QueuedDownload download,
         string stagingPath,
         HttpResponseMessage response,
+        long? maxDownloadSizeBytes,
         CancellationToken combinedToken)
     {
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
@@ -213,6 +235,11 @@ public class HttpDownloader(
         int bytesRead;
         while ((bytesRead = await contentStream.ReadAsync(buffer, combinedToken)) > 0)
         {
+            if (maxDownloadSizeBytes is { } maxBytes && bytesDownloaded > maxBytes - bytesRead)
+            {
+                throw DownloadSizeLimitException.ForReceivedSize(bytesDownloaded + bytesRead, maxBytes);
+            }
+
             await bandwidthGate.WaitForBytesAsync(download.Domain, bytesRead, combinedToken);
             diskSpaceGuard.EnsureSufficientSpace(
                 download.DestinationPath,
@@ -255,6 +282,30 @@ public class HttpDownloader(
         return (bytesDownloaded, startTime);
     }
 
+    private long? GetMaxDownloadSizeBytes(QueuedDownload download)
+    {
+        var sizeLimits = options.Value.SizeLimits;
+        if (!sizeLimits.Enabled)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(download.SourceType) &&
+            sizeLimits.MaxBytesBySourceType.TryGetValue(download.SourceType, out var sourceMaxBytes) &&
+            sourceMaxBytes > 0)
+        {
+            return sourceMaxBytes;
+        }
+
+        if (sizeLimits.MaxBytesByDomain.TryGetValue(download.Domain, out var domainMaxBytes) &&
+            domainMaxBytes > 0)
+        {
+            return domainMaxBytes;
+        }
+
+        return sizeLimits.MaxBytes > 0 ? sizeLimits.MaxBytes : null;
+    }
+
     private static long GetRequiredBytesBeforeWrite(long? contentLength, long bytesDownloaded, int bytesRead)
     {
         if (contentLength is not { } totalBytes || totalBytes < 0)
@@ -287,5 +338,4 @@ public class HttpDownloader(
             _ => DownloadFailureCategory.Unknown
         };
     }
-
 }
