@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.IO.Abstractions;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Octans.Core.Downloads.Bandwidth;
@@ -185,6 +187,8 @@ public class HttpDownloader(
 
             await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
+            var hashValidators = DownloadHashValidator.Create(download.ExpectedHashes);
+
             var (bytesDownloaded, startTime) = await StreamToStagingFile(
                 download,
                 stagingPath,
@@ -194,8 +198,10 @@ public class HttpDownloader(
             if (totalBytes >= 0 && bytesDownloaded != totalBytes)
             {
                 throw new InvalidDataException(
-                    $"Download ended after {bytesDownloaded} bytes, but the server reported {totalBytes} bytes.");
+                    $"Content-Length mismatch: download ended after {bytesDownloaded} bytes, but the server reported {totalBytes} bytes.");
             }
+
+            hashValidators.Validate(fileSystem, stagingPath);
 
             stagingPaths.MoveToDestination(download, stagingPath);
 
@@ -294,6 +300,118 @@ public class HttpDownloader(
         }
 
         return (bytesDownloaded, startTime);
+    }
+
+
+    private sealed class DownloadHashValidator
+    {
+        private static readonly Dictionary<string, Func<Stream, byte[]>> SupportedAlgorithms = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["SHA256"] = stream => SHA256.HashData(stream),
+            ["SHA384"] = stream => SHA384.HashData(stream),
+            ["SHA512"] = stream => SHA512.HashData(stream)
+        };
+
+        private readonly List<HashValidationState> _states;
+
+        private DownloadHashValidator(List<HashValidationState> states)
+        {
+            _states = states;
+        }
+
+        public static DownloadHashValidator Create(string? serializedExpectations)
+        {
+            var expectations = DownloadHashExpectations.Deserialize(serializedExpectations);
+            var states = expectations.Select(BuildState).ToList();
+            return new(states);
+        }
+
+        public void Validate(IFileSystem fileSystem, string stagingPath)
+        {
+            foreach (var state in _states)
+            {
+                using var stream = fileSystem.File.OpenRead(stagingPath);
+                var actual = Convert.ToHexString(state.ComputeHash(stream)).ToLower(CultureInfo.InvariantCulture);
+                if (string.Equals(actual, state.ExpectedHex, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                throw new InvalidDataException(
+                    $"Hash mismatch for {state.DisplayAlgorithm}: expected {state.ExpectedHex}, got {actual}.");
+            }
+        }
+
+        private static HashValidationState BuildState(DownloadHashExpectation expectation)
+        {
+            if (string.IsNullOrWhiteSpace(expectation.Algorithm))
+            {
+                throw new InvalidDataException("Missing hash validator algorithm.");
+            }
+
+            var algorithmKey = NormalizeAlgorithm(expectation.Algorithm);
+            if (!SupportedAlgorithms.TryGetValue(algorithmKey, out var computeHash))
+            {
+                throw new InvalidDataException(
+                    $"Unsupported hash validator '{expectation.Algorithm}'. Supported validators: SHA-256, SHA-384, SHA-512.");
+            }
+
+            var expectedHex = NormalizeHex(expectation.Value);
+            if (expectedHex.Length == 0)
+            {
+                throw new InvalidDataException($"Missing expected hash value for {expectation.Algorithm}.");
+            }
+
+            if (!HasExpectedLength(algorithmKey, expectedHex))
+            {
+                throw new InvalidDataException(
+                    $"Expected hash value for {expectation.Algorithm} has an invalid length.");
+            }
+
+            return new(expectation.Algorithm, expectedHex, computeHash);
+        }
+
+        private static string NormalizeAlgorithm(string algorithm)
+        {
+            return algorithm
+                .Replace("-", string.Empty, StringComparison.Ordinal)
+                .Replace("_", string.Empty, StringComparison.Ordinal)
+                .Replace(" ", string.Empty, StringComparison.Ordinal)
+                .ToUpperInvariant();
+        }
+
+        private static string NormalizeHex(string value)
+        {
+            var normalized = value
+                .Replace(" ", string.Empty, StringComparison.Ordinal)
+                .Replace(":", string.Empty, StringComparison.Ordinal)
+                .ToLower(CultureInfo.InvariantCulture);
+
+            if (normalized.Length % 2 != 0 || normalized.Any(c => !Uri.IsHexDigit(c)))
+            {
+                throw new InvalidDataException("Expected hash value must be hexadecimal.");
+            }
+
+            return normalized;
+        }
+
+        private static bool HasExpectedLength(string algorithmKey, string expectedHex)
+        {
+            var expectedLength = algorithmKey switch
+            {
+                "SHA256" => 64,
+                "SHA384" => 96,
+                "SHA512" => 128,
+                _ => 0
+            };
+
+            return expectedHex.Length == expectedLength;
+        }
+
+        private sealed record HashValidationState(
+            string DisplayAlgorithm,
+            string ExpectedHex,
+            Func<Stream, byte[]> ComputeHash);
     }
 
     private long? GetMaxDownloadSizeBytes(QueuedDownload download)

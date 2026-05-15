@@ -275,6 +275,92 @@ public class HttpDownloaderTests
     }
 
     [Fact]
+    public async Task ProcessDownloadAsync_WhenExpectedHashMatches_CompletesAndPersistsResponseMetadata()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        download.ExpectedHashes = "[{\"algorithm\":\"SHA-256\",\"value\":\"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\"}]";
+        var lastModified = new DateTimeOffset(2026, 5, 15, 12, 34, 56, TimeSpan.Zero);
+        var content = new StringContent("hello");
+        content.Headers.LastModified = lastModified;
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content,
+            Headers =
+            {
+                ETag = new("\"abc123\"")
+            }
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update =>
+                update.Outcome == DownloadTerminalOutcome.Completed &&
+                update.ResponseETag == "\"abc123\"" &&
+                update.ResponseLastModified == lastModified));
+        await _lifecycle.DidNotReceive().MarkFailedAsync(downloadId, Arg.Any<string>());
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenExpectedHashDoesNotMatch_DeletesStagingAndDoesNotCreateFinalFile()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        download.ExpectedHashes = "[{\"algorithm\":\"SHA-256\",\"value\":\"0000000000000000000000000000000000000000000000000000000000000000\"}]";
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("hello")
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("Hash mismatch")),
+            DownloadFailureCategory.Validation,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s => s.Contains("Hash mismatch")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenHashValidatorIsUnsupported_FailsBeforeStreaming()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        download.ExpectedHashes = "[{\"algorithm\":\"crc32\",\"value\":\"12345678\"}]";
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("hello")
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("Unsupported hash validator")),
+            DownloadFailureCategory.Validation,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s => s.Contains("Unsupported hash validator")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        await _bandwidthGate.DidNotReceive().WaitForBytesAsync(
+            Arg.Any<string>(),
+            Arg.Any<long>(),
+            Arg.Any<CancellationToken>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
     public async Task ProcessDownloadAsync_WhenKnownContentLengthExceedsAvailableSpace_FailsBeforeWritingStagingFile()
     {
         var downloadId = Guid.NewGuid();
