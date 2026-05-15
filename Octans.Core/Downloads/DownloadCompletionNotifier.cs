@@ -1,15 +1,15 @@
-using Octans.Data.Models;
+using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
 
 public interface IDownloadCompletionNotifier
 {
-    Task DownloadCompletedAsync(DownloadStatus status, CancellationToken cancellationToken = default);
+    Task DownloadFinishedAsync(DownloadJobResult result, CancellationToken cancellationToken = default);
 }
 
 public sealed class NoOpDownloadCompletionNotifier : IDownloadCompletionNotifier
 {
-    public Task DownloadCompletedAsync(DownloadStatus status, CancellationToken cancellationToken = default)
+    public Task DownloadFinishedAsync(DownloadJobResult result, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }

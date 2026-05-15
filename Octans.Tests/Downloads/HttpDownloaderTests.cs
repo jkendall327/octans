@@ -5,6 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core.Downloads;
 using Octans.Core.Downloads.Bandwidth;
+using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
 
 namespace Octans.Tests.Downloads;
@@ -78,7 +79,11 @@ public class HttpDownloaderTests
 
         Assert.False(_fileSystem.File.Exists(stagingPath));
         Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(destinationPath));
-        await _lifecycle.Received(1).MarkCompletedAsync(downloadId);
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update =>
+                update.Outcome == DownloadTerminalOutcome.Completed &&
+                update.HttpStatusCode == 200));
         await _bandwidthGate.Received(2).WaitForBytesAsync("example.com", Arg.Any<long>(), Arg.Any<CancellationToken>());
     }
 
@@ -107,7 +112,12 @@ public class HttpDownloaderTests
         // Assert
         // Verify state updates
         await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
-        await _lifecycle.Received(1).MarkFailedAsync(downloadId, Arg.Is<string>(s => s.Contains("404")));
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("404")),
+            DownloadFailureCategory.Http,
+            DownloadTerminalOutcome.TerminalHttpFailure,
+            404);
 
         // Verify file was not created
         Assert.False(_fileSystem.File.Exists(destinationPath));
@@ -191,7 +201,10 @@ public class HttpDownloaderTests
 
         await _sut.ProcessDownloadAsync(download, _cts.Token);
 
-        await _lifecycle.Received(1).MarkFailedAsync(downloadId, Arg.Is<string>(s => s.Contains("stream failed")));
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("stream failed")),
+            DownloadFailureCategory.Filesystem);
         await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
         Assert.False(_fileSystem.File.Exists(destinationPath));
         Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
@@ -214,7 +227,10 @@ public class HttpDownloaderTests
 
         await _lifecycle.Received(1).MarkFailedAsync(
             downloadId,
-            Arg.Is<string>(s => s.Contains("server reported 10 bytes")));
+            Arg.Is<string>(s => s.Contains("server reported 10 bytes")),
+            DownloadFailureCategory.Validation,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s => s.Contains("server reported 10 bytes")));
         await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
         Assert.False(_fileSystem.File.Exists(destinationPath));
         Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));

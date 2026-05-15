@@ -12,8 +12,14 @@ public interface IDownloadLifecycleService
     Task ResumeDownloadAsync(Guid id);
     Task RetryDownloadAsync(Guid id);
     Task<bool> MarkInProgressAsync(Guid id);
-    Task MarkCompletedAsync(Guid id);
-    Task MarkFailedAsync(Guid id, string errorMessage);
+    Task MarkCompletedAsync(Guid id, DownloadTerminalUpdate? terminalUpdate = null);
+    Task MarkFailedAsync(
+        Guid id,
+        string errorMessage,
+        DownloadFailureCategory failureCategory = DownloadFailureCategory.Unknown,
+        DownloadTerminalOutcome outcome = DownloadTerminalOutcome.Failed,
+        int? httpStatusCode = null,
+        string? validationMessage = null);
     Task MarkCanceledAsync(Guid id);
 }
 
@@ -80,6 +86,7 @@ public sealed class DownloadLifecycleService(
 
         await stateService.CancelDownloadAsync(id);
         activeDownloads.Cancel(id);
+        await NotifyFinishedAsync(id);
 
         logger.LogDebug("Download canceled");
     }
@@ -137,9 +144,18 @@ public sealed class DownloadLifecycleService(
         return stateService.TryUpdateState(id, CanStartStates, DownloadState.InProgress);
     }
 
-    public async Task MarkCompletedAsync(Guid id)
+    public async Task MarkCompletedAsync(Guid id, DownloadTerminalUpdate? terminalUpdate = null)
     {
-        var completed = await stateService.TryUpdateState(id, ActiveState, DownloadState.Completed);
+        terminalUpdate ??= new()
+        {
+            Outcome = DownloadTerminalOutcome.Completed
+        };
+
+        var completed = await stateService.TryUpdateState(
+            id,
+            ActiveState,
+            DownloadState.Completed,
+            terminalUpdate: terminalUpdate);
         activeDownloads.Release(id);
 
         if (!completed)
@@ -148,23 +164,67 @@ public sealed class DownloadLifecycleService(
             return;
         }
 
-        var status = stateService.GetDownloadById(id);
-        if (status is not null)
-        {
-            await completionNotifier.DownloadCompletedAsync(status);
-        }
+        await NotifyFinishedAsync(id);
     }
 
-    public async Task MarkFailedAsync(Guid id, string errorMessage)
+    public async Task MarkFailedAsync(
+        Guid id,
+        string errorMessage,
+        DownloadFailureCategory failureCategory = DownloadFailureCategory.Unknown,
+        DownloadTerminalOutcome outcome = DownloadTerminalOutcome.Failed,
+        int? httpStatusCode = null,
+        string? validationMessage = null)
     {
-        await stateService.TryUpdateState(id, ActiveState, DownloadState.Failed, errorMessage);
+        var failed = await stateService.TryUpdateState(
+            id,
+            ActiveState,
+            DownloadState.Failed,
+            errorMessage,
+            new()
+            {
+                Outcome = outcome,
+                FailureCategory = failureCategory,
+                HttpStatusCode = httpStatusCode,
+                ValidationMessage = validationMessage
+            });
         activeDownloads.Release(id);
+
+        if (!failed)
+        {
+            return;
+        }
+
+        await NotifyFinishedAsync(id);
     }
 
     public async Task MarkCanceledAsync(Guid id)
     {
-        await stateService.TryUpdateState(id, ActiveState, DownloadState.Canceled);
+        var canceled = await stateService.TryUpdateState(
+            id,
+            ActiveState,
+            DownloadState.Canceled,
+            terminalUpdate: new()
+            {
+                Outcome = DownloadTerminalOutcome.Canceled
+            });
         activeDownloads.Release(id);
+
+        if (!canceled)
+        {
+            return;
+        }
+
+        await NotifyFinishedAsync(id);
+    }
+
+    private async Task NotifyFinishedAsync(Guid id)
+    {
+        var status = stateService.GetDownloadById(id);
+        var result = status is null ? null : DownloadJobResults.FromStatus(status);
+        if (result is not null)
+        {
+            await completionNotifier.DownloadFinishedAsync(result);
+        }
     }
 
 }

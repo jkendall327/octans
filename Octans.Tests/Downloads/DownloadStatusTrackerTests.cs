@@ -298,6 +298,7 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
 
         Assert.NotNull(savedStatus);
         Assert.Equal(DownloadState.Completed, savedStatus.State);
+        Assert.Equal(DownloadTerminalOutcome.Completed, savedStatus.TerminalOutcome);
         Assert.Equal(1024, savedStatus.BytesDownloaded);
         Assert.Equal(2048, savedStatus.TotalBytes);
         Assert.NotNull(savedStatus.CompletedAt);

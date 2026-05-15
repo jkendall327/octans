@@ -23,6 +23,13 @@ public class DownloadStatus
     public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset LastUpdated { get; set; }
     public string? ErrorMessage { get; set; }
+    public DownloadTerminalOutcome? TerminalOutcome { get; set; }
+    public DownloadFailureCategory? FailureCategory { get; set; }
+    public int? HttpStatusCode { get; set; }
+    public string? ResponseContentType { get; set; }
+    public string? ResponseETag { get; set; }
+    public DateTimeOffset? ResponseLastModified { get; set; }
+    public string? ValidationMessage { get; set; }
     public required string Domain { get; set; }
     public string? SourceType { get; set; }
     public string? SourceId { get; set; }

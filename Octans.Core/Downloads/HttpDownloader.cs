@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Downloads.Bandwidth;
+using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
@@ -38,10 +39,33 @@ public class HttpDownloader(
             logger.LogInformation("Download canceled: {Url}", download.Url);
             await lifecycle.MarkCanceledAsync(downloadId);
         }
+        catch (HttpRequestException ex) when (ex.StatusCode is { } statusCode)
+        {
+            logger.LogWarning(ex, "Download failed with HTTP status {StatusCode}: {Url}", (int)statusCode, download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Http,
+                DownloadTerminalOutcome.TerminalHttpFailure,
+                (int)statusCode);
+        }
+        catch (InvalidDataException ex)
+        {
+            logger.LogWarning(ex, "Download validation failed: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Validation,
+                DownloadTerminalOutcome.ValidationFailed,
+                validationMessage: ex.Message);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
             logger.LogError(ex, "Download failed: {Url}", download.Url);
-            await lifecycle.MarkFailedAsync(downloadId, ex.Message);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                CategorizeFailure(ex));
         }
     }
 
@@ -68,7 +92,13 @@ public class HttpDownloader(
                 HttpCompletionOption.ResponseHeadersRead,
                 combinedToken);
 
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"HTTP download failed with status {(int)response.StatusCode} ({response.ReasonPhrase ?? response.StatusCode.ToString()}).",
+                    null,
+                    response.StatusCode);
+            }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
 
@@ -91,7 +121,14 @@ public class HttpDownloader(
                 totalBytes,
                 bytesDownloaded / totalElapsed.TotalSeconds);
 
-            await lifecycle.MarkCompletedAsync(downloadId);
+            await lifecycle.MarkCompletedAsync(downloadId, new()
+            {
+                Outcome = DownloadTerminalOutcome.Completed,
+                HttpStatusCode = (int)response.StatusCode,
+                ResponseContentType = response.Content.Headers.ContentType?.ToString(),
+                ResponseETag = response.Headers.ETag?.ToString(),
+                ResponseLastModified = response.Content.Headers.LastModified
+            });
 
             logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
                 download.Url,
@@ -165,4 +202,16 @@ public class HttpDownloader(
             logger.LogWarning(ex, "Failed to delete staging file for {DestinationPath}", destinationPath);
         }
     }
+
+    private static DownloadFailureCategory CategorizeFailure(Exception ex)
+    {
+        return ex switch
+        {
+            HttpRequestException => DownloadFailureCategory.Network,
+            IOException => DownloadFailureCategory.Filesystem,
+            UnauthorizedAccessException => DownloadFailureCategory.Filesystem,
+            _ => DownloadFailureCategory.Unknown
+        };
+    }
+
 }

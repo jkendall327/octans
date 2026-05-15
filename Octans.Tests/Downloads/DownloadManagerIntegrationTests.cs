@@ -37,7 +37,7 @@ public sealed class DownloadManagerIntegrationTests
 
         await harness.StartAsync();
 
-        await WaitUntilAsync(() => harness.Notifier.CompletedDownloads.Any(d => d.Id == downloadId));
+        await WaitUntilAsync(() => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == downloadId));
 
         var stateService = harness.Services.GetRequiredService<IDownloadStateService>();
         var status = stateService.GetDownloadById(downloadId);
@@ -51,6 +51,16 @@ public sealed class DownloadManagerIntegrationTests
         Assert.Equal("sub-1", status.SourceId);
         Assert.Equal("alpha", await harness.FileSystem.File.ReadAllTextAsync("/downloads/a.txt"));
 
+        var result = await downloadService.GetResultAsync(downloadId);
+        Assert.NotNull(result);
+        Assert.Equal(DownloadTerminalOutcome.Completed, result.Outcome);
+        Assert.Equal(downloadId, result.DownloadId);
+        Assert.Equal("Alpha", result.DisplayName);
+        Assert.Equal("Subscription", result.SourceType);
+        Assert.Equal("sub-1", result.SourceId);
+        Assert.Equal(5, result.BytesDownloaded);
+        Assert.Equal(200, result.HttpStatusCode);
+
         var queue = harness.Services.GetRequiredService<IDownloadQueue>();
         Assert.Equal(0, await queue.GetQueuedCountAsync());
 
@@ -59,6 +69,38 @@ public sealed class DownloadManagerIntegrationTests
         Assert.NotNull(savedStatus);
         Assert.Equal(DownloadState.Completed, savedStatus.State);
         Assert.Equal(5, savedStatus.BytesDownloaded);
+    }
+
+    [Fact]
+    public async Task DownloadManager_NotifiesTerminalHttpFailureResult()
+    {
+        await using var harness = await DownloadManagerHarness.Create();
+
+        var downloadService = harness.Services.GetRequiredService<IDownloadService>();
+        var downloadId = await downloadService.QueueDownloadAsync(new()
+        {
+            Url = new("https://cdn.example/files/missing.txt"),
+            DestinationPath = "/downloads/missing.txt",
+            SourceType = "Subscription",
+            SourceId = "sub-missing"
+        });
+
+        await harness.StartAsync();
+
+        await WaitUntilAsync(() => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == downloadId));
+
+        var notifiedResult = harness.Notifier.FinishedDownloads.Single(d => d.DownloadId == downloadId);
+        Assert.Equal(DownloadTerminalOutcome.TerminalHttpFailure, notifiedResult.Outcome);
+        Assert.Equal(DownloadFailureCategory.Http, notifiedResult.FailureCategory);
+        Assert.Equal(404, notifiedResult.HttpStatusCode);
+        Assert.Equal("Subscription", notifiedResult.SourceType);
+        Assert.Equal("sub-missing", notifiedResult.SourceId);
+
+        var persistedResult = await downloadService.GetResultAsync(downloadId);
+        Assert.NotNull(persistedResult);
+        Assert.Equal(DownloadTerminalOutcome.TerminalHttpFailure, persistedResult.Outcome);
+        Assert.Equal(404, persistedResult.HttpStatusCode);
+        Assert.False(harness.FileSystem.File.Exists("/downloads/missing.txt"));
     }
 
     [Fact]
@@ -100,7 +142,7 @@ public sealed class DownloadManagerIntegrationTests
 
         harness.HttpHandler.ReleaseResponses();
 
-        await WaitUntilAsync(() => harness.Notifier.CompletedDownloads.Any(d => d.Id == downloadId));
+        await WaitUntilAsync(() => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == downloadId));
 
         Assert.Equal("fresh bytes", await harness.FileSystem.File.ReadAllTextAsync(destinationPath));
     }
@@ -136,8 +178,8 @@ public sealed class DownloadManagerIntegrationTests
         harness.HttpHandler.ReleaseResponses();
 
         await WaitUntilAsync(
-            () => harness.Notifier.CompletedDownloads.Length == 3,
-            async () => $"completed={harness.Notifier.CompletedDownloads.Length}, " +
+            () => harness.Notifier.FinishedDownloads.Length == 3,
+            async () => $"completed={harness.Notifier.FinishedDownloads.Length}, " +
                         $"started={string.Join(", ", harness.HttpHandler.StartedRequests.Select(u => u.ToString()))}, " +
                         $"states={DescribeStates(harness.Services, firstSame, secondSame, other)}, " +
                         $"queued={await harness.Services.GetRequiredService<IDownloadQueue>().GetQueuedCountAsync()}");
@@ -169,14 +211,14 @@ public sealed class DownloadManagerIntegrationTests
 
         await WaitUntilAsync(() => harness.HttpHandler.StartedRequests.Contains(url));
 
-        Assert.DoesNotContain(harness.Notifier.CompletedDownloads, d => d.Id == downloadId);
+        Assert.DoesNotContain(harness.Notifier.FinishedDownloads, d => d.DownloadId == downloadId);
 
         harness.TimeProvider.Advance(TimeSpan.FromMilliseconds(1499));
-        Assert.DoesNotContain(harness.Notifier.CompletedDownloads, d => d.Id == downloadId);
+        Assert.DoesNotContain(harness.Notifier.FinishedDownloads, d => d.DownloadId == downloadId);
 
         harness.TimeProvider.Advance(TimeSpan.FromMilliseconds(1));
 
-        await WaitUntilAsync(() => harness.Notifier.CompletedDownloads.Any(d => d.Id == downloadId));
+        await WaitUntilAsync(() => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == downloadId));
 
         Assert.Equal(body, await harness.FileSystem.File.ReadAllTextAsync("/downloads/large.txt"));
     }
@@ -313,13 +355,13 @@ public sealed class DownloadManagerIntegrationTests
 
     private sealed class TrackingCompletionNotifier : IDownloadCompletionNotifier
     {
-        private readonly ConcurrentQueue<DownloadStatus> _completedDownloads = new();
+        private readonly ConcurrentQueue<DownloadJobResult> _finishedDownloads = new();
 
-        public DownloadStatus[] CompletedDownloads => _completedDownloads.ToArray();
+        public DownloadJobResult[] FinishedDownloads => _finishedDownloads.ToArray();
 
-        public Task DownloadCompletedAsync(DownloadStatus status, CancellationToken cancellationToken = default)
+        public Task DownloadFinishedAsync(DownloadJobResult result, CancellationToken cancellationToken = default)
         {
-            _completedDownloads.Enqueue(status);
+            _finishedDownloads.Enqueue(result);
             return Task.CompletedTask;
         }
     }

@@ -22,7 +22,8 @@ public interface IDownloadStateService
         Guid id,
         IReadOnlySet<DownloadState> expectedStates,
         DownloadState newState,
-        string? errorMessage = null);
+        string? errorMessage = null,
+        DownloadTerminalUpdate? terminalUpdate = null);
     Task QueueDownloadAsync(DownloadStatus status);
     Task<bool> TryRequeuePausedDownloadAsync(Guid id);
     Task<bool> TryRequeueFailedOrCanceledDownloadAsync(Guid id);
@@ -141,7 +142,8 @@ public class DownloadStatusTracker(
         Guid id,
         IReadOnlySet<DownloadState> expectedStates,
         DownloadState newState,
-        string? errorMessage = null)
+        string? errorMessage = null,
+        DownloadTerminalUpdate? terminalUpdate = null)
     {
         if (!_activeDownloads.TryGetValue(id, out var status) || !expectedStates.Contains(status.State))
         {
@@ -150,7 +152,7 @@ public class DownloadStatusTracker(
 
         var now = timeProvider.GetUtcNow();
         var updatedStatus = CopyStatus(status);
-        ApplyState(updatedStatus, newState, now, errorMessage);
+        ApplyState(updatedStatus, newState, now, errorMessage, terminalUpdate);
 
         await using (var db = await contextFactory.CreateDbContextAsync())
         {
@@ -272,6 +274,7 @@ public class DownloadStatusTracker(
                 status.ErrorMessage = null;
                 status.StartedAt = null;
                 status.CompletedAt = null;
+                ClearTerminalResult(status);
             });
     }
 
@@ -400,7 +403,12 @@ public class DownloadStatusTracker(
         });
     }
 
-    private static void ApplyState(DownloadStatus status, DownloadState newState, DateTimeOffset now, string? errorMessage = null)
+    private static void ApplyState(
+        DownloadStatus status,
+        DownloadState newState,
+        DateTimeOffset now,
+        string? errorMessage = null,
+        DownloadTerminalUpdate? terminalUpdate = null)
     {
         status.State = newState;
         status.LastUpdated = now;
@@ -412,9 +420,24 @@ public class DownloadStatusTracker(
                 break;
             case DownloadState.Completed:
                 status.CompletedAt = now;
+                ApplyTerminalResult(status, terminalUpdate ?? new()
+                {
+                    Outcome = DownloadTerminalOutcome.Completed
+                });
                 break;
             case DownloadState.Failed:
                 status.ErrorMessage = errorMessage;
+                ApplyTerminalResult(status, terminalUpdate ?? new()
+                {
+                    Outcome = DownloadTerminalOutcome.Failed,
+                    FailureCategory = DownloadFailureCategory.Unknown
+                });
+                break;
+            case DownloadState.Canceled:
+                ApplyTerminalResult(status, terminalUpdate ?? new()
+                {
+                    Outcome = DownloadTerminalOutcome.Canceled
+                });
                 break;
         }
     }
@@ -436,6 +459,13 @@ public class DownloadStatusTracker(
         CompletedAt = status.CompletedAt,
         LastUpdated = status.LastUpdated,
         ErrorMessage = status.ErrorMessage,
+        TerminalOutcome = status.TerminalOutcome,
+        FailureCategory = status.FailureCategory,
+        HttpStatusCode = status.HttpStatusCode,
+        ResponseContentType = status.ResponseContentType,
+        ResponseETag = status.ResponseETag,
+        ResponseLastModified = status.ResponseLastModified,
+        ValidationMessage = status.ValidationMessage,
         Domain = status.Domain,
         SourceType = status.SourceType,
         SourceId = status.SourceId
@@ -450,6 +480,35 @@ public class DownloadStatusTracker(
         target.StartedAt = source.StartedAt;
         target.CompletedAt = source.CompletedAt;
         target.ErrorMessage = source.ErrorMessage;
+        target.TerminalOutcome = source.TerminalOutcome;
+        target.FailureCategory = source.FailureCategory;
+        target.HttpStatusCode = source.HttpStatusCode;
+        target.ResponseContentType = source.ResponseContentType;
+        target.ResponseETag = source.ResponseETag;
+        target.ResponseLastModified = source.ResponseLastModified;
+        target.ValidationMessage = source.ValidationMessage;
+    }
+
+    private static void ApplyTerminalResult(DownloadStatus status, DownloadTerminalUpdate terminalUpdate)
+    {
+        status.TerminalOutcome = terminalUpdate.Outcome;
+        status.FailureCategory = terminalUpdate.FailureCategory;
+        status.HttpStatusCode = terminalUpdate.HttpStatusCode;
+        status.ResponseContentType = terminalUpdate.ResponseContentType;
+        status.ResponseETag = terminalUpdate.ResponseETag;
+        status.ResponseLastModified = terminalUpdate.ResponseLastModified;
+        status.ValidationMessage = terminalUpdate.ValidationMessage;
+    }
+
+    private static void ClearTerminalResult(DownloadStatus status)
+    {
+        status.TerminalOutcome = null;
+        status.FailureCategory = null;
+        status.HttpStatusCode = null;
+        status.ResponseContentType = null;
+        status.ResponseETag = null;
+        status.ResponseLastModified = null;
+        status.ValidationMessage = null;
     }
 
     private static async Task UpsertQueuedDownloadAsync(ServerDbContext db, DownloadStatus status, DateTimeOffset queuedAt)

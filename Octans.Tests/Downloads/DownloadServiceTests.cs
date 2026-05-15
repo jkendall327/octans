@@ -13,6 +13,7 @@ public class DownloadServiceTests
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly IDownloadCompletionNotifier _completionNotifier = Substitute.For<IDownloadCompletionNotifier>();
+    private readonly IDownloadJobResultService _jobResults = Substitute.For<IDownloadJobResultService>();
     private readonly DownloadLifecycleService _lifecycle;
     private readonly DownloadService _service;
 
@@ -26,7 +27,41 @@ public class DownloadServiceTests
             timeProvider,
             NullLogger<DownloadLifecycleService>.Instance);
 
-        _service = new(_lifecycle);
+        _service = new(_lifecycle, _jobResults);
+    }
+
+    [Fact]
+    public async Task QueueDownloadJobAsync_ShouldReturnTypedHandle()
+    {
+        var request = new DownloadRequest
+        {
+            Url = new("https://example.com/file.zip"),
+            DestinationPath = "/downloads/file.zip"
+        };
+
+        var handle = await _service.QueueDownloadJobAsync(request);
+
+        Assert.NotEqual(Guid.Empty, handle.Id);
+        await _mockStateService.Received(1).QueueDownloadAsync(Arg.Is<DownloadStatus>(ds => ds.Id == handle.Id));
+    }
+
+    [Fact]
+    public async Task GetResultAsync_ShouldDelegateToJobResultService()
+    {
+        var handle = new DownloadJobHandle(Guid.NewGuid());
+        var result = new DownloadJobResult
+        {
+            DownloadId = handle.Id,
+            Outcome = DownloadTerminalOutcome.Completed,
+            Url = "https://example.com/file.zip",
+            DestinationPath = "/downloads/file.zip"
+        };
+
+        _jobResults.GetResultAsync(handle, Arg.Any<CancellationToken>()).Returns(result);
+
+        var actual = await _service.GetResultAsync(handle);
+
+        Assert.Same(result, actual);
     }
 
     [Fact]
@@ -62,11 +97,26 @@ public class DownloadServiceTests
     public async Task CancelDownloadAsync_ShouldCancelAndUpdateState()
     {
         var id = Guid.NewGuid();
+        var status = new DownloadStatus
+        {
+            Id = id,
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            State = DownloadState.Canceled,
+            Domain = "example.com",
+            TerminalOutcome = DownloadTerminalOutcome.Canceled
+        };
+
+        _mockStateService.GetDownloadById(id).Returns(status);
 
         await _service.CancelDownloadAsync(id);
 
         await _mockStateService.Received(1).CancelDownloadAsync(id);
         _activeDownloads.Received(1).Cancel(id);
+        await _completionNotifier.Received(1).DownloadFinishedAsync(Arg.Is<DownloadJobResult>(result =>
+            result.DownloadId == id &&
+            result.Outcome == DownloadTerminalOutcome.Canceled));
     }
 
     [Fact]
@@ -209,8 +259,9 @@ public class DownloadServiceTests
             Url = "https://example.com/file.zip",
             Filename = "file.zip",
             DestinationPath = "/downloads/file.zip",
-            State = DownloadState.InProgress,
-            Domain = "example.com"
+            State = DownloadState.Completed,
+            Domain = "example.com",
+            TerminalOutcome = DownloadTerminalOutcome.Completed
         };
 
         _mockStateService.GetDownloadById(id).Returns(status);
@@ -218,7 +269,8 @@ public class DownloadServiceTests
             .TryUpdateState(
                 id,
                 Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
-                DownloadState.Completed)
+                DownloadState.Completed,
+                terminalUpdate: Arg.Any<DownloadTerminalUpdate>())
             .Returns(true);
 
         await _lifecycle.MarkCompletedAsync(id);
@@ -228,17 +280,43 @@ public class DownloadServiceTests
             .TryUpdateState(
                 id,
                 Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
-                DownloadState.Completed);
+                DownloadState.Completed,
+                terminalUpdate: Arg.Is<DownloadTerminalUpdate>(update =>
+                    update.Outcome == DownloadTerminalOutcome.Completed));
         _activeDownloads.Received(1).Release(id);
-        await _completionNotifier.Received(1).DownloadCompletedAsync(status);
+        await _completionNotifier.Received(1).DownloadFinishedAsync(Arg.Is<DownloadJobResult>(result =>
+            result.DownloadId == id &&
+            result.Outcome == DownloadTerminalOutcome.Completed));
     }
 
     [Fact]
-    public async Task MarkFailedAsync_ShouldUpdateStateAndReleaseActiveToken()
+    public async Task MarkFailedAsync_ShouldUpdateStateReleaseActiveTokenAndNotify()
     {
         var id = Guid.NewGuid();
+        var status = new DownloadStatus
+        {
+            Id = id,
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            State = DownloadState.Failed,
+            Domain = "example.com",
+            ErrorMessage = "Network broke",
+            TerminalOutcome = DownloadTerminalOutcome.Failed,
+            FailureCategory = DownloadFailureCategory.Network
+        };
 
-        await _lifecycle.MarkFailedAsync(id, "Network broke");
+        _mockStateService.GetDownloadById(id).Returns(status);
+        _mockStateService
+            .TryUpdateState(
+                id,
+                Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
+                DownloadState.Failed,
+                "Network broke",
+                Arg.Any<DownloadTerminalUpdate>())
+            .Returns(true);
+
+        await _lifecycle.MarkFailedAsync(id, "Network broke", DownloadFailureCategory.Network);
 
         await _mockStateService
             .Received(1)
@@ -246,8 +324,14 @@ public class DownloadServiceTests
                 id,
                 Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
                 DownloadState.Failed,
-                "Network broke");
+                "Network broke",
+                Arg.Is<DownloadTerminalUpdate>(update =>
+                    update.Outcome == DownloadTerminalOutcome.Failed &&
+                    update.FailureCategory == DownloadFailureCategory.Network));
         _activeDownloads.Received(1).Release(id);
+        await _completionNotifier.Received(1).DownloadFinishedAsync(Arg.Is<DownloadJobResult>(result =>
+            result.DownloadId == id &&
+            result.FailureCategory == DownloadFailureCategory.Network));
     }
 
     [Fact]
@@ -262,7 +346,9 @@ public class DownloadServiceTests
             .TryUpdateState(
                 id,
                 Arg.Is<IReadOnlySet<DownloadState>>(states => IsOnlyInProgress(states)),
-                DownloadState.Canceled);
+                DownloadState.Canceled,
+                terminalUpdate: Arg.Is<DownloadTerminalUpdate>(update =>
+                    update.Outcome == DownloadTerminalOutcome.Canceled));
         _activeDownloads.Received(1).Release(id);
     }
 
@@ -281,7 +367,7 @@ public class DownloadServiceTests
         await _lifecycle.MarkCompletedAsync(id);
 
         _activeDownloads.Received(1).Release(id);
-        await _completionNotifier.DidNotReceive().DownloadCompletedAsync(Arg.Any<DownloadStatus>());
+        await _completionNotifier.DidNotReceive().DownloadFinishedAsync(Arg.Any<DownloadJobResult>());
     }
 
     private static bool IsOnlyInProgress(IReadOnlySet<DownloadState> states)

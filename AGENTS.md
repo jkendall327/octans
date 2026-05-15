@@ -27,7 +27,7 @@ But if I need to start up a new database for something really radical, it's not 
 
 ## Verification
 
-Run after your changes: `dotnet build && dotnet test`.
+Use standard `dotnet build` and `dotnet test` to verify your work.
 
 ## Migrations
 
