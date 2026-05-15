@@ -8,6 +8,7 @@ using Octans.Core.Downloads;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
+using Polly.CircuitBreaker;
 
 namespace Octans.Tests.Downloads;
 
@@ -18,6 +19,7 @@ public class HttpDownloaderTests
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadLifecycleService _lifecycle = Substitute.For<IDownloadLifecycleService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
+    private readonly IDownloadHostCircuitRegistry _hostCircuitRegistry = Substitute.For<IDownloadHostCircuitRegistry>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
     private readonly HttpDownloader _sut;
@@ -55,6 +57,7 @@ public class HttpDownloaderTests
             _stateService,
             _lifecycle,
             _activeDownloads,
+            _hostCircuitRegistry,
             factory,
             _fileSystem,
             new DownloadStagingPaths(_fileSystem),
@@ -129,6 +132,30 @@ public class HttpDownloaderTests
             404);
 
         // Verify file was not created
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenHostCircuitIsOpen_MarksDownloadFailedWithClearMessage()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = new QueuedDownload
+        {
+            Id = downloadId,
+            Url = "https://example.com/test.txt",
+            DestinationPath = destinationPath,
+            Domain = "example.com"
+        };
+        _messageHandler.ExceptionToThrow = new BrokenCircuitException("Circuit is open.");
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(message => message.Contains("Host circuit for example.com is open")),
+            DownloadFailureCategory.Network);
         Assert.False(_fileSystem.File.Exists(destinationPath));
         Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
     }

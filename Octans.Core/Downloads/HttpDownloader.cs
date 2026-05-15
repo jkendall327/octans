@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
+using Polly.CircuitBreaker;
 
 namespace Octans.Core.Downloads;
 
@@ -16,6 +17,7 @@ public class HttpDownloader(
     IDownloadStateService stateService,
     IDownloadLifecycleService lifecycle,
     IActiveDownloadRegistry activeDownloads,
+    IDownloadHostCircuitRegistry hostCircuitRegistry,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
     DownloadStagingPaths stagingPaths,
@@ -51,6 +53,18 @@ public class HttpDownloader(
                 DownloadFailureCategory.Http,
                 DownloadTerminalOutcome.TerminalHttpFailure,
                 (int)statusCode);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            var message = hostCircuitRegistry.TryGetOpenCircuit(download.Domain, out var openUntil)
+                ? $"Host circuit for {download.Domain} is open until {openUntil:u}."
+                : $"Host circuit for {download.Domain} is open.";
+
+            logger.LogWarning(ex, "Download skipped because host circuit is open: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                message,
+                DownloadFailureCategory.Network);
         }
         catch (DownloadContentTypeException ex)
         {

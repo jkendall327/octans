@@ -6,6 +6,17 @@ public class DownloadManagerOptions
     public int MaxConcurrentDownloadsPerDomain { get; set; } = 2;
     public DownloadDiskSpaceOptions DiskSpace { get; set; } = new();
     public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();
+    public DownloadHostCircuitBreakerOptions HostCircuitBreaker { get; set; } = new();
+}
+
+public class DownloadHostCircuitBreakerOptions
+{
+    public double FailureRatio { get; set; } = 0.5;
+    public int MinimumThroughput { get; set; } = 5;
+    public TimeSpan SamplingDuration { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan BreakDuration { get; set; } = TimeSpan.FromSeconds(30);
+    public int MaxRetryAttempts { get; set; } = 2;
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(250);
 }
 
 public class DownloadDiskSpaceOptions

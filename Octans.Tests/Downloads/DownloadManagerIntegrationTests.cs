@@ -104,6 +104,46 @@ public sealed class DownloadManagerIntegrationTests
     }
 
     [Fact]
+    public async Task DownloadManager_RetriesTransientFailureWithoutRetryingTerminalFailure()
+    {
+        await using var harness = await DownloadManagerHarness.Create(options =>
+        {
+            options.HostCircuitBreaker.RetryDelay = TimeSpan.Zero;
+            options.HostCircuitBreaker.MaxRetryAttempts = 2;
+        });
+
+        var transientUrl = new Uri("https://cdn.example/files/eventual.txt");
+        var terminalUrl = new Uri("https://cdn.example/files/terminal.txt");
+        harness.HttpHandler.AddResponseSequence(
+            transientUrl.ToString(),
+            () => new(HttpStatusCode.InternalServerError),
+            () => new(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("eventual"))
+            });
+        harness.HttpHandler.AddResponse(terminalUrl.ToString(), HttpStatusCode.NotFound);
+
+        var downloadService = harness.Services.GetRequiredService<IDownloadService>();
+        var transient = await Queue(downloadService, transientUrl.ToString(), "/downloads/eventual.txt");
+        var terminal = await Queue(downloadService, terminalUrl.ToString(), "/downloads/terminal.txt");
+
+        await harness.StartAsync();
+
+        await WaitUntilAsync(
+            () => harness.Notifier.FinishedDownloads.Length == 2,
+            () => Task.FromResult($"completed={harness.Notifier.FinishedDownloads.Length}, " +
+                                  $"states={DescribeStates(harness.Services, transient, terminal)}"));
+
+        var stateService = harness.Services.GetRequiredService<IDownloadStateService>();
+        Assert.Equal(DownloadState.Completed, stateService.GetDownloadById(transient)?.State);
+        Assert.Equal(DownloadState.Failed, stateService.GetDownloadById(terminal)?.State);
+        Assert.Equal(2, harness.HttpHandler.RequestCountFor(transientUrl));
+        Assert.Equal(1, harness.HttpHandler.RequestCountFor(terminalUrl));
+        Assert.Equal("eventual", await harness.FileSystem.File.ReadAllTextAsync("/downloads/eventual.txt"));
+        Assert.False(harness.FileSystem.File.Exists("/downloads/terminal.txt"));
+    }
+
+    [Fact]
     public async Task DownloadManager_RestoresInterruptedDownloadAndRemovesStaleStagingFile()
     {
         await using var harness = await DownloadManagerHarness.Create();
@@ -192,6 +232,46 @@ public sealed class DownloadManagerIntegrationTests
         Assert.Equal("one", await harness.FileSystem.File.ReadAllTextAsync("/downloads/one.txt"));
         Assert.Equal("two", await harness.FileSystem.File.ReadAllTextAsync("/downloads/two.txt"));
         Assert.Equal("three", await harness.FileSystem.File.ReadAllTextAsync("/downloads/three.txt"));
+    }
+
+    [Fact]
+    public async Task DownloadManager_SkipsOpenHostCircuitAndContinuesHealthyHosts()
+    {
+        await using var harness = await DownloadManagerHarness.Create(options =>
+        {
+            options.MaxConcurrentDownloads = 1;
+            options.HostCircuitBreaker.BreakDuration = TimeSpan.FromSeconds(5);
+        });
+
+        harness.HttpHandler.AddResponse("https://bad.example/files/deferred.txt", "deferred");
+        harness.HttpHandler.AddResponse("https://healthy.example/files/ready.txt", "ready");
+        harness.HostCircuitRegistry.OpenCircuit("bad.example", TimeSpan.FromSeconds(5));
+
+        var downloadService = harness.Services.GetRequiredService<IDownloadService>();
+        var deferred = await Queue(downloadService, "https://bad.example/files/deferred.txt", "/downloads/deferred.txt");
+        var ready = await Queue(downloadService, "https://healthy.example/files/ready.txt", "/downloads/ready.txt");
+
+        await harness.StartAsync();
+
+        await WaitUntilAsync(() => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == ready));
+
+        Assert.DoesNotContain(new Uri("https://bad.example/files/deferred.txt"), harness.HttpHandler.StartedRequests);
+        Assert.Equal(1, await harness.Services.GetRequiredService<IDownloadQueue>().GetQueuedCountAsync());
+
+        harness.TimeProvider.Advance(TimeSpan.FromSeconds(6));
+
+        await WaitUntilAsync(
+            () => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == deferred),
+            async () => $"completed={harness.Notifier.FinishedDownloads.Length}, " +
+                        $"started={string.Join(", ", harness.HttpHandler.StartedRequests.Select(u => u.ToString()))}, " +
+                        $"states={DescribeStates(harness.Services, deferred, ready)}, " +
+                        $"queued={await harness.Services.GetRequiredService<IDownloadQueue>().GetQueuedCountAsync()}");
+
+        var stateService = harness.Services.GetRequiredService<IDownloadStateService>();
+        Assert.Equal(DownloadState.Completed, stateService.GetDownloadById(deferred)?.State);
+        Assert.Equal(DownloadState.Completed, stateService.GetDownloadById(ready)?.State);
+        Assert.Equal("deferred", await harness.FileSystem.File.ReadAllTextAsync("/downloads/deferred.txt"));
+        Assert.Equal("ready", await harness.FileSystem.File.ReadAllTextAsync("/downloads/ready.txt"));
     }
 
     [Fact]
@@ -293,6 +373,8 @@ public sealed class DownloadManagerIntegrationTests
         public MockFileSystem FileSystem { get; }
         public IntegrationHttpMessageHandler HttpHandler { get; }
         public TrackingCompletionNotifier Notifier { get; }
+        public IDownloadHostCircuitRegistry HostCircuitRegistry =>
+            Services.GetRequiredService<IDownloadHostCircuitRegistry>();
         public required FakeTimeProvider TimeProvider { get; init; }
 
         public static async Task<DownloadManagerHarness> Create(
@@ -376,6 +458,8 @@ public sealed class DownloadManagerIntegrationTests
     {
         private readonly Lock _lock = new();
         private readonly Dictionary<Uri, byte[]> _responses = new();
+        private readonly Dictionary<Uri, Queue<Func<HttpResponseMessage>>> _responseSequences = new();
+        private readonly Dictionary<Uri, int> _requestCounts = new();
         private readonly Dictionary<string, int> _activeRequestsByHost = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, int> _maxActiveRequestsByHost = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<Uri> _startedRequests = [];
@@ -413,11 +497,29 @@ public sealed class DownloadManagerIntegrationTests
             _responses[new(url)] = System.Text.Encoding.UTF8.GetBytes(body);
         }
 
+        public void AddResponse(string url, HttpStatusCode statusCode)
+        {
+            AddResponseSequence(url, () => new(statusCode));
+        }
+
+        public void AddResponseSequence(string url, params Func<HttpResponseMessage>[] responses)
+        {
+            _responseSequences[new(url)] = new(responses);
+        }
+
         public int MaxActiveRequestsForHost(string host)
         {
             lock (_lock)
             {
                 return _maxActiveRequestsByHost.GetValueOrDefault(host);
+            }
+        }
+
+        public int RequestCountFor(Uri uri)
+        {
+            lock (_lock)
+            {
+                return _requestCounts.GetValueOrDefault(uri);
             }
         }
 
@@ -442,6 +544,11 @@ public sealed class DownloadManagerIntegrationTests
 
                 if (!_responses.TryGetValue(requestUri, out var body))
                 {
+                    if (_responseSequences.TryGetValue(requestUri, out var sequence) && sequence.TryDequeue(out var next))
+                    {
+                        return next();
+                    }
+
                     return new(HttpStatusCode.NotFound);
                 }
 
@@ -461,6 +568,8 @@ public sealed class DownloadManagerIntegrationTests
             lock (_lock)
             {
                 _activeRequestCount++;
+                _requestCounts.TryGetValue(requestUri, out var requestCount);
+                _requestCounts[requestUri] = requestCount + 1;
                 _startedRequests.Add(requestUri);
                 _activeRequestsByHost.TryGetValue(requestUri.Host, out var hostCount);
                 hostCount++;

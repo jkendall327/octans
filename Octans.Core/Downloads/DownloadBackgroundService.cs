@@ -11,6 +11,7 @@ public sealed class DownloadBackgroundService(
     IDownloadStateService stateService,
     HttpDownloader processor,
     DownloadStagingPaths stagingPaths,
+    IDownloadHostCircuitRegistry hostCircuitRegistry,
     ILogger<DownloadBackgroundService> logger,
     IOptions<DownloadManagerOptions> options) : BackgroundService
 {
@@ -42,7 +43,7 @@ public sealed class DownloadBackgroundService(
                 // Get next eligible download
                 var nextDownload = await downloadQueue.DequeueNextEligibleAsync(
                     stoppingToken,
-                    GetSaturatedDomains());
+                    GetUnavailableDomains());
 
                 if (nextDownload != null)
                 {
@@ -101,6 +102,22 @@ public sealed class DownloadBackgroundService(
             TrackDomainFinished(download.Domain);
             _concurrencyLimiter.Release();
         }
+    }
+
+    private HashSet<string>? GetUnavailableDomains()
+    {
+        var openDomains = hostCircuitRegistry.GetOpenDomains();
+        var saturatedDomains = GetSaturatedDomains();
+
+        if (saturatedDomains is null)
+        {
+            return openDomains.Count == 0
+                ? null
+                : openDomains.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        saturatedDomains.UnionWith(openDomains);
+        return saturatedDomains.Count == 0 ? null : saturatedDomains;
     }
 
     private HashSet<string>? GetSaturatedDomains()
