@@ -12,6 +12,7 @@ public class DownloadStatus
     public required string Filename { get; set; }
     public string? DisplayName { get; set; }
     public required string DestinationPath { get; set; }
+    public string? AllowedContentTypes { get; set; }
     public int Priority { get; set; }
     public long TotalBytes { get; set; }
     public long BytesDownloaded { get; set; }

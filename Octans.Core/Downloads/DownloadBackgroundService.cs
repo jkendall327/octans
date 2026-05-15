@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
 
@@ -11,13 +12,13 @@ public sealed class DownloadBackgroundService(
     HttpDownloader processor,
     DownloadStagingPaths stagingPaths,
     ILogger<DownloadBackgroundService> logger,
-    DownloadManagerOptions options) : BackgroundService
+    IOptions<DownloadManagerOptions> options) : BackgroundService
 {
-    private readonly SemaphoreSlim _concurrencyLimiter = new(options.MaxConcurrentDownloads);
+    private readonly SemaphoreSlim _concurrencyLimiter = new(options.Value.MaxConcurrentDownloads);
     private readonly Lock _activeDomainsLock = new();
     private readonly Dictionary<string, int> _activeDomainCounts = new(StringComparer.OrdinalIgnoreCase);
-    private readonly int _maxConcurrentDownloads = options.MaxConcurrentDownloads;
-    private readonly int _maxConcurrentDownloadsPerDomain = options.MaxConcurrentDownloadsPerDomain;
+    private readonly int _maxConcurrentDownloads = options.Value.MaxConcurrentDownloads;
+    private readonly int _maxConcurrentDownloadsPerDomain = options.Value.MaxConcurrentDownloadsPerDomain;
 
     public override void Dispose()
     {

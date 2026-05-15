@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Models;
 
@@ -12,11 +14,10 @@ public static class DownloadServiceExtensions
         this IServiceCollection services,
         Action<DownloadManagerOptions>? configure = null)
     {
-        // Add options
-        var options = new DownloadManagerOptions();
-        configure?.Invoke(options);
         services.RemoveAll<DownloadManagerOptions>();
-        services.AddSingleton(options);
+        services.AddOptions<DownloadManagerOptions>()
+            .Configure(options => configure?.Invoke(options));
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<DownloadManagerOptions>>().Value);
 
         services.TryAddSingleton<IDownloadStateService, DownloadStatusTracker>();
         services.TryAddSingleton<IActiveDownloadRegistry, ActiveDownloadRegistry>();
@@ -38,5 +39,17 @@ public static class DownloadServiceExtensions
         });
 
         return services;
+    }
+
+    public static IServiceCollection AddDownloadManager(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<DownloadManagerOptions>? configure = null)
+    {
+        return services.AddDownloadManager(options =>
+        {
+            configuration.Bind(options);
+            configure?.Invoke(options);
+        });
     }
 }

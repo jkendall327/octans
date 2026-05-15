@@ -37,7 +37,7 @@ builder.Services.AddBandwidthLimiter(options =>
     options.DefaultBytesPerSecond = 1024 * 1024;
 });
 
-builder.Services.AddDownloadManager(options =>
+builder.Services.AddDownloadManager(builder.Configuration.GetSection("Downloads"), options =>
 {
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;

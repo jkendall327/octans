@@ -74,7 +74,8 @@ public class DownloadServiceTests
             DisplayName = "Example file",
             SourceType = "Test",
             SourceId = "test-source",
-            Priority = 1
+            Priority = 1,
+            AllowedContentTypes = { "image/*" }
         };
 
         var id = await _service.QueueDownloadAsync(request);
@@ -86,6 +87,8 @@ public class DownloadServiceTests
             ds.Url == request.Url.ToString() &&
             ds.DestinationPath == request.DestinationPath &&
             ds.DisplayName == request.DisplayName &&
+            ds.AllowedContentTypes != null &&
+            ds.AllowedContentTypes.Contains("image/*") &&
             ds.Priority == request.Priority &&
             ds.State == DownloadState.Queued &&
             ds.Domain == "example.com" &&

@@ -4,4 +4,39 @@ public class DownloadManagerOptions
 {
     public int MaxConcurrentDownloads { get; set; } = 3;
     public int MaxConcurrentDownloadsPerDomain { get; set; } = 2;
+    public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();
+}
+
+public class DownloadContentTypeValidationOptions
+{
+    public bool InferContentTypesFromDestinationPath { get; set; } = true;
+    public bool AllowMissingContentType { get; set; } = true;
+    public bool AllowGenericContentType { get; set; } = true;
+    public ICollection<string> GenericContentTypes { get; } =
+    [
+        "application/octet-stream",
+        "binary/octet-stream"
+    ];
+
+    public Dictionary<string, string[]> ContentTypesByExtension { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".avif"] = ["image/*"],
+        [".bmp"] = ["image/*"],
+        [".gif"] = ["image/*"],
+        [".heic"] = ["image/*"],
+        [".heif"] = ["image/*"],
+        [".jpeg"] = ["image/*"],
+        [".jpg"] = ["image/*"],
+        [".png"] = ["image/*"],
+        [".svg"] = ["image/*"],
+        [".webp"] = ["image/*"],
+        [".7z"] = ["application/x-7z-compressed"],
+        [".bz2"] = ["application/x-bzip2"],
+        [".gz"] = ["application/gzip", "application/x-gzip"],
+        [".rar"] = ["application/vnd.rar", "application/x-rar-compressed"],
+        [".tar"] = ["application/x-tar"],
+        [".tgz"] = ["application/gzip", "application/x-gzip"],
+        [".xz"] = ["application/x-xz"],
+        [".zip"] = ["application/zip", "application/x-zip-compressed"]
+    };
 }

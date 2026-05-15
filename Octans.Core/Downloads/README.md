@@ -37,8 +37,18 @@ builder.Services.AddDownloadManager(options =>
 {
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;
+    options.ContentTypeValidation.AllowMissingContentType = true;
+    options.ContentTypeValidation.AllowGenericContentType = true;
 });
 ```
+
+`DownloadRequest.AllowedContentTypes` can narrow a download to content types a
+feature is prepared to handle, such as `image/*`. When a request does not
+specify allowed content types, the downloader infers best-effort expectations
+from common destination extensions. Missing and generic response content types
+are allowed by default because many file hosts are imprecise, and these defaults
+can be changed through `DownloadManagerOptions` or the `Downloads` configuration
+section.
 
 ## Components
 

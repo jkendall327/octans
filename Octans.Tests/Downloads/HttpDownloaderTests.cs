@@ -1,6 +1,7 @@
 using System.IO.Abstractions.TestingHelpers;
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core.Downloads;
@@ -24,25 +25,7 @@ public class HttpDownloaderTests
 
     public HttpDownloaderTests()
     {
-        var factory = Substitute.For<IHttpClientFactory>();
-
-        var httpClient = new HttpClient(_messageHandler)
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
-
-        factory.CreateClient("DownloadClient").Returns(httpClient);
-
-        _sut = new(
-            _bandwidthGate,
-            _stateService,
-            _lifecycle,
-            _activeDownloads,
-            factory,
-            _fileSystem,
-            new DownloadStagingPaths(_fileSystem),
-            _timeProvider,
-            NullLogger<HttpDownloader>.Instance);
+        _sut = CreateDownloader();
 
         // Setup download token
         _activeDownloads
@@ -52,6 +35,30 @@ public class HttpDownloaderTests
         _lifecycle
             .MarkInProgressAsync(Arg.Any<Guid>())
             .Returns(true);
+    }
+
+    private HttpDownloader CreateDownloader(DownloadManagerOptions? options = null)
+    {
+        var factory = Substitute.For<IHttpClientFactory>();
+
+        var httpClient = new HttpClient(_messageHandler)
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
+        factory.CreateClient("DownloadClient").Returns(httpClient);
+
+        return new(
+            _bandwidthGate,
+            _stateService,
+            _lifecycle,
+            _activeDownloads,
+            factory,
+            _fileSystem,
+            new DownloadStagingPaths(_fileSystem),
+            _timeProvider,
+            Options.Create(options ?? new DownloadManagerOptions()),
+            NullLogger<HttpDownloader>.Instance);
     }
 
     [Fact]
@@ -234,6 +241,131 @@ public class HttpDownloaderTests
         await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
         Assert.False(_fileSystem.File.Exists(destinationPath));
         Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenAllowedContentTypeMatches_CompletesDownload()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.bin";
+        var download = CreateDownload(downloadId, destinationPath);
+        download.AllowedContentTypes = """["image/*"]""";
+        var content = new StringContent("image bytes");
+        content.Headers.ContentType = new("image/jpeg");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        Assert.Equal("image bytes", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update => update.ResponseContentType == "image/jpeg"));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenAllowedContentTypeMismatches_FailsBeforeStreaming()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.jpg";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("<html>not an image</html>");
+        content.Headers.ContentType = new("text/html");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("text/html") && s.Contains("image/*")),
+            DownloadFailureCategory.Validation,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s => s.Contains("text/html") && s.Contains("image/*")),
+            responseContentType: "text/html");
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        await _bandwidthGate.DidNotReceive().WaitForBytesAsync(
+            Arg.Any<string>(),
+            Arg.Any<long>(),
+            Arg.Any<CancellationToken>());
+        Assert.False(content.SecondReadStarted.Task.IsCompleted);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenContentTypeIsMissing_AllowsByDefault()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.jpg";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("bytes")
+        };
+        _messageHandler.ResponseToReturn.Content.Headers.ContentType = null;
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        Assert.Equal("bytes", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update => update.Outcome == DownloadTerminalOutcome.Completed));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenMissingContentTypeIsDisallowed_FailsValidation()
+    {
+        var sut = CreateDownloader(new()
+        {
+            ContentTypeValidation = new()
+            {
+                AllowMissingContentType = false
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.jpg";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("bytes")
+        };
+        _messageHandler.ResponseToReturn.Content.Headers.ContentType = null;
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("missing") && s.Contains("image/*")),
+            DownloadFailureCategory.Validation,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(s => s.Contains("missing") && s.Contains("image/*")));
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenContentTypeIsGeneric_AllowsByDefault()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.jpg";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new StringContent("bytes");
+        content.Headers.ContentType = new("application/octet-stream");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        Assert.Equal("bytes", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update => update.ResponseContentType == "application/octet-stream"));
     }
 
     private static QueuedDownload CreateDownload(Guid downloadId, string destinationPath)

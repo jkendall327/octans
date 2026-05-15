@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Models;
 using Octans.Data.Models;
@@ -18,6 +19,7 @@ public class HttpDownloader(
     IFileSystem fileSystem,
     DownloadStagingPaths stagingPaths,
     TimeProvider timeProvider,
+    IOptions<DownloadManagerOptions> options,
     ILogger<HttpDownloader> logger)
 {
     public async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
@@ -48,6 +50,17 @@ public class HttpDownloader(
                 DownloadFailureCategory.Http,
                 DownloadTerminalOutcome.TerminalHttpFailure,
                 (int)statusCode);
+        }
+        catch (DownloadContentTypeException ex)
+        {
+            logger.LogWarning(ex, "Download content type validation failed: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Validation,
+                DownloadTerminalOutcome.ValidationFailed,
+                validationMessage: ex.Message,
+                responseContentType: ex.ResponseContentType);
         }
         catch (InvalidDataException ex)
         {
@@ -98,6 +111,17 @@ public class HttpDownloader(
                     $"HTTP download failed with status {(int)response.StatusCode} ({response.ReasonPhrase ?? response.StatusCode.ToString()}).",
                     null,
                     response.StatusCode);
+            }
+
+            var contentTypeValidation = DownloadContentTypeValidator.Validate(
+                download,
+                response.Content.Headers.ContentType,
+                options.Value.ContentTypeValidation);
+            if (!contentTypeValidation.Accepted)
+            {
+                throw new DownloadContentTypeException(
+                    contentTypeValidation.Message ?? "Download content type did not match expectations.",
+                    contentTypeValidation.ResponseContentType);
             }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;

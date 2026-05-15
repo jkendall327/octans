@@ -19,7 +19,8 @@ public interface IDownloadLifecycleService
         DownloadFailureCategory failureCategory = DownloadFailureCategory.Unknown,
         DownloadTerminalOutcome outcome = DownloadTerminalOutcome.Failed,
         int? httpStatusCode = null,
-        string? validationMessage = null);
+        string? validationMessage = null,
+        string? responseContentType = null);
     Task MarkCanceledAsync(Guid id);
 }
 
@@ -64,6 +65,7 @@ public sealed class DownloadLifecycleService(
             Filename = filename,
             DisplayName = request.DisplayName,
             DestinationPath = request.DestinationPath,
+            AllowedContentTypes = DownloadContentTypeList.Serialize(request.AllowedContentTypes),
             Priority = request.Priority,
             State = DownloadState.Queued,
             CreatedAt = now,
@@ -173,7 +175,8 @@ public sealed class DownloadLifecycleService(
         DownloadFailureCategory failureCategory = DownloadFailureCategory.Unknown,
         DownloadTerminalOutcome outcome = DownloadTerminalOutcome.Failed,
         int? httpStatusCode = null,
-        string? validationMessage = null)
+        string? validationMessage = null,
+        string? responseContentType = null)
     {
         var failed = await stateService.TryUpdateState(
             id,
@@ -185,7 +188,8 @@ public sealed class DownloadLifecycleService(
                 Outcome = outcome,
                 FailureCategory = failureCategory,
                 HttpStatusCode = httpStatusCode,
-                ValidationMessage = validationMessage
+                ValidationMessage = validationMessage,
+                ResponseContentType = responseContentType
             });
         activeDownloads.Release(id);
 
