@@ -37,6 +37,7 @@ builder.Services.AddDownloadManager(options =>
 {
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;
+    options.DiskSpace.RequiredFreeSpaceHeadroomBytes = 250L * 1024 * 1024;
     options.ContentTypeValidation.AllowMissingContentType = true;
     options.ContentTypeValidation.AllowGenericContentType = true;
 });
@@ -49,6 +50,11 @@ from common destination extensions. Missing and generic response content types
 are allowed by default because many file hosts are imprecise, and these defaults
 can be changed through `DownloadManagerOptions` or the `Downloads` configuration
 section.
+
+Downloads also perform best-effort disk-space checks before known-size transfers
+and while streaming chunks. `DownloadManagerOptions.DiskSpace` controls whether
+the checks run and how much free-space headroom remains reserved on the
+destination volume.
 
 ## Components
 

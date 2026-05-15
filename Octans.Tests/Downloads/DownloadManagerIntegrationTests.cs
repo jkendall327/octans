@@ -304,6 +304,12 @@ public sealed class DownloadManagerIntegrationTests
             await connection.OpenAsync();
 
             var fileSystem = new MockFileSystem();
+            fileSystem.AddDrive("/", new()
+            {
+                AvailableFreeSpace = 1024 * 1024 * 1024,
+                TotalFreeSpace = 1024 * 1024 * 1024,
+                TotalSize = 1024L * 1024 * 1024 * 10
+            });
             var httpHandler = new IntegrationHttpMessageHandler();
             var notifier = new TrackingCompletionNotifier();
             var timeProvider = new FakeTimeProvider(TestClock.UtcNow);

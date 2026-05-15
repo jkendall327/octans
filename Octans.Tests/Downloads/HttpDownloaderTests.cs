@@ -14,6 +14,7 @@ namespace Octans.Tests.Downloads;
 public class HttpDownloaderTests
 {
     private readonly IDownloadBandwidthGate _bandwidthGate = Substitute.For<IDownloadBandwidthGate>();
+    private readonly FakeDownloadDiskSpaceGuard _diskSpaceGuard = new();
     private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
     private readonly IDownloadLifecycleService _lifecycle = Substitute.For<IDownloadLifecycleService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
@@ -50,6 +51,7 @@ public class HttpDownloaderTests
 
         return new(
             _bandwidthGate,
+            _diskSpaceGuard,
             _stateService,
             _lifecycle,
             _activeDownloads,
@@ -244,6 +246,66 @@ public class HttpDownloaderTests
     }
 
     [Fact]
+    public async Task ProcessDownloadAsync_WhenKnownContentLengthExceedsAvailableSpace_FailsBeforeWritingStagingFile()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new ByteArrayContent(new byte[10]);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        _diskSpaceGuard.FailWhenBytesNeededAtLeast = 10;
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("Insufficient free space")),
+            DownloadFailureCategory.Filesystem);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        await _bandwidthGate.DidNotReceive().WaitForBytesAsync(
+            Arg.Any<string>(),
+            Arg.Any<long>(),
+            Arg.Any<CancellationToken>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenDiskSpaceRunsOutDuringStreaming_DeletesStagingAndDoesNotCreateFinalFile()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var downloadTask = _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+
+        _diskSpaceGuard.FailNextCheck = true;
+        content.ReleaseSecondRead();
+        await downloadTask;
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("Insufficient free space")),
+            DownloadFailureCategory.Filesystem);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId, Arg.Any<DownloadTerminalUpdate>());
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
     public async Task ProcessDownloadAsync_WhenAllowedContentTypeMatches_CompletesDownload()
     {
         var downloadId = Guid.NewGuid();
@@ -385,6 +447,26 @@ public class HttpDownloaderTests
                                    throw new InvalidOperationException();
 
         return _fileSystem.Path.Combine(destinationDirectory, ".octans-downloads", $"{downloadId}.part");
+    }
+}
+
+public sealed class FakeDownloadDiskSpaceGuard : IDownloadDiskSpaceGuard
+{
+    public long? FailWhenBytesNeededAtLeast { get; set; }
+    public bool FailNextCheck { get; set; }
+
+    public void EnsureSufficientSpace(string destinationPath, long bytesNeeded)
+    {
+        if (FailNextCheck)
+        {
+            FailNextCheck = false;
+            throw new DownloadDiskSpaceException("Insufficient free space for download.");
+        }
+
+        if (FailWhenBytesNeededAtLeast is { } threshold && bytesNeeded >= threshold)
+        {
+            throw new DownloadDiskSpaceException("Insufficient free space for download.");
+        }
     }
 }
 

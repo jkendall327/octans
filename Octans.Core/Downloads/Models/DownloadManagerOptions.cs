@@ -4,7 +4,14 @@ public class DownloadManagerOptions
 {
     public int MaxConcurrentDownloads { get; set; } = 3;
     public int MaxConcurrentDownloadsPerDomain { get; set; } = 2;
+    public DownloadDiskSpaceOptions DiskSpace { get; set; } = new();
     public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();
+}
+
+public class DownloadDiskSpaceOptions
+{
+    public bool Enabled { get; set; } = true;
+    public long RequiredFreeSpaceHeadroomBytes { get; set; } = 100L * 1024 * 1024;
 }
 
 public class DownloadContentTypeValidationOptions

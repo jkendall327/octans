@@ -12,6 +12,7 @@ namespace Octans.Core.Downloads;
 /// </summary>
 public class HttpDownloader(
     IDownloadBandwidthGate bandwidthGate,
+    IDownloadDiskSpaceGuard diskSpaceGuard,
     IDownloadStateService stateService,
     IDownloadLifecycleService lifecycle,
     IActiveDownloadRegistry activeDownloads,
@@ -72,6 +73,14 @@ public class HttpDownloader(
                 DownloadTerminalOutcome.ValidationFailed,
                 validationMessage: ex.Message);
         }
+        catch (DownloadDiskSpaceException ex)
+        {
+            logger.LogWarning(ex, "Download failed because disk space was insufficient: {Url}", download.Url);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Filesystem);
+        }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
             logger.LogError(ex, "Download failed: {Url}", download.Url);
@@ -125,6 +134,10 @@ public class HttpDownloader(
             }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
+            if (totalBytes >= 0)
+            {
+                diskSpaceGuard.EnsureSufficientSpace(download.DestinationPath, totalBytes);
+            }
 
             await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
@@ -187,7 +200,20 @@ public class HttpDownloader(
         while ((bytesRead = await contentStream.ReadAsync(buffer, combinedToken)) > 0)
         {
             await bandwidthGate.WaitForBytesAsync(download.Domain, bytesRead, combinedToken);
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), combinedToken);
+            diskSpaceGuard.EnsureSufficientSpace(
+                download.DestinationPath,
+                GetRequiredBytesBeforeWrite(response.Content.Headers.ContentLength, bytesDownloaded, bytesRead));
+
+            try
+            {
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), combinedToken);
+            }
+            catch (IOException ex)
+            {
+                throw new DownloadDiskSpaceException(
+                    "Download failed while writing to disk. The destination may not have enough free space.",
+                    ex);
+            }
 
             bytesDownloaded += bytesRead;
 
@@ -213,6 +239,16 @@ public class HttpDownloader(
         }
 
         return (bytesDownloaded, startTime);
+    }
+
+    private static long GetRequiredBytesBeforeWrite(long? contentLength, long bytesDownloaded, int bytesRead)
+    {
+        if (contentLength is not { } totalBytes || totalBytes < 0)
+        {
+            return bytesRead;
+        }
+
+        return Math.Max(bytesRead, totalBytes - bytesDownloaded);
     }
 
     private void DeleteStagingFileBestEffort(Guid downloadId, string destinationPath)
