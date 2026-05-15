@@ -18,7 +18,6 @@ public interface IDownloadLifecycleService
 }
 
 public sealed class DownloadLifecycleService(
-    IDownloadQueue queue,
     IDownloadStateService stateService,
     IActiveDownloadRegistry activeDownloads,
     IDownloadCompletionNotifier completionNotifier,
@@ -79,8 +78,7 @@ public sealed class DownloadLifecycleService(
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Canceling download");
 
-        await queue.RemoveAsync(id);
-        await stateService.UpdateState(id, DownloadState.Canceled);
+        await stateService.CancelDownloadAsync(id);
         activeDownloads.Cancel(id);
 
         logger.LogDebug("Download canceled");
@@ -91,8 +89,7 @@ public sealed class DownloadLifecycleService(
         using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         logger.LogInformation("Pausing download");
 
-        await queue.RemoveAsync(id);
-        await stateService.UpdateState(id, DownloadState.Paused);
+        await stateService.PauseDownloadAsync(id);
 
         // Pause currently stops active transfer and resumes from the beginning later.
         // Range-based partial resume will need explicit temp-file support.

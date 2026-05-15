@@ -16,6 +16,8 @@ public interface IDownloadStateService
     DownloadStatus? GetDownloadById(Guid id);
     Task UpdateProgress(Guid id, long bytesDownloaded, long totalBytes, double speed);
     Task UpdateState(Guid id, DownloadState newState, string? errorMessage = null);
+    Task CancelDownloadAsync(Guid id);
+    Task PauseDownloadAsync(Guid id);
     Task<bool> TryUpdateState(
         Guid id,
         IReadOnlySet<DownloadState> expectedStates,
@@ -123,6 +125,16 @@ public class DownloadStatusTracker(
             AffectedDownloadId = id,
             ChangeType = DownloadChangeType.Updated
         });
+    }
+
+    public Task CancelDownloadAsync(Guid id)
+    {
+        return SetStateAndRemoveFromQueueAsync(id, DownloadState.Canceled);
+    }
+
+    public Task PauseDownloadAsync(Guid id)
+    {
+        return SetStateAndRemoveFromQueueAsync(id, DownloadState.Paused);
     }
 
     public async Task<bool> TryUpdateState(
@@ -351,6 +363,41 @@ public class DownloadStatusTracker(
         });
 
         return true;
+    }
+
+    private async Task SetStateAndRemoveFromQueueAsync(Guid id, DownloadState newState)
+    {
+        DownloadStatus? status;
+        await using (var db = await contextFactory.CreateDbContextAsync())
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync();
+
+            status = await db.DownloadStatuses.FindAsync(id);
+            if (status is null)
+            {
+                return;
+            }
+
+            ApplyState(status, newState, timeProvider.GetUtcNow());
+
+            var queuedDownload = await db.QueuedDownloads.FindAsync(id);
+            if (queuedDownload is not null)
+            {
+                db.QueuedDownloads.Remove(queuedDownload);
+            }
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+
+        _activeDownloads[id] = status;
+
+        await Raise(new DownloadStatusChanged { Status = status });
+        await Raise(new DownloadsChanged
+        {
+            AffectedDownloadId = id,
+            ChangeType = DownloadChangeType.Updated
+        });
     }
 
     private static void ApplyState(DownloadStatus status, DownloadState newState, DateTimeOffset now, string? errorMessage = null)

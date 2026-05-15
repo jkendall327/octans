@@ -7,6 +7,11 @@
 - Visibility of download progress for UI purposes
 - Simple fire-and-forget interface for calling code
 
+Pause/resume is intentionally scoped to stopping an active transfer and
+re-queueing it from the beginning. Byte-level HTTP resume with `Range` requests,
+partial-file validation, and ETag/Last-Modified handling is explicitly out of
+scope for now.
+
 ## Usage
 
 ```csharp
@@ -38,7 +43,7 @@ builder.Services.AddDownloadManager(options =>
 ## Components
 
 - `IDownloadService` accepts feature-level download requests and exposes cancel/pause/resume/retry commands.
-- `IDownloadStateService` owns atomic status-plus-queue transitions for new, resumed, and retried downloads.
+- `IDownloadStateService` owns atomic status-plus-queue transitions for new, paused, canceled, resumed, and retried downloads.
 - `IDownloadQueue` restores queued work and chooses the next bandwidth-eligible job.
 - `DownloadBackgroundService` is registered by `AddDownloadManager` and runs the worker loop.
 - `HttpDownloader` performs the HTTP request, waits for byte-level bandwidth budget, streams bytes to disk, and reports progress.

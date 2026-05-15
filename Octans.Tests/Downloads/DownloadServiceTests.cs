@@ -10,7 +10,6 @@ namespace Octans.Tests.Downloads;
 
 public class DownloadServiceTests
 {
-    private readonly IDownloadQueue _mockQueue = Substitute.For<IDownloadQueue>();
     private readonly IDownloadStateService _mockStateService = Substitute.For<IDownloadStateService>();
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly IDownloadCompletionNotifier _completionNotifier = Substitute.For<IDownloadCompletionNotifier>();
@@ -21,7 +20,6 @@ public class DownloadServiceTests
     {
         var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
         _lifecycle = new(
-            _mockQueue,
             _mockStateService,
             _activeDownloads,
             _completionNotifier,
@@ -67,9 +65,8 @@ public class DownloadServiceTests
 
         await _service.CancelDownloadAsync(id);
 
-        await _mockQueue.Received(1).RemoveAsync(id);
+        await _mockStateService.Received(1).CancelDownloadAsync(id);
         _activeDownloads.Received(1).Cancel(id);
-        await _mockStateService.Received(1).UpdateState(id, DownloadState.Canceled);
     }
 
     [Fact]
@@ -79,9 +76,8 @@ public class DownloadServiceTests
 
         await _service.PauseDownloadAsync(id);
 
-        await _mockQueue.Received(1).RemoveAsync(id);
+        await _mockStateService.Received(1).PauseDownloadAsync(id);
         _activeDownloads.Received(1).Cancel(id);
-        await _mockStateService.Received(1).UpdateState(id, DownloadState.Paused);
     }
 
     [Fact]
@@ -106,7 +102,6 @@ public class DownloadServiceTests
 
         await _mockStateService.Received(1).TryRequeuePausedDownloadAsync(id);
         await _mockStateService.DidNotReceive().UpdateState(id, DownloadState.Queued);
-        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
     }
 
     [Fact]
@@ -128,7 +123,6 @@ public class DownloadServiceTests
 
         await _service.ResumeDownloadAsync(id);
 
-        await _mockQueue.DidNotReceiveWithAnyArgs().EnqueueAsync(null!);
         await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
         await _mockStateService.Received(1).TryRequeuePausedDownloadAsync(id);
     }
@@ -158,7 +152,6 @@ public class DownloadServiceTests
 
         await _mockStateService.Received(1).TryRequeueFailedOrCanceledDownloadAsync(id);
         await _mockStateService.DidNotReceive().UpdateState(id, DownloadState.Queued);
-        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
     }
 
     [Fact]
@@ -181,7 +174,6 @@ public class DownloadServiceTests
         await _service.RetryDownloadAsync(id);
 
         await _mockStateService.Received(1).TryRequeueFailedOrCanceledDownloadAsync(id);
-        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
         await _mockStateService.DidNotReceive().UpdateState(id, DownloadState.Queued);
     }
 
@@ -203,7 +195,6 @@ public class DownloadServiceTests
 
         await _service.RetryDownloadAsync(id);
 
-        await _mockQueue.DidNotReceive().EnqueueAsync(Arg.Any<QueuedDownload>());
         await _mockStateService.DidNotReceive().UpdateState(id, Arg.Any<DownloadState>());
         await _mockStateService.Received(1).TryRequeueFailedOrCanceledDownloadAsync(id);
     }

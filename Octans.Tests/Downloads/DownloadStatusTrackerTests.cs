@@ -455,6 +455,64 @@ public sealed class DownloadStatusTrackerTests : IDisposable, IAsyncDisposable
     }
 
     [Fact]
+    public async Task CancelDownloadAsync_UpdatesStatusAndRemovesQueueRowInOneOperation()
+    {
+        var download = new DownloadStatus
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            Domain = "example.com",
+            State = DownloadState.Queued,
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
+        };
+
+        await _service.QueueDownloadAsync(download);
+
+        await _service.CancelDownloadAsync(download.Id);
+
+        await using var context = new ServerDbContext(_contextOptions);
+        var savedStatus = await context.DownloadStatuses.FindAsync(download.Id);
+        var savedQueueRow = await context.QueuedDownloads.FindAsync(download.Id);
+
+        Assert.NotNull(savedStatus);
+        Assert.Null(savedQueueRow);
+        Assert.Equal(DownloadState.Canceled, savedStatus.State);
+        Assert.Equal(DownloadState.Canceled, _service.GetDownloadById(download.Id)?.State);
+    }
+
+    [Fact]
+    public async Task PauseDownloadAsync_UpdatesStatusAndRemovesQueueRowInOneOperation()
+    {
+        var download = new DownloadStatus
+        {
+            Id = Guid.NewGuid(),
+            Url = "https://example.com/file.zip",
+            Filename = "file.zip",
+            DestinationPath = "/downloads/file.zip",
+            Domain = "example.com",
+            State = DownloadState.Queued,
+            CreatedAt = TestClock.UtcNow,
+            LastUpdated = TestClock.UtcNow
+        };
+
+        await _service.QueueDownloadAsync(download);
+
+        await _service.PauseDownloadAsync(download.Id);
+
+        await using var context = new ServerDbContext(_contextOptions);
+        var savedStatus = await context.DownloadStatuses.FindAsync(download.Id);
+        var savedQueueRow = await context.QueuedDownloads.FindAsync(download.Id);
+
+        Assert.NotNull(savedStatus);
+        Assert.Null(savedQueueRow);
+        Assert.Equal(DownloadState.Paused, savedStatus.State);
+        Assert.Equal(DownloadState.Paused, _service.GetDownloadById(download.Id)?.State);
+    }
+
+    [Fact]
     public async Task TryRequeuePausedDownloadAsync_WhenPaused_UpdatesStatusAndQueueRow()
     {
         var download = new DownloadStatus
