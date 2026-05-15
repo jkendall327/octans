@@ -16,6 +16,7 @@ public class HttpDownloader(
     IActiveDownloadRegistry activeDownloads,
     IHttpClientFactory httpClientFactory,
     IFileSystem fileSystem,
+    DownloadStagingPaths stagingPaths,
     TimeProvider timeProvider,
     ILogger<HttpDownloader> logger)
 {
@@ -56,27 +57,66 @@ public class HttpDownloader(
 
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
-        var directoryName = fileSystem.Path.GetDirectoryName(download.DestinationPath) ??
-                            throw new InvalidOperationException();
-
-        fileSystem.Directory.CreateDirectory(directoryName);
+        var stagingPath = stagingPaths.PrepareFreshStagingPath(download);
 
         using var httpClient = httpClientFactory.CreateClient("DownloadClient");
         httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
 
-        using var response = await httpClient.GetAsync(
-            new Uri(download.Url),
-            HttpCompletionOption.ResponseHeadersRead,
-            combinedToken);
+        try
+        {
+            using var response = await httpClient.GetAsync(
+                new Uri(download.Url),
+                HttpCompletionOption.ResponseHeadersRead,
+                combinedToken);
 
-        response.EnsureSuccessStatusCode();
+            response.EnsureSuccessStatusCode();
 
-        var totalBytes = response.Content.Headers.ContentLength ?? -1;
+            var totalBytes = response.Content.Headers.ContentLength ?? -1;
 
-        await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
+            await stateService.UpdateProgress(downloadId, 0, totalBytes, 0);
 
+            var (bytesDownloaded, startTime) = await StreamToStagingFile(download, stagingPath, response, combinedToken);
+            if (totalBytes >= 0 && bytesDownloaded != totalBytes)
+            {
+                throw new InvalidDataException(
+                    $"Download ended after {bytesDownloaded} bytes, but the server reported {totalBytes} bytes.");
+            }
+
+            stagingPaths.MoveToDestination(download, stagingPath);
+
+            // Final progress update and state change
+            var totalElapsed = timeProvider.GetElapsedTime(startTime);
+
+            await stateService.UpdateProgress(downloadId,
+                bytesDownloaded,
+                totalBytes,
+                bytesDownloaded / totalElapsed.TotalSeconds);
+
+            await lifecycle.MarkCompletedAsync(downloadId);
+
+            // Record bandwidth usage
+            bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);
+
+            logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
+                download.Url,
+                download.DestinationPath,
+                bytesDownloaded);
+        }
+        catch
+        {
+            DeleteStagingFileBestEffort(downloadId, download.DestinationPath);
+            throw;
+        }
+    }
+
+    private async Task<(long BytesDownloaded, long StartTime)> StreamToStagingFile(
+        QueuedDownload download,
+        string stagingPath,
+        HttpResponseMessage response,
+        CancellationToken combinedToken)
+    {
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
-        await using var fileStream = fileSystem.File.Create(download.DestinationPath,
+        await using var fileStream = fileSystem.File.Create(stagingPath,
             81920,
             FileOptions.Asynchronous);
 
@@ -105,28 +145,28 @@ public class HttpDownloader(
             var bytesDelta = bytesDownloaded - lastReportBytes;
             var speed = bytesDelta / (timeDelta / 1000.0);
 
-            await stateService.UpdateProgress(downloadId, bytesDownloaded, totalBytes, speed);
+            await stateService.UpdateProgress(
+                download.Id,
+                bytesDownloaded,
+                response.Content.Headers.ContentLength ?? -1,
+                speed);
 
             lastReportTime = currentElapsedMs;
             lastReportBytes = bytesDownloaded;
         }
 
-        // Final progress update and state change
-        var totalElapsed = timeProvider.GetElapsedTime(startTime);
+        return (bytesDownloaded, startTime);
+    }
 
-        await stateService.UpdateProgress(downloadId,
-            bytesDownloaded,
-            totalBytes,
-            bytesDownloaded / totalElapsed.TotalSeconds);
-
-        await lifecycle.MarkCompletedAsync(downloadId);
-
-        // Record bandwidth usage
-        bandwidthLimiter.RecordDownload(download.Domain, bytesDownloaded);
-
-        logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
-            download.Url,
-            download.DestinationPath,
-            bytesDownloaded);
+    private void DeleteStagingFileBestEffort(Guid downloadId, string destinationPath)
+    {
+        try
+        {
+            stagingPaths.DeleteStagingFile(downloadId, destinationPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete staging file for {DestinationPath}", destinationPath);
+        }
     }
 }

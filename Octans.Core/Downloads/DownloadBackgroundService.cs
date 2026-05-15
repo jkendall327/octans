@@ -9,6 +9,7 @@ public sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,
     IDownloadStateService stateService,
     HttpDownloader processor,
+    DownloadStagingPaths stagingPaths,
     ILogger<DownloadBackgroundService> logger,
     DownloadManagerOptions options) : BackgroundService
 {
@@ -78,6 +79,7 @@ public sealed class DownloadBackgroundService(
 
         foreach (var download in downloads)
         {
+            DeleteStagingFileBestEffort(download);
             await downloadQueue.EnsureQueuedAsync(download, stoppingToken);
 
             if (download.State is DownloadState.InProgress or DownloadState.WaitingForBandwidth)
@@ -151,6 +153,18 @@ public sealed class DownloadBackgroundService(
             }
 
             _activeDomainCounts[domain] = count - 1;
+        }
+    }
+
+    private void DeleteStagingFileBestEffort(DownloadStatus download)
+    {
+        try
+        {
+            stagingPaths.DeleteStagingFile(download.Id, download.DestinationPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete stale staging file for download {DownloadId}", download.Id);
         }
     }
 }

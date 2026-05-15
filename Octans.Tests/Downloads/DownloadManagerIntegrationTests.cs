@@ -62,6 +62,50 @@ public sealed class DownloadManagerIntegrationTests
     }
 
     [Fact]
+    public async Task DownloadManager_RestoresInterruptedDownloadAndRemovesStaleStagingFile()
+    {
+        await using var harness = await DownloadManagerHarness.Create();
+        var downloadId = Guid.NewGuid();
+        var url = new Uri("https://cdn.example/files/restarted.txt");
+        var destinationPath = "/downloads/restarted.txt";
+        var stagingPath = GetStagingPath(harness.FileSystem, downloadId, destinationPath);
+
+        harness.HttpHandler.PauseBeforeResponding = true;
+        harness.HttpHandler.AddResponse(url.ToString(), "fresh bytes");
+        harness.FileSystem.Directory.CreateDirectory(harness.FileSystem.Path.GetDirectoryName(stagingPath)!);
+        await harness.FileSystem.File.WriteAllTextAsync(stagingPath, "stale partial");
+
+        await using (var db = await harness.CreateDbContextAsync())
+        {
+            db.DownloadStatuses.Add(new()
+            {
+                Id = downloadId,
+                Url = url.ToString(),
+                Filename = "restarted.txt",
+                DestinationPath = destinationPath,
+                State = DownloadState.InProgress,
+                CreatedAt = TestClock.UtcNow,
+                StartedAt = TestClock.UtcNow,
+                LastUpdated = TestClock.UtcNow,
+                Domain = url.Host
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await harness.StartAsync();
+
+        await WaitUntilAsync(() => harness.HttpHandler.StartedRequests.Contains(url));
+
+        Assert.False(harness.FileSystem.File.Exists(stagingPath));
+
+        harness.HttpHandler.ReleaseResponses();
+
+        await WaitUntilAsync(() => harness.Notifier.CompletedDownloads.Any(d => d.Id == downloadId));
+
+        Assert.Equal("fresh bytes", await harness.FileSystem.File.ReadAllTextAsync(destinationPath));
+    }
+
+    [Fact]
     public async Task DownloadManager_EnforcesPerDomainConcurrencyWhileDrainingQueue()
     {
         await using var harness = await DownloadManagerHarness.Create(options =>
@@ -144,6 +188,14 @@ public sealed class DownloadManagerIntegrationTests
             Url = new(url),
             DestinationPath = destinationPath
         });
+    }
+
+    private static string GetStagingPath(MockFileSystem fileSystem, Guid downloadId, string destinationPath)
+    {
+        var destinationDirectory = fileSystem.Path.GetDirectoryName(destinationPath) ??
+                                   throw new InvalidOperationException();
+
+        return fileSystem.Path.Combine(destinationDirectory, ".octans-downloads", $"{downloadId}.part");
     }
 
     private static string DescribeStates(IServiceProvider services, params Guid[] ids)

@@ -22,6 +22,7 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IActiveDownloadRegistry, ActiveDownloadRegistry>();
         services.TryAddSingleton<IDownloadCompletionNotifier, NoOpDownloadCompletionNotifier>();
         services.TryAddSingleton<IDownloadBandwidthGate, NoOpDownloadBandwidthGate>();
+        services.TryAddSingleton<DownloadStagingPaths>();
         services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
         services.TryAddSingleton<HttpDownloader>();
         services.TryAddSingleton<IDownloadService, DownloadService>();

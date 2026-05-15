@@ -41,6 +41,7 @@ public class HttpDownloaderTests
             _activeDownloads,
             factory,
             _fileSystem,
+            new DownloadStagingPaths(_fileSystem),
             _timeProvider,
             NullLogger<HttpDownloader>.Instance);
 
@@ -52,6 +53,35 @@ public class HttpDownloaderTests
         _lifecycle
             .MarkInProgressAsync(Arg.Any<Guid>())
             .Returns(true);
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WritesToStagingThenMovesToDestinationOnCompletion()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var downloadTask = _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        var stagingPath = GetStagingPath(downloadId, destinationPath);
+        Assert.True(_fileSystem.File.Exists(stagingPath));
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+
+        content.ReleaseSecondRead();
+        await downloadTask;
+
+        Assert.False(_fileSystem.File.Exists(stagingPath));
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(downloadId);
+        _bandwidthLimiter.Received(1).RecordDownload("example.com", 5);
     }
 
     [Fact]
@@ -83,6 +113,7 @@ public class HttpDownloaderTests
 
         // Verify file was not created
         Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
     }
 
     [Fact]
@@ -108,9 +139,8 @@ public class HttpDownloaderTests
     }
 
     [Fact]
-    public async Task ProcessDownloadAsync_HandlesCancellation_UpdatesStateToCanceled()
+    public async Task ProcessDownloadAsync_HandlesCancellationAfterPartialWrite_DeletesStagingAndUpdatesStateToCanceled()
     {
-        // Setup
         var downloadId = Guid.NewGuid();
         var destinationPath = "/downloads/test.txt";
         var url = "https://example.com/test.txt";
@@ -123,26 +153,92 @@ public class HttpDownloaderTests
             Domain = "example.com"
         };
 
-        // Setup a cancellation token that will be triggered during download
         using var downloadCts = new CancellationTokenSource();
         _activeDownloads.GetToken(downloadId).Returns(downloadCts.Token);
 
-        _messageHandler.WaitForCancellation = true;
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
 
-        // Start the download
         var downloadTask = _sut.ProcessDownloadAsync(download, _cts.Token);
 
-        await _messageHandler.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
         await downloadCts.CancelAsync();
 
-        // Wait for the download to complete
         await downloadTask;
 
-        // Assert
-        // Verify state updates
         await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
         await _lifecycle.Received(1).MarkCanceledAsync(downloadId);
         await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenBodyReadFailsAfterPartialWrite_DeletesStagingAndDoesNotCreateFinalFile()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("hello")
+        {
+            ThrowOnSecondRead = true
+        };
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(downloadId, Arg.Is<string>(s => s.Contains("stream failed")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenContentLengthDoesNotMatch_DeletesStagingAndDoesNotCreateFinalFile()
+    {
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new StreamContent(new MemoryStream("short"u8.ToArray()));
+        content.Headers.ContentLength = 10;
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        await _sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("server reported 10 bytes")));
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    private static QueuedDownload CreateDownload(Guid downloadId, string destinationPath)
+    {
+        return new()
+        {
+            Id = downloadId,
+            Url = "https://example.com/test.txt",
+            DestinationPath = destinationPath,
+            Domain = "example.com"
+        };
+    }
+
+    private string GetStagingPath(Guid downloadId, string destinationPath)
+    {
+        var destinationDirectory = _fileSystem.Path.GetDirectoryName(destinationPath) ??
+                                   throw new InvalidOperationException();
+
+        return _fileSystem.Path.Combine(destinationDirectory, ".octans-downloads", $"{downloadId}.part");
     }
 }
 
@@ -179,5 +275,130 @@ public class TestHttpMessageHandler : HttpMessageHandler
         }
 
         return ResponseToReturn ?? new HttpResponseMessage(HttpStatusCode.OK);
+    }
+}
+
+public sealed class PausingReadContent : StreamContent
+{
+    private readonly PausingReadStream _stream;
+
+    public PausingReadContent(string body) : this(new PausingReadStream(body))
+    {
+    }
+
+    private PausingReadContent(PausingReadStream stream) : base(stream)
+    {
+        _stream = stream;
+    }
+
+    public TaskCompletionSource SecondReadStarted => _stream.SecondReadStarted;
+    public bool ThrowOnSecondRead
+    {
+        get => _stream.ThrowOnSecondRead;
+        set => _stream.ThrowOnSecondRead = value;
+    }
+
+    public void ReleaseSecondRead()
+    {
+        _stream.ReleaseSecondRead();
+    }
+}
+
+public sealed class PausingReadStream(string body) : Stream
+{
+    private readonly byte[] _bytes = System.Text.Encoding.UTF8.GetBytes(body);
+    private readonly TaskCompletionSource _continueSecondRead =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _position;
+    private bool _secondReadStarted;
+
+    public TaskCompletionSource SecondReadStarted { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public bool ThrowOnSecondRead { get; set; }
+
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => _bytes.Length;
+
+    public override long Position
+    {
+        get => _position;
+        set => throw new NotSupportedException();
+    }
+
+    public override void Flush()
+    {
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (_position >= _bytes.Length)
+        {
+            return 0;
+        }
+
+        if (_position == 0)
+        {
+            var firstChunkLength = Math.Min(2, _bytes.Length);
+            _bytes.AsMemory(0, firstChunkLength).CopyTo(buffer);
+            _position += firstChunkLength;
+            return firstChunkLength;
+        }
+
+        if (!_secondReadStarted)
+        {
+            _secondReadStarted = true;
+            SecondReadStarted.TrySetResult();
+
+            if (ThrowOnSecondRead)
+            {
+                throw new IOException("stream failed after partial body write");
+            }
+
+            await _continueSecondRead.Task.WaitAsync(cancellationToken);
+        }
+
+        var bytesRemaining = _bytes.Length - _position;
+        var bytesToRead = Math.Min(buffer.Length, bytesRemaining);
+        _bytes.AsMemory(_position, bytesToRead).CopyTo(buffer);
+        _position += bytesToRead;
+
+        return bytesToRead;
+    }
+
+    public override Task<int> ReadAsync(
+        byte[] buffer,
+        int offset,
+        int count,
+        CancellationToken cancellationToken)
+    {
+        return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+    }
+
+    public override long Seek(long offset, SeekOrigin origin)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void SetLength(long value)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    public void ReleaseSecondRead()
+    {
+        _continueSecondRead.TrySetResult();
     }
 }
