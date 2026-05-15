@@ -70,6 +70,7 @@ public class DatabaseDownloadQueue(
             Url = status.Url,
             DestinationPath = status.DestinationPath,
             AllowedContentTypes = status.AllowedContentTypes,
+            ExpectedHashes = status.ExpectedHashes,
             DisplayName = status.DisplayName,
             QueuedAt = status.LastUpdated,
             Priority = status.Priority,

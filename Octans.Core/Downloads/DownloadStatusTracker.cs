@@ -450,6 +450,7 @@ public class DownloadStatusTracker(
         DisplayName = status.DisplayName,
         DestinationPath = status.DestinationPath,
         AllowedContentTypes = status.AllowedContentTypes,
+        ExpectedHashes = status.ExpectedHashes,
         Priority = status.Priority,
         TotalBytes = status.TotalBytes,
         BytesDownloaded = status.BytesDownloaded,
@@ -479,6 +480,7 @@ public class DownloadStatusTracker(
         target.BytesDownloaded = source.BytesDownloaded;
         target.TotalBytes = source.TotalBytes;
         target.AllowedContentTypes = source.AllowedContentTypes;
+        target.ExpectedHashes = source.ExpectedHashes;
         target.LastUpdated = source.LastUpdated;
         target.StartedAt = source.StartedAt;
         target.CompletedAt = source.CompletedAt;
@@ -529,6 +531,7 @@ public class DownloadStatusTracker(
         queuedDownload.Url = status.Url;
         queuedDownload.DestinationPath = status.DestinationPath;
         queuedDownload.AllowedContentTypes = status.AllowedContentTypes;
+        queuedDownload.ExpectedHashes = status.ExpectedHashes;
         queuedDownload.DisplayName = status.DisplayName;
         queuedDownload.QueuedAt = queuedAt;
         queuedDownload.Priority = status.Priority;
@@ -544,6 +547,7 @@ public class DownloadStatusTracker(
         Url = status.Url,
         DestinationPath = status.DestinationPath,
         AllowedContentTypes = status.AllowedContentTypes,
+        ExpectedHashes = status.ExpectedHashes,
         DisplayName = status.DisplayName,
         QueuedAt = queuedAt,
         Priority = status.Priority,

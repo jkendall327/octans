@@ -67,6 +67,7 @@ public sealed class DownloadLifecycleService(
             DisplayName = request.DisplayName,
             DestinationPath = request.DestinationPath,
             AllowedContentTypes = DownloadContentTypeList.Serialize(request.AllowedContentTypes),
+            ExpectedHashes = DownloadHashExpectations.Serialize(request.ExpectedHashes),
             Priority = request.Priority,
             State = DownloadState.Queued,
             CreatedAt = now,
