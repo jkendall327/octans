@@ -17,4 +17,5 @@ public class QueuedDownload
     public required string Domain { get; set; }
     public string? SourceType { get; set; }
     public string? SourceId { get; set; }
+    public string? RequestFingerprint { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.IO.Abstractions.TestingHelpers;
+using System.Collections.ObjectModel;
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,7 @@ public class HttpDownloaderTests
             _activeDownloads,
             _hostCircuitRegistry,
             factory,
+            new DownloadRequestHeaderProvider(Options.Create(options ?? new DownloadManagerOptions())),
             _fileSystem,
             new DownloadStagingPaths(_fileSystem),
             _timeProvider,
@@ -560,6 +562,61 @@ public class HttpDownloaderTests
             Arg.Is<DownloadTerminalUpdate>(update => update.ResponseContentType == "application/octet-stream"));
     }
 
+
+    [Fact]
+    public async Task ProcessDownloadAsync_AppliesDomainSpecificHeaders()
+    {
+        var options = new DownloadManagerOptions();
+        options.RequestHeaders.DefaultUserAgent = "Octans-Test/1.0";
+        options.RequestHeaders.Domains["example.com"] = new()
+        {
+            UserAgent = "ExampleBot/2.0",
+            Authorization = "Bearer secret",
+            Cookie = "session=abc"
+        };
+        options.RequestHeaders.Domains["example.com"].Headers["X-Source"] = "configured";
+
+        var sut = CreateDownloader(options);
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = new StringContent("hello")
+        };
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        var request = Assert.Single(_messageHandler.Requests);
+        Assert.Equal("ExampleBot/2.0", request.Headers.UserAgent.ToString());
+        Assert.Equal("Bearer secret", Assert.Single(request.Headers.GetValues("Authorization")));
+        Assert.Equal("session=abc", Assert.Single(request.Headers.GetValues("Cookie")));
+        Assert.Equal("configured", Assert.Single(request.Headers.GetValues("X-Source")));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenRequiredCredentialsAreMissing_FailsWithoutHttpRequest()
+    {
+        var options = new DownloadManagerOptions();
+        options.RequestHeaders.Domains["example.com"] = new();
+        options.RequestHeaders.Domains["example.com"].RequiredHeaders.Add("Authorization");
+        var sut = CreateDownloader(options);
+        var downloadId = Guid.NewGuid();
+        var download = CreateDownload(downloadId, "/downloads/test.txt");
+
+        await sut.ProcessDownloadAsync(download, _cts.Token);
+
+        Assert.Empty(_messageHandler.Requests);
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(message =>
+                message.Contains("Authorization") &&
+                !message.Contains("secret", StringComparison.OrdinalIgnoreCase)),
+            DownloadFailureCategory.Authentication,
+            DownloadTerminalOutcome.ValidationFailed,
+            validationMessage: Arg.Is<string>(message => message.Contains("Authorization")));
+    }
+
     private static QueuedDownload CreateDownload(Guid downloadId, string destinationPath)
     {
         return new()
@@ -611,11 +668,13 @@ public class TestHttpMessageHandler : HttpMessageHandler
     public bool WaitForCancellation { get; set; }
     public TaskCompletionSource RequestStarted { get; } =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Collection<HttpRequestMessage> Requests { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        Requests.Add(request);
         RequestStarted.TrySetResult();
 
         if (WaitForCancellation)

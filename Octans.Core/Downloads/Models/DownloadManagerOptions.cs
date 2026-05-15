@@ -8,6 +8,24 @@ public class DownloadManagerOptions
     public DownloadSizeLimitOptions SizeLimits { get; set; } = new();
     public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();
     public DownloadHostCircuitBreakerOptions HostCircuitBreaker { get; set; } = new();
+    public DownloadRequestHeaderOptions RequestHeaders { get; set; } = new();
+}
+
+public class DownloadRequestHeaderOptions
+{
+    public string DefaultUserAgent { get; set; } = "Octans/1.0";
+    public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public ICollection<string> RequiredHeaders { get; } = [];
+    public Dictionary<string, DownloadDomainRequestHeaderOptions> Domains { get; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public class DownloadDomainRequestHeaderOptions
+{
+    public string? UserAgent { get; set; }
+    public string? Authorization { get; set; }
+    public string? Cookie { get; set; }
+    public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public ICollection<string> RequiredHeaders { get; } = [];
 }
 
 public class DownloadHostCircuitBreakerOptions

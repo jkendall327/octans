@@ -28,6 +28,7 @@ public sealed class DownloadLifecycleService(
     IDownloadStateService stateService,
     IActiveDownloadRegistry activeDownloads,
     IDownloadCompletionNotifier completionNotifier,
+    IDownloadRequestHeaderProvider requestHeaderProvider,
     TimeProvider timeProvider,
     ILogger<DownloadLifecycleService> logger) : IDownloadLifecycleService
 {
@@ -72,7 +73,8 @@ public sealed class DownloadLifecycleService(
             LastUpdated = now,
             Domain = domain,
             SourceType = request.SourceType,
-            SourceId = request.SourceId
+            SourceId = request.SourceId,
+            RequestFingerprint = requestHeaderProvider.GetRequestFingerprint(request.Url)
         };
 
         await stateService.QueueDownloadAsync(status);

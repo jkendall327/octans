@@ -469,7 +469,8 @@ public class DownloadStatusTracker(
         ValidationMessage = status.ValidationMessage,
         Domain = status.Domain,
         SourceType = status.SourceType,
-        SourceId = status.SourceId
+        SourceId = status.SourceId,
+        RequestFingerprint = status.RequestFingerprint
     };
 
     private static void ApplyPersistedState(DownloadStatus target, DownloadStatus source)
@@ -489,6 +490,7 @@ public class DownloadStatusTracker(
         target.ResponseETag = source.ResponseETag;
         target.ResponseLastModified = source.ResponseLastModified;
         target.ValidationMessage = source.ValidationMessage;
+        target.RequestFingerprint = source.RequestFingerprint;
     }
 
     private static void ApplyTerminalResult(DownloadStatus status, DownloadTerminalUpdate terminalUpdate)
@@ -533,6 +535,7 @@ public class DownloadStatusTracker(
         queuedDownload.Domain = status.Domain;
         queuedDownload.SourceType = status.SourceType;
         queuedDownload.SourceId = status.SourceId;
+        queuedDownload.RequestFingerprint = status.RequestFingerprint;
     }
 
     private static QueuedDownload BuildQueuedDownload(DownloadStatus status, DateTimeOffset queuedAt) => new()
@@ -546,6 +549,7 @@ public class DownloadStatusTracker(
         Priority = status.Priority,
         Domain = status.Domain,
         SourceType = status.SourceType,
-        SourceId = status.SourceId
+        SourceId = status.SourceId,
+        RequestFingerprint = status.RequestFingerprint
     };
 }
