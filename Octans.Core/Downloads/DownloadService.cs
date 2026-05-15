@@ -2,6 +2,9 @@ using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Feature-facing entry point for submitting and controlling durable download jobs.
+/// </summary>
 public interface IDownloadService
 {
     Task<Guid> QueueDownloadAsync(DownloadRequest request);
@@ -14,6 +17,10 @@ public interface IDownloadService
     Task RetryDownloadAsync(Guid id);
 }
 
+/// <summary>
+/// Thin facade that keeps callers on the stable download API while delegating
+/// lifecycle changes and terminal-result queries to dedicated services.
+/// </summary>
 public sealed class DownloadService(
     IDownloadLifecycleService lifecycle,
     IDownloadJobResultService jobResults) : IDownloadService

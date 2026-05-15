@@ -6,6 +6,10 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Maintains the in-memory projection of active downloads while persisting
+/// status and queue transitions to the database.
+/// </summary>
 public interface IDownloadStateService
 {
     event DownloadsChangedHandler? DownloadsChanged;
@@ -35,6 +39,9 @@ public delegate ValueTask DownloadsChangedHandler(DownloadsChanged notification)
 
 public delegate ValueTask DownloadStatusChangedHandler(DownloadStatusChanged notification);
 
+/// <summary>
+/// Database-backed download state service that raises UI-friendly change events.
+/// </summary>
 public class DownloadStatusTracker(
     IDbContextFactory<ServerDbContext> contextFactory,
     TimeProvider timeProvider,
@@ -57,6 +64,8 @@ public class DownloadStatusTracker(
         {
             _activeDownloads[status.Id] = status;
         }
+
+        logger.LogInformation("Loaded {DownloadCount} active downloads from database", statuses.Count);
 
         await Raise(new DownloadsChanged
         {
@@ -90,6 +99,13 @@ public class DownloadStatusTracker(
     {
         if (!_activeDownloads.TryGetValue(id, out var status)) return;
 
+        using var logScope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = id,
+            ["PreviousState"] = status.State,
+            ["NewState"] = newState
+        });
+
         ApplyState(status, newState, timeProvider.GetUtcNow(), errorMessage);
 
         // Persist state change to database
@@ -112,6 +128,7 @@ public class DownloadStatusTracker(
 
                 await db.SaveChangesAsync();
                 await scope.CommitAsync();
+                logger.LogDebug("Persisted download state change");
             }
         }
         catch (Exception ex)
@@ -150,6 +167,13 @@ public class DownloadStatusTracker(
             return false;
         }
 
+        using var logScope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = id,
+            ["PreviousState"] = status.State,
+            ["NewState"] = newState
+        });
+
         var now = timeProvider.GetUtcNow();
         var updatedStatus = CopyStatus(status);
         ApplyState(updatedStatus, newState, now, errorMessage, terminalUpdate);
@@ -161,6 +185,9 @@ public class DownloadStatusTracker(
             var dbStatus = await db.DownloadStatuses.FindAsync(id);
             if (dbStatus is null || !expectedStates.Contains(dbStatus.State))
             {
+                logger.LogDebug(
+                    "Skipped state transition because persisted state was {PersistedState}",
+                    dbStatus?.State);
                 return false;
             }
 
@@ -171,6 +198,7 @@ public class DownloadStatusTracker(
         }
 
         _activeDownloads[id] = updatedStatus;
+        logger.LogDebug("Persisted conditional download state transition");
 
         await Raise(new DownloadStatusChanged { Status = updatedStatus });
         await Raise(new DownloadsChanged
@@ -219,6 +247,13 @@ public class DownloadStatusTracker(
 
     public async Task QueueDownloadAsync(DownloadStatus status)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = status.Id,
+            ["Url"] = status.Url,
+            ["Domain"] = status.Domain
+        });
+
         await using var db = await contextFactory.CreateDbContextAsync();
         await using var transaction = await db.Database.BeginTransactionAsync();
 
@@ -246,6 +281,7 @@ public class DownloadStatusTracker(
         }
 
         _activeDownloads[status.Id] = status;
+        logger.LogDebug("Persisted queued download status");
 
         await Raise(new DownloadsChanged
         {

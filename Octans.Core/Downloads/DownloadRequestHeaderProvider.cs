@@ -5,6 +5,10 @@ using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Resolves configured request headers and credential requirements for outgoing
+/// download HTTP requests.
+/// </summary>
 public interface IDownloadRequestHeaderProvider
 {
     DownloadRequestHeaders GetHeaders(Uri uri);
@@ -12,6 +16,9 @@ public interface IDownloadRequestHeaderProvider
     void ApplyHeaders(HttpRequestMessage request);
 }
 
+/// <summary>
+/// Applies global and per-domain HTTP request header configuration.
+/// </summary>
 public sealed class DownloadRequestHeaderProvider(IOptions<DownloadManagerOptions> options) : IDownloadRequestHeaderProvider
 {
     private static readonly HashSet<string> SensitiveHeaderNames = new(StringComparer.OrdinalIgnoreCase)
@@ -160,6 +167,9 @@ public sealed class DownloadRequestHeaderProvider(IOptions<DownloadManagerOption
     }
 }
 
+/// <summary>
+/// Headers to apply to a request plus any configured required headers that are missing.
+/// </summary>
 public sealed record DownloadRequestHeaders(
     IReadOnlyDictionary<string, string> Headers,
     IReadOnlyList<string> MissingRequiredHeaders);

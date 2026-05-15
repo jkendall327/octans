@@ -4,12 +4,18 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Reads durable terminal results for callers that submitted a download job.
+/// </summary>
 public interface IDownloadJobResultService
 {
     Task<DownloadJobResult?> GetResultAsync(Guid id, CancellationToken cancellationToken = default);
     Task<DownloadJobResult?> GetResultAsync(DownloadJobHandle handle, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Entity Framework implementation of terminal download result lookup.
+/// </summary>
 public sealed class DownloadJobResultService(IDbContextFactory<ServerDbContext> contextFactory)
     : IDownloadJobResultService
 {
@@ -29,6 +35,9 @@ public sealed class DownloadJobResultService(IDbContextFactory<ServerDbContext> 
         GetResultAsync(handle.Id, cancellationToken);
 }
 
+/// <summary>
+/// Converts persisted download status rows into public job-result models.
+/// </summary>
 public static class DownloadJobResults
 {
     public static DownloadJobResult? FromStatus(DownloadStatus status)

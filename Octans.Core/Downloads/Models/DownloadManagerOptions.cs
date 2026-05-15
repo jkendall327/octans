@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads.Models;
 
+/// <summary>
+/// Configuration for the durable HTTP download manager.
+/// </summary>
 public class DownloadManagerOptions
 {
     public int MaxConcurrentDownloads { get; set; } = 3;
@@ -11,6 +14,9 @@ public class DownloadManagerOptions
     public DownloadRequestHeaderOptions RequestHeaders { get; set; } = new();
 }
 
+/// <summary>
+/// Global and per-domain headers to apply to outgoing download requests.
+/// </summary>
 public class DownloadRequestHeaderOptions
 {
     public string DefaultUserAgent { get; set; } = "Octans/1.0";
@@ -19,6 +25,9 @@ public class DownloadRequestHeaderOptions
     public Dictionary<string, DownloadDomainRequestHeaderOptions> Domains { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+/// <summary>
+/// Request header overrides for one domain or wildcard domain pattern.
+/// </summary>
 public class DownloadDomainRequestHeaderOptions
 {
     public string? UserAgent { get; set; }
@@ -28,6 +37,9 @@ public class DownloadDomainRequestHeaderOptions
     public ICollection<string> RequiredHeaders { get; } = [];
 }
 
+/// <summary>
+/// Resilience settings for per-host retry and circuit-breaker behavior.
+/// </summary>
 public class DownloadHostCircuitBreakerOptions
 {
     public double FailureRatio { get; set; } = 0.5;
@@ -38,12 +50,18 @@ public class DownloadHostCircuitBreakerOptions
     public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(250);
 }
 
+/// <summary>
+/// Free-space safety settings checked before and during downloads.
+/// </summary>
 public class DownloadDiskSpaceOptions
 {
     public bool Enabled { get; set; } = true;
     public long RequiredFreeSpaceHeadroomBytes { get; set; } = 100L * 1024 * 1024;
 }
 
+/// <summary>
+/// Maximum download size settings, with optional domain and source-type overrides.
+/// </summary>
 public class DownloadSizeLimitOptions
 {
     public bool Enabled { get; set; } = true;
@@ -52,6 +70,9 @@ public class DownloadSizeLimitOptions
     public Dictionary<string, long> MaxBytesBySourceType { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+/// <summary>
+/// Response content-type validation settings.
+/// </summary>
 public class DownloadContentTypeValidationOptions
 {
     public bool InferContentTypesFromDestinationPath { get; set; } = true;

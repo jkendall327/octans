@@ -2,6 +2,9 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads.Models;
 
+/// <summary>
+/// Terminal result returned for a completed, failed, or canceled download job.
+/// </summary>
 public sealed record DownloadJobResult
 {
     public required Guid DownloadId { get; init; }

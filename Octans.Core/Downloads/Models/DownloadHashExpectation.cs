@@ -2,12 +2,18 @@ using System.Text.Json;
 
 namespace Octans.Core.Downloads.Models;
 
+/// <summary>
+/// Expected cryptographic hash for validating a downloaded file before commit.
+/// </summary>
 public sealed record DownloadHashExpectation
 {
     public required string Algorithm { get; init; }
     public required string Value { get; init; }
 }
 
+/// <summary>
+/// Serialization helpers for persisting download hash expectations.
+/// </summary>
 public static class DownloadHashExpectations
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

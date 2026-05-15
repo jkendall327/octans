@@ -5,6 +5,9 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Durable queue for downloads that are ready to be claimed by background workers.
+/// </summary>
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public interface IDownloadQueue
 {
@@ -17,6 +20,9 @@ public interface IDownloadQueue
     Task RemoveAsync(Guid id);
 }
 
+/// <summary>
+/// Entity Framework implementation of the download queue.
+/// </summary>
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
@@ -27,7 +33,10 @@ public class DatabaseDownloadQueue(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = download.Id,
-            ["Url"] = download.Url
+            ["Url"] = download.Url,
+            ["Domain"] = download.Domain,
+            ["SourceType"] = download.SourceType,
+            ["SourceId"] = download.SourceId
         });
 
         logger.LogInformation("Enqueuing download with priority {Priority}", download.Priority);
@@ -53,7 +62,10 @@ public class DatabaseDownloadQueue(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = status.Id,
-            ["Url"] = status.Url
+            ["Url"] = status.Url,
+            ["Domain"] = status.Domain,
+            ["SourceType"] = status.SourceType,
+            ["SourceId"] = status.SourceId
         });
 
         await using var db = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -110,7 +122,7 @@ public class DatabaseDownloadQueue(
 
             if (excludedDomains?.Contains(download.Domain) is true)
             {
-                logger.LogDebug("Skipping download because domain {Domain} is already at concurrency limit", download.Domain);
+                logger.LogDebug("Skipping download because domain {Domain} is unavailable", download.Domain);
                 continue;
             }
 

@@ -11,7 +11,8 @@ using Polly.CircuitBreaker;
 namespace Octans.Core.Downloads;
 
 /// <summary>
-/// Handles the actual HTTP machinery of downloading content.
+/// Streams queued HTTP downloads into staging files, validates the response and
+/// final payload, then commits successful downloads to their destination path.
 /// </summary>
 public class HttpDownloader(
     IDownloadBandwidthGate bandwidthGate,
@@ -28,10 +29,24 @@ public class HttpDownloader(
     IOptions<DownloadManagerOptions> options,
     ILogger<HttpDownloader> logger)
 {
+    /// <summary>
+    /// Runs one queued download through the HTTP pipeline and records a terminal
+    /// result when the transfer completes, fails, or is canceled.
+    /// </summary>
     public async Task ProcessDownloadAsync(QueuedDownload download, CancellationToken globalCancellation)
     {
         var downloadId = download.Id;
         var downloadToken = activeDownloads.GetToken(downloadId);
+
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["DownloadId"] = downloadId,
+            ["Url"] = download.Url,
+            ["Domain"] = download.Domain,
+            ["DestinationPath"] = download.DestinationPath,
+            ["SourceType"] = download.SourceType,
+            ["SourceId"] = download.SourceId
+        });
 
         // Create a combined token for this specific download
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, downloadToken);
@@ -140,6 +155,7 @@ public class HttpDownloader(
         logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
 
         var stagingPath = stagingPaths.PrepareFreshStagingPath(download);
+        logger.LogDebug("Prepared staging path {StagingPath}", stagingPath);
 
         using var httpClient = httpClientFactory.CreateClient("DownloadClient");
         httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
@@ -156,6 +172,11 @@ public class HttpDownloader(
 
             if (!response.IsSuccessStatusCode)
             {
+                logger.LogWarning(
+                    "HTTP download response was unsuccessful: {StatusCode} {ReasonPhrase}",
+                    (int)response.StatusCode,
+                    response.ReasonPhrase);
+
                 throw new HttpRequestException(
                     $"HTTP download failed with status {(int)response.StatusCode} ({response.ReasonPhrase ?? response.StatusCode.ToString()}).",
                     null,
@@ -168,6 +189,11 @@ public class HttpDownloader(
                 options.Value.ContentTypeValidation);
             if (!contentTypeValidation.Accepted)
             {
+                logger.LogWarning(
+                    "Rejected download content type {ContentType}: {ValidationMessage}",
+                    contentTypeValidation.ResponseContentType,
+                    contentTypeValidation.Message);
+
                 throw new DownloadContentTypeException(
                     contentTypeValidation.Message ?? "Download content type did not match expectations.",
                     contentTypeValidation.ResponseContentType);
@@ -175,6 +201,13 @@ public class HttpDownloader(
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
             var maxDownloadSizeBytes = GetMaxDownloadSizeBytes(download);
+            logger.LogDebug(
+                "HTTP download response accepted with status {StatusCode}, content type {ContentType}, content length {ContentLength}, max bytes {MaxBytes}",
+                (int)response.StatusCode,
+                response.Content.Headers.ContentType?.ToString(),
+                totalBytes,
+                maxDownloadSizeBytes);
+
             if (totalBytes >= 0 && maxDownloadSizeBytes is { } maxBytes && totalBytes > maxBytes)
             {
                 throw DownloadSizeLimitException.ForReportedSize(totalBytes, maxBytes);

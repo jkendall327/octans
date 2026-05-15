@@ -2,6 +2,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Keeps track of hosts whose HTTP resilience circuit is temporarily open.
+/// </summary>
 public interface IDownloadHostCircuitRegistry
 {
     IReadOnlySet<string> GetOpenDomains();
@@ -10,6 +13,10 @@ public interface IDownloadHostCircuitRegistry
     void CloseCircuit(string domain);
 }
 
+/// <summary>
+/// In-memory registry used by the HTTP resilience pipeline and queue scheduler
+/// to avoid dispatching work to temporarily unavailable hosts.
+/// </summary>
 public sealed class DownloadHostCircuitRegistry(
     TimeProvider timeProvider,
     ILogger<DownloadHostCircuitRegistry> logger) : IDownloadHostCircuitRegistry

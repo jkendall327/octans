@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads.Bandwidth;
 
+/// <summary>
+/// Byte-per-second limits used by the download bandwidth gate.
+/// </summary>
 public class BandwidthLimiterOptions
 {
     public Dictionary<string, long> DomainBytesPerSecond { get; init; } = new();

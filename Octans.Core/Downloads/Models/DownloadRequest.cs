@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads.Models;
 
+/// <summary>
+/// Caller-supplied description of a download job to enqueue.
+/// </summary>
 public class DownloadRequest
 {
     public required Uri Url { get; set; }

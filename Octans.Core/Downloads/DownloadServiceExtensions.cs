@@ -10,8 +10,15 @@ using Polly;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Dependency-injection registration helpers for the download manager.
+/// </summary>
 public static class DownloadServiceExtensions
 {
+    /// <summary>
+    /// Registers the durable download queue, background worker, HTTP downloader,
+    /// state tracker, and default no-op extension points.
+    /// </summary>
     public static IServiceCollection AddDownloadManager(
         this IServiceCollection services,
         Action<DownloadManagerOptions>? configure = null)
@@ -84,6 +91,9 @@ public static class DownloadServiceExtensions
         };
     }
 
+    /// <summary>
+    /// Registers the download manager using configuration-bound options.
+    /// </summary>
     public static IServiceCollection AddDownloadManager(
         this IServiceCollection services,
         IConfiguration configuration,

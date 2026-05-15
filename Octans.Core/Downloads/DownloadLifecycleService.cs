@@ -4,6 +4,10 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Coordinates durable state transitions for queued downloads and shields the
+/// lower HTTP worker from direct status-store manipulation.
+/// </summary>
 public interface IDownloadLifecycleService
 {
     Task<Guid> QueueDownloadAsync(DownloadRequest request);
@@ -24,6 +28,9 @@ public interface IDownloadLifecycleService
     Task MarkCanceledAsync(Guid id);
 }
 
+/// <summary>
+/// Owns user-visible download lifecycle commands and terminal transitions.
+/// </summary>
 public sealed class DownloadLifecycleService(
     IDownloadStateService stateService,
     IActiveDownloadRegistry activeDownloads,
@@ -144,13 +151,23 @@ public sealed class DownloadLifecycleService(
         logger.LogDebug("Download reset and re-queued");
     }
 
-    public Task<bool> MarkInProgressAsync(Guid id)
+    public async Task<bool> MarkInProgressAsync(Guid id)
     {
-        return stateService.TryUpdateState(id, CanStartStates, DownloadState.InProgress);
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
+        logger.LogDebug("Marking download as in progress");
+
+        var started = await stateService.TryUpdateState(id, CanStartStates, DownloadState.InProgress);
+        if (!started)
+        {
+            logger.LogDebug("Skipped in-progress transition because download is not startable");
+        }
+
+        return started;
     }
 
     public async Task MarkCompletedAsync(Guid id, DownloadTerminalUpdate? terminalUpdate = null)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         terminalUpdate ??= new()
         {
             Outcome = DownloadTerminalOutcome.Completed
@@ -169,6 +186,12 @@ public sealed class DownloadLifecycleService(
             return;
         }
 
+        logger.LogInformation(
+            "Download completed with outcome {Outcome}, HTTP status {HttpStatusCode}, content type {ContentType}",
+            terminalUpdate.Outcome,
+            terminalUpdate.HttpStatusCode,
+            terminalUpdate.ResponseContentType);
+
         await NotifyFinishedAsync(id);
     }
 
@@ -181,6 +204,7 @@ public sealed class DownloadLifecycleService(
         string? validationMessage = null,
         string? responseContentType = null)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         var failed = await stateService.TryUpdateState(
             id,
             ActiveState,
@@ -198,14 +222,22 @@ public sealed class DownloadLifecycleService(
 
         if (!failed)
         {
+            logger.LogDebug("Skipped failure transition because download is no longer active");
             return;
         }
+
+        logger.LogWarning(
+            "Download failed with category {FailureCategory}, outcome {Outcome}, HTTP status {HttpStatusCode}",
+            failureCategory,
+            outcome,
+            httpStatusCode);
 
         await NotifyFinishedAsync(id);
     }
 
     public async Task MarkCanceledAsync(Guid id)
     {
+        using var scope = logger.BeginScope(new Dictionary<string, object?> { ["DownloadId"] = id });
         var canceled = await stateService.TryUpdateState(
             id,
             ActiveState,
@@ -218,9 +250,11 @@ public sealed class DownloadLifecycleService(
 
         if (!canceled)
         {
+            logger.LogDebug("Skipped cancellation transition because download is no longer active");
             return;
         }
 
+        logger.LogInformation("Download canceled");
         await NotifyFinishedAsync(id);
     }
 

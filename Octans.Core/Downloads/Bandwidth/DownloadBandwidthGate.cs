@@ -2,11 +2,17 @@ using Microsoft.Extensions.Options;
 
 namespace Octans.Core.Downloads.Bandwidth;
 
+/// <summary>
+/// Reserves bandwidth budget for streamed download chunks before they are written.
+/// </summary>
 public interface IDownloadBandwidthGate
 {
     Task WaitForBytesAsync(string domain, long byteCount, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Bandwidth gate used when byte pacing is not configured.
+/// </summary>
 public sealed class NoOpDownloadBandwidthGate : IDownloadBandwidthGate
 {
     public Task WaitForBytesAsync(string domain, long byteCount, CancellationToken cancellationToken)
@@ -15,6 +21,9 @@ public sealed class NoOpDownloadBandwidthGate : IDownloadBandwidthGate
     }
 }
 
+/// <summary>
+/// Token-bucket bandwidth gate that applies both global and per-domain limits.
+/// </summary>
 public sealed class DownloadBandwidthGate(
     IOptions<BandwidthLimiterOptions> options,
     TimeProvider timeProvider) : IDownloadBandwidthGate

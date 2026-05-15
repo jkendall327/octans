@@ -6,11 +6,17 @@ using Octans.Core.Downloads.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Validates that a destination volume has enough free space for a download.
+/// </summary>
 public interface IDownloadDiskSpaceGuard
 {
     void EnsureSufficientSpace(string destinationPath, long bytesNeeded);
 }
 
+/// <summary>
+/// Best-effort free-space guard used before and during streamed writes.
+/// </summary>
 public sealed class DownloadDiskSpaceGuard(
     IFileSystem fileSystem,
     IOptions<DownloadManagerOptions> options,
@@ -79,6 +85,10 @@ public sealed class DownloadDiskSpaceGuard(
     }
 }
 
+/// <summary>
+/// Raised when a download cannot safely continue because the destination volume
+/// appears to have insufficient free space.
+/// </summary>
 public sealed class DownloadDiskSpaceException : IOException
 {
     public DownloadDiskSpaceException()

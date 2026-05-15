@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Raised when a download exceeds its configured maximum size.
+/// </summary>
 public sealed class DownloadSizeLimitException : Exception
 {
     public DownloadSizeLimitException()

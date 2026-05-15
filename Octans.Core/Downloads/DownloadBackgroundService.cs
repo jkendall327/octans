@@ -6,6 +6,10 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Hosted worker that drains the durable download queue while enforcing global
+/// and per-domain concurrency limits.
+/// </summary>
 public sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,
     IDownloadStateService stateService,
@@ -29,7 +33,10 @@ public sealed class DownloadBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Download Manager started with max concurrency: {Concurrency}", _maxConcurrentDownloads);
+        logger.LogInformation(
+            "Download Manager started with max concurrency {Concurrency} and per-domain concurrency {PerDomainConcurrency}",
+            _maxConcurrentDownloads,
+            _maxConcurrentDownloadsPerDomain);
         await stateService.InitializeFromDbAsync();
         await RestoreInterruptedDownloads(stoppingToken);
 
@@ -79,13 +86,26 @@ public sealed class DownloadBackgroundService(
             .Where(d => d.State is DownloadState.Queued or DownloadState.WaitingForBandwidth or DownloadState.InProgress)
             .ToList();
 
+        if (downloads.Count > 0)
+        {
+            logger.LogInformation("Restoring {DownloadCount} interrupted downloads", downloads.Count);
+        }
+
         foreach (var download in downloads)
         {
+            using var scope = logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["DownloadId"] = download.Id,
+                ["Domain"] = download.Domain,
+                ["PreviousState"] = download.State
+            });
+
             DeleteStagingFileBestEffort(download);
             await downloadQueue.EnsureQueuedAsync(download, stoppingToken);
 
             if (download.State is DownloadState.InProgress or DownloadState.WaitingForBandwidth)
             {
+                logger.LogInformation("Resetting interrupted download to queued state");
                 await stateService.UpdateState(download.Id, DownloadState.Queued);
             }
         }
@@ -147,6 +167,10 @@ public sealed class DownloadBackgroundService(
         {
             _activeDomainCounts.TryGetValue(domain, out var count);
             _activeDomainCounts[domain] = count + 1;
+            logger.LogDebug(
+                "Tracked active domain download: {Domain} now has {ActiveDownloadCount} active downloads",
+                domain,
+                _activeDomainCounts[domain]);
         }
     }
 
@@ -167,10 +191,15 @@ public sealed class DownloadBackgroundService(
             if (count <= 1)
             {
                 _activeDomainCounts.Remove(domain);
+                logger.LogDebug("Cleared active domain download count for {Domain}", domain);
                 return;
             }
 
             _activeDomainCounts[domain] = count - 1;
+            logger.LogDebug(
+                "Released active domain download: {Domain} now has {ActiveDownloadCount} active downloads",
+                domain,
+                _activeDomainCounts[domain]);
         }
     }
 

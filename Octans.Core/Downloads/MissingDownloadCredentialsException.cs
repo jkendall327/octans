@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Raised when configured required headers for a download host are missing.
+/// </summary>
 public sealed class MissingDownloadCredentialsException : InvalidOperationException
 {
     public MissingDownloadCredentialsException()

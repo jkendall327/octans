@@ -3,6 +3,9 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Builds and manages temporary staging paths for in-progress HTTP downloads.
+/// </summary>
 public sealed class DownloadStagingPaths(IFileSystem fileSystem)
 {
     private const string StagingDirectoryName = ".octans-downloads";

@@ -3,6 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Downloads;
 
+/// <summary>
+/// Tracks cancellation tokens for downloads that have been claimed by the worker.
+/// </summary>
 public interface IActiveDownloadRegistry
 {
     CancellationToken GetToken(Guid downloadId);
@@ -11,6 +14,9 @@ public interface IActiveDownloadRegistry
     Task CancelAllAsync();
 }
 
+/// <summary>
+/// In-memory cancellation-token registry for active transfers.
+/// </summary>
 public sealed class ActiveDownloadRegistry(
     ILogger<ActiveDownloadRegistry> logger) : IActiveDownloadRegistry, IDisposable, IAsyncDisposable
 {

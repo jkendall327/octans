@@ -2,6 +2,9 @@ using System.Collections.Concurrent;
 
 namespace Octans.Core.Downloads.Bandwidth;
 
+/// <summary>
+/// Legacy rolling-window bandwidth state for a single domain.
+/// </summary>
 public class DomainBandwidth
 {
     public required string Domain { get; set; }
@@ -12,11 +15,17 @@ public class DomainBandwidth
     public TimeSpan WindowDuration { get; set; } = TimeSpan.FromSeconds(60); // Default 60-second window
 }
 
+/// <summary>
+/// Legacy bandwidth configuration grouped by domain.
+/// </summary>
 public class DomainBandwidthOptions
 {
     public List<IndividualDomainBandwidthOptions> Domains { get; init; } = [];
 }
 
+/// <summary>
+/// Legacy bandwidth limit for one domain.
+/// </summary>
 public class IndividualDomainBandwidthOptions
 {
     public required string Domain { get; init; }

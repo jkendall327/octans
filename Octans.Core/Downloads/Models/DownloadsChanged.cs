@@ -1,5 +1,8 @@
 namespace Octans.Core.Downloads.Models;
 
+/// <summary>
+/// Notification that the download list changed.
+/// </summary>
 public class DownloadsChanged
 {
     public Guid? AffectedDownloadId { get; init; }

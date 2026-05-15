@@ -105,6 +105,9 @@ internal static class DownloadContentTypeValidator
     }
 }
 
+/// <summary>
+/// Raised when a response content type does not match the request's accepted types.
+/// </summary>
 public sealed class DownloadContentTypeException : Exception
 {
     public DownloadContentTypeException()
