@@ -1,7 +1,6 @@
-using Octans.Core.Filesystem;
 using Octans.Data.Models;
 
-namespace Octans.Core.Deletion;
+namespace Octans.Core.Filesystem;
 
 public record DeleteResult(int Id, bool Success, string? Error);
 public record DeleteRequest(IEnumerable<int> Ids);

@@ -16,7 +16,6 @@ using Octans.Client.Components.Subscriptions;
 using Octans.Client.Services;
 using Octans.Client.Settings;
 using Octans.Core;
-using Octans.Core.Deletion;
 using Octans.Core.Downloads;
 using Octans.Core.Downloads.Bandwidth;
 using Octans.Core.Downloads.Downloaders;

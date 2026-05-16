@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core;
-using Octans.Core.Deletion;
 using Octans.Core.Duplicates;
 using Octans.Core.Filesystem;
 using Octans.Data.Models;

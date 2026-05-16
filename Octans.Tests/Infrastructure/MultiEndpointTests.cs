@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Octans.Client;
 using Octans.Core;
-using Octans.Core.Deletion;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
 using Octans.Core.Progress;
