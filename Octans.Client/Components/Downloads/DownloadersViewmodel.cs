@@ -1,4 +1,4 @@
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
 
 namespace Octans.Client.Components.Downloads;
 

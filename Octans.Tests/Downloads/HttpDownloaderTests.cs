@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
-using Octans.Core.Downloads;
-using Octans.Core.Downloads.Bandwidth;
-using Octans.Core.Downloads.Models;
+using Octans.Core.Http;
+using Octans.Core.Http.Bandwidth;
+using Octans.Core.Http.Models;
 using Octans.Data.Models;
 using Polly.CircuitBreaker;
 

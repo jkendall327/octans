@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Octans.Core;
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
 
 namespace Octans.Tests.Importing;
 

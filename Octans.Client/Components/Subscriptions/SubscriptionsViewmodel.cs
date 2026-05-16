@@ -1,5 +1,5 @@
 using MudBlazor;
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
 using Octans.Core.Subscriptions;
 
 namespace Octans.Client.Components.Subscriptions;

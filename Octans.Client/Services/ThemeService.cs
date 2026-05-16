@@ -1,4 +1,4 @@
-namespace Octans.Client;
+namespace Octans.Client.Services;
 
 public class ThemeService
 {

@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Octans.Core;
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
 using Octans.Core.Stats;

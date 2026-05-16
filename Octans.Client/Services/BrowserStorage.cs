@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
-namespace Octans.Client;
+namespace Octans.Client.Services;
 
 public interface IBrowserStorage
 {

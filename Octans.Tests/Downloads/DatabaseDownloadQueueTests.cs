@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Octans.Core.Downloads;
+using Octans.Core.Http;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
 

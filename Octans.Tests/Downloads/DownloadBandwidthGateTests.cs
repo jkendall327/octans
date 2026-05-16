@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using Octans.Core.Downloads.Bandwidth;
+using Octans.Core.Http.Bandwidth;
 using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Downloads;

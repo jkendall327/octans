@@ -2,8 +2,8 @@ using System.Text.Json.Serialization;
 using MudBlazor.Services;
 using Octans.Client;
 using Octans.Client.Components;
-using Octans.Core.Downloads;
-using Octans.Core.Downloads.Bandwidth;
+using Octans.Core.Http;
+using Octans.Core.Http.Bandwidth;
 
 var builder = WebApplication.CreateBuilder(args);
 

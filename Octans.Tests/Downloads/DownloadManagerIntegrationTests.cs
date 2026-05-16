@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using Octans.Core.Downloads;
-using Octans.Core.Downloads.Bandwidth;
-using Octans.Core.Downloads.Models;
+using Octans.Core.Http;
+using Octans.Core.Http.Bandwidth;
+using Octans.Core.Http.Models;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
 

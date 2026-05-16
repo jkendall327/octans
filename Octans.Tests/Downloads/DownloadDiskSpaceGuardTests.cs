@@ -1,8 +1,8 @@
 using System.IO.Abstractions.TestingHelpers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Octans.Core.Downloads;
-using Octans.Core.Downloads.Models;
+using Octans.Core.Http;
+using Octans.Core.Http.Models;
 
 namespace Octans.Tests.Downloads;
 

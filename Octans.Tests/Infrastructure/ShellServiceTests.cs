@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Octans.Client;
+using Octans.Client.Services;
 
 namespace Octans.Tests.Infrastructure;
 

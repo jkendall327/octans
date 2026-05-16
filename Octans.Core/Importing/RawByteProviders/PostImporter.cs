@@ -1,6 +1,6 @@
 using System.IO.Abstractions;
-using Octans.Core.Downloads;
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
+using Octans.Core.Http;
 
 namespace Octans.Core.Importing.RawByteProviders;
 

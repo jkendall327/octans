@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
-using Octans.Core.Downloads;
+using Octans.Core.Http;
 using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Downloads;

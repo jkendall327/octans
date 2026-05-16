@@ -7,7 +7,7 @@ using MudBlazor;
 using NSubstitute;
 using Octans.Client.Components.Subscriptions;
 using Octans.Core;
-using Octans.Core.Downloads.Downloaders;
+using Octans.Core.Downloaders;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
 using Octans.Data.Models;

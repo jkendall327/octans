@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Octans.Core.Downloads;
+using Octans.Core.Http;
 
 namespace Octans.Tests.Downloads;
 

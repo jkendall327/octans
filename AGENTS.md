@@ -1,7 +1,8 @@
 ## Repository Map
 
 - `Octans.Core/Communication` – API client interfaces and state change notifications.
-- `Octans.Core/Downloads` – download queue, bandwidth limiting, and individual downloaders in `Downloads/Downloaders`.
+- `Octans.Core/Downloaders` – user-created scripting surfaces for websites.
+- `Octans.Core/Http` – raw HTTP calls, bandwidth limiting, retry logic, job tracking.
 - `Octans.Core/Duplicates` – perceptual hashing to detect duplicate files.
 - `Octans.Core/Extensions` – project-wide extension methods.
 - `Octans.Core/Filesystem` – helpers for managing storage folders, deleting stuff etc.
