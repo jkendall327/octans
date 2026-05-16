@@ -84,6 +84,31 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     }
 
     [Fact]
+    public async Task FindDuplicates_ShouldOnlyCreateCandidatesWithinSimilarityThreshold()
+    {
+        // Arrange
+        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 0 };
+        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 0b111 };
+        var item3 = new HashItem
+        {
+            Hash = new byte[] { 3 },
+            PerceptualHash = (1UL << 60) | (1UL << 61) | (1UL << 62) | (1UL << 63)
+        };
+        _dbContext.Hashes.AddRange(item1, item2, item3);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var count = await _sut.FindDuplicates();
+
+        // Assert
+        count.Should().Be(1);
+        var candidate = await _dbContext.DuplicateCandidates.SingleAsync();
+        candidate.HashId1.Should().Be(item1.Id);
+        candidate.HashId2.Should().Be(item2.Id);
+        candidate.Distance.Should().BeGreaterThanOrEqualTo(95);
+    }
+
+    [Fact]
     public async Task FindDuplicates_ShouldSkipExistingCandidates()
     {
         // Arrange
@@ -167,7 +192,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         // Arrange
         var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
         var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
-        _dbContext.Hashes.AddRange(item1, item2);
+        var item3 = new HashItem { Hash = new byte[] { 3 }, PerceptualHash = 100 };
+        _dbContext.Hashes.AddRange(item1, item2, item3);
 
         var candidate = new DuplicateCandidate
         {
@@ -175,7 +201,13 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
             Hash2 = item2,
             Distance = 100
         };
-        _dbContext.DuplicateCandidates.Add(candidate);
+        var otherCandidateWithDeletedHash = new DuplicateCandidate
+        {
+            Hash1 = item2,
+            Hash2 = item3,
+            Distance = 100
+        };
+        _dbContext.DuplicateCandidates.AddRange(candidate, otherCandidateWithDeletedHash);
         await _dbContext.SaveChangesAsync();
 
         // Simulate file existence for deletion
@@ -194,10 +226,40 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
         // Assert
         _dbContext.DuplicateCandidates.Should().BeEmpty();
+        _dbContext.DuplicateDecisions.Should().BeEmpty();
 
         var deletedItem2 = await _dbContext.Hashes.FindAsync(item2.Id);
         deletedItem2!.DeletedAt.Should().NotBeNull();
 
         _host.FileSystem.FileExists(dest2).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Resolve_WithUnknownKeepHashId_ShouldThrowAndLeaveCandidateAlone()
+    {
+        // Arrange
+        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
+        var unrelatedItem = new HashItem { Hash = new byte[] { 3 }, PerceptualHash = 100 };
+        _dbContext.Hashes.AddRange(item1, item2, unrelatedItem);
+
+        var candidate = new DuplicateCandidate
+        {
+            Hash1 = item1,
+            Hash2 = item2,
+            Distance = 100
+        };
+        _dbContext.DuplicateCandidates.Add(candidate);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var act = async () => await _sut.Resolve(candidate.Id, DuplicateResolution.Distinct, unrelatedItem.Id);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage($"*Hash {unrelatedItem.Id} is not part of duplicate candidate {candidate.Id}*");
+        _dbContext.DuplicateCandidates.Should().ContainSingle();
+        _dbContext.Hashes.Should().OnlyContain(hash => hash.DeletedAt == null);
+        _dbContext.DuplicateDecisions.Should().BeEmpty();
     }
 }

@@ -1,3 +1,4 @@
+using System.Numerics;
 using CoenM.ImageHash;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,10 @@ public class DuplicateService(
     TimeProvider timeProvider,
     ILogger<DuplicateService> logger)
 {
+    private const double CandidateSimilarityThreshold = 95.0;
+    private const int PerceptualHashBitLength = sizeof(ulong) * 8;
+    private static readonly int CandidateDistanceThreshold = SimilarityThresholdToMaxDistance(CandidateSimilarityThreshold);
+
     public async Task<int> CalculateMissingHashes(CancellationToken cancellationToken = default)
     {
         var hashes = await context.Hashes
@@ -25,7 +30,7 @@ public class DuplicateService(
         var count = 0;
         foreach (var hashItem in hashes)
         {
-            if (cancellationToken.IsCancellationRequested) break;
+            cancellationToken.ThrowIfCancellationRequested();
 
             var hash = ContentHash.FromHashBytes(hashItem.Hash);
             var file = imageStorage.FindOriginal(hash, hashItem.Extension);
@@ -54,89 +59,84 @@ public class DuplicateService(
 
     public async Task<int> FindDuplicates(CancellationToken cancellationToken = default)
     {
-        // TODO: Simple O(N^2) comparison for now, can be optimized with BK-tree or similar later.
-        // We only compare items that have a PerceptualHash.
-
-        var items = await context.Hashes
+        var hashRows = await context.Hashes
+            .AsNoTracking()
             .Where(h => h.PerceptualHash != null && h.DeletedAt == null)
-            .Select(h => new { h.Id, Hash = (ulong)h.PerceptualHash! })
+            .Select(h => new { h.Id, Hash = h.PerceptualHash!.Value })
             .ToListAsync(cancellationToken);
+
+        var ignoredPairs = await GetIgnoredPairs(cancellationToken);
+        var index = new PerceptualHashIndex();
 
         var found = 0;
-
-        // Existing decisions to skip
-        var decisions = await context.DuplicateDecisions
-            .Select(d => new { d.HashId1, d.HashId2 })
-            .ToListAsync(cancellationToken);
-
-        var decisionSet = new HashSet<(int, int)>();
-        foreach (var d in decisions)
+        foreach (var item in hashRows.Select(row => new HashRow(row.Id, row.Hash)))
         {
-            decisionSet.Add((Math.Min(d.HashId1, d.HashId2), Math.Max(d.HashId1, d.HashId2)));
-        }
+            cancellationToken.ThrowIfCancellationRequested();
 
-        // Existing candidates to skip
-        var candidates = await context.DuplicateCandidates
-            .Select(c => new { c.HashId1, c.HashId2 })
-            .ToListAsync(cancellationToken);
-
-        var candidateSet = new HashSet<(int, int)>();
-        foreach (var c in candidates)
-        {
-            candidateSet.Add((Math.Min(c.HashId1, c.HashId2), Math.Max(c.HashId1, c.HashId2)));
-        }
-
-        for (var i = 0; i < items.Count; i++)
-        {
-            for (var j = i + 1; j < items.Count; j++)
+            foreach (var match in index.FindWithinDistance(item.Hash, CandidateDistanceThreshold))
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                var pair = HashPair.Create(item.Id, match.Id);
 
-                var item1 = items[i];
-                var item2 = items[j];
+                if (ignoredPairs.Contains(pair)) continue;
 
-                var pair = (Math.Min(item1.Id, item2.Id), Math.Max(item1.Id, item2.Id));
+                var similarity = CompareHash.Similarity(item.Hash, match.Hash);
 
-                if (decisionSet.Contains(pair) || candidateSet.Contains(pair)) continue;
+                if (similarity < CandidateSimilarityThreshold) continue;
 
-                var similarity = CompareHash.Similarity(item1.Hash, item2.Hash);
-
-                // Similarity is 0-100. Let's say > 90 is a candidate?
-                // Wait, CoenM.ImageHash uses Similarity (0-100).
-
-                if (similarity >= 95.0) // Threshold can be adjustable
+                context.DuplicateCandidates.Add(new DuplicateCandidate
                 {
-                    context.DuplicateCandidates.Add(new DuplicateCandidate
-                    {
-                        HashId1 = pair.Item1,
-                        HashId2 = pair.Item2,
-                        Distance = similarity,
-                        CreatedAt = timeProvider.GetUtcNow()
-                    });
-                    candidateSet.Add(pair); // Prevent re-adding in same loop
-                    found++;
-                }
+                    HashId1 = pair.HashId1,
+                    HashId2 = pair.HashId2,
+                    Distance = similarity,
+                    CreatedAt = timeProvider.GetUtcNow()
+                });
+                ignoredPairs.Add(pair);
+                found++;
             }
+
+            index.Add(item);
         }
 
         await context.SaveChangesAsync(cancellationToken);
         return found;
     }
 
-    public async Task Resolve(int candidateId, DuplicateResolution resolution, int? keepHashId)
+    public async Task Resolve(
+        int candidateId,
+        DuplicateResolution resolution,
+        int? keepHashId,
+        CancellationToken cancellationToken = default)
     {
         var candidate = await context.DuplicateCandidates
-            .Include(c => c.Hash1)
-            .Include(c => c.Hash2)
-            .FirstOrDefaultAsync(c => c.Id == candidateId);
+            .FirstOrDefaultAsync(c => c.Id == candidateId, cancellationToken);
 
         if (candidate == null) return;
 
-        // Create decision record
+        if (keepHashId.HasValue)
+        {
+            var deleteId = GetDeletedHashId(candidate, keepHashId.Value);
+            var results = await fileDeleter.ProcessDeletion([deleteId]);
+
+            var failed = results.FirstOrDefault(result => !result.Success);
+            if (failed is not null)
+            {
+                throw new InvalidOperationException($"Failed to delete hash {failed.Id}: {failed.Error}");
+            }
+
+            var affectedCandidates = await context.DuplicateCandidates
+                .Where(c => c.HashId1 == deleteId || c.HashId2 == deleteId)
+                .ToListAsync(cancellationToken);
+
+            context.DuplicateCandidates.RemoveRange(affectedCandidates);
+            await context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var pair = HashPair.Create(candidate.HashId1, candidate.HashId2);
         var decision = new DuplicateDecision
         {
-            HashId1 = candidate.HashId1,
-            HashId2 = candidate.HashId2,
+            HashId1 = pair.HashId1,
+            HashId2 = pair.HashId2,
             Resolution = resolution,
             DecidedAt = timeProvider.GetUtcNow()
         };
@@ -144,71 +144,129 @@ public class DuplicateService(
 
         // Remove candidate
         context.DuplicateCandidates.Remove(candidate);
+        await context.SaveChangesAsync(cancellationToken);
+    }
 
-        if (resolution == DuplicateResolution.KeepBoth)
+    private async Task<HashSet<HashPair>> GetIgnoredPairs(CancellationToken cancellationToken)
+    {
+        var ignoredPairs = new HashSet<HashPair>();
+
+        var decisions = await context.DuplicateDecisions
+            .AsNoTracking()
+            .Select(d => new { d.HashId1, d.HashId2 })
+            .ToListAsync(cancellationToken);
+
+        foreach (var decision in decisions)
         {
-            // Nothing else to do
-        }
-        else if (resolution == DuplicateResolution.Distinct)
-        {
-            // Nothing else to do (marked as distinct)
-        }
-        // else if (resolution == DuplicateResolution.Ignored) // Not used in UI yet?
-        // {
-        // Just skip
-        // }
-
-        // If we are keeping one, we delete the other.
-        // But DuplicateResolution doesn't fully capture "Keep A" vs "Keep B".
-        // The UI should pass which one to keep, or we handle "Delete" separately?
-        // The prompt says: "Keep A, Keep B, both are equally good, skip".
-
-        // If "Keep A", we resolve as... actually "Keep A" means we delete B.
-        // So the pair is no longer a duplicate because B is deleted.
-        // We probably don't need a DuplicateDecision in that case, because B is gone.
-        // BUT if B is reimported, we might want to know?
-
-        if (keepHashId.HasValue)
-        {
-            // We are keeping keepHashId, deleting the other.
-            var deleteId = candidate.HashId1 == keepHashId.Value ? candidate.HashId2 : candidate.HashId1;
-
-            // Delete the file
-            await fileDeleter.ProcessDeletion(new[] { deleteId });
-
-            // We don't save a DuplicateDecision if one is deleted, because the pair is broken.
-            // TODO: Determine if we should handle re-import of deleted duplicates.
-            // If we delete B, and reimport B later, it will be a new HashItem (new ID? No, same ID if not hard deleted).
-            // ReimportChecker reactivates existing hash.
-            // So if we delete B, B.DeletedAt is set.
-            // If B is reimported, B.DeletedAt is cleared.
-            // Then FindDuplicates runs again. It sees A and B. It flags them again.
-            // User sees them again.
-            // So we SHOULD record that we resolved this pair by deleting one?
-            // But if we deleted it, why did we reimport it? Maybe user made a mistake?
-
-            // If I delete B, I don't want it to show up as a duplicate of A again immediately.
-            // But it won't, because FindDuplicates filters out Deleted items.
-
-            // So, deleting B is sufficient to remove the candidate.
-            // But I should remove the Candidate record too.
-            // Which I am doing.
-
-            // BUT: If I delete B, do I add a Decision?
-            // If I add a Decision (A, B, KeepBoth/Distinct), it might block future checks.
-            // If I don't add a Decision, and B comes back, it's flagged again.
-            // This seems correct. If B comes back, it's a "new" duplicate issue.
-
-            // However, the function signature needs to handle this.
-            // If keepHashId is provided, it implies deletion of the other.
-            // So resolution might be irrelevant or implicit.
-        }
-        else
-        {
-            // KeepBoth or Distinct
-            // Decision is added.
+            ignoredPairs.Add(HashPair.Create(decision.HashId1, decision.HashId2));
         }
 
-        await context.SaveChangesAsync();
+        var candidates = await context.DuplicateCandidates
+            .AsNoTracking()
+            .Select(c => new { c.HashId1, c.HashId2 })
+            .ToListAsync(cancellationToken);
+
+        foreach (var candidate in candidates)
+        {
+            ignoredPairs.Add(HashPair.Create(candidate.HashId1, candidate.HashId2));
+        }
+
+        return ignoredPairs;
+    }
+
+    private static int GetDeletedHashId(DuplicateCandidate candidate, int keepHashId)
+    {
+        if (candidate.HashId1 == keepHashId)
+        {
+            return candidate.HashId2;
+        }
+
+        if (candidate.HashId2 == keepHashId)
+        {
+            return candidate.HashId1;
+        }
+
+        throw new ArgumentException(
+            $"Hash {keepHashId} is not part of duplicate candidate {candidate.Id}.",
+            nameof(keepHashId));
+    }
+
+    private static int SimilarityThresholdToMaxDistance(double threshold)
+    {
+        var differentBitPercentage = 100.0 - threshold;
+        return (int)Math.Floor(PerceptualHashBitLength * differentBitPercentage / 100.0);
+    }
+
+    private readonly record struct HashRow(int Id, ulong Hash);
+
+    private readonly record struct HashPair(int HashId1, int HashId2)
+    {
+        public static HashPair Create(int firstHashId, int secondHashId) =>
+            firstHashId < secondHashId
+                ? new(firstHashId, secondHashId)
+                : new(secondHashId, firstHashId);
+    }
+
+    private sealed class PerceptualHashIndex
+    {
+        private Node? _root;
+
+        public void Add(HashRow row)
+        {
+            if (_root is null)
+            {
+                _root = new(row);
+                return;
+            }
+
+            var node = _root;
+            while (true)
+            {
+                var distance = HammingDistance(row.Hash, node.Row.Hash);
+                if (!node.Children.TryGetValue(distance, out var child))
+                {
+                    node.Children.Add(distance, new(row));
+                    return;
+                }
+
+                node = child;
+            }
+        }
+
+        public IEnumerable<HashRow> FindWithinDistance(ulong hash, int maxDistance)
+        {
+            if (_root is null)
+            {
+                yield break;
+            }
+
+            var pending = new Stack<Node>();
+            pending.Push(_root);
+
+            while (pending.TryPop(out var node))
+            {
+                var distance = HammingDistance(hash, node.Row.Hash);
+                if (distance <= maxDistance)
+                {
+                    yield return node.Row;
+                }
+
+                foreach (var (childDistance, child) in node.Children)
+                {
+                    if (childDistance < distance - maxDistance || childDistance > distance + maxDistance) continue;
+
+                    pending.Push(child);
+                }
+            }
+        }
+
+        private static int HammingDistance(ulong first, ulong second) =>
+            BitOperations.PopCount(first ^ second);
+
+        private sealed class Node(HashRow row)
+        {
+            public HashRow Row { get; } = row;
+            public Dictionary<int, Node> Children { get; } = [];
+        }
     }
 }
