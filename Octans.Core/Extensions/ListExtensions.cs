@@ -17,4 +17,6 @@ public static class ListExtensions
             src.OfType<T3>().ToList()
         );
     }
+    
+    public static bool IsValidIndex<T>(this List<T> list, int index) => index >= 0 && index < list.Count;
 }

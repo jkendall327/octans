@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Octans.Client.Services;
 using Octans.Client.Settings;
+using Octans.Core.Extensions;
 using Octans.Core.Tags;
 
 namespace Octans.Client.Components.Gallery;
@@ -60,7 +61,7 @@ public sealed class ImageViewerViewmodel(
         var idx = ImageUrls.IndexOf(currentImage);
         var prev = idx - 1;
 
-        CurrentImage = IsValidIndex(ImageUrls, prev) ? ImageUrls[prev] : ImageUrls.Last();
+        CurrentImage = ImageUrls.IsValidIndex(prev) ? ImageUrls[prev] : ImageUrls.Last();
 
         await LoadTagsAsync();
         return ImageViewerAction.None;
@@ -73,7 +74,7 @@ public sealed class ImageViewerViewmodel(
         var idx = ImageUrls.IndexOf(currentImage);
         var next = idx + 1;
 
-        CurrentImage = IsValidIndex(ImageUrls, next) ? ImageUrls[next] : ImageUrls.First();
+        CurrentImage = ImageUrls.IsValidIndex(next) ? ImageUrls[next] : ImageUrls.First();
 
         await LoadTagsAsync();
         return ImageViewerAction.None;
@@ -191,7 +192,6 @@ public sealed class ImageViewerViewmodel(
         return CurrentImage;
     }
 
-    private static bool IsValidIndex<T>(List<T> list, int index) => index >= 0 && index < list.Count;
 }
 
 public enum ImageViewerFilterChoice
