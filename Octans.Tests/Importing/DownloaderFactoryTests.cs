@@ -199,7 +199,7 @@ public class DownloaderFactoryTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldRejectNonHttpUrlsReturnedByParser()
+    public async Task ResolveAsync_ShouldSkipDownloaderWhenParserReturnsNonHttpUrls()
     {
         var subdir = _downloaders.CreateSubdirectory("first");
         AddFileToSubdir(subdir, "classifier", _classifier);
@@ -210,12 +210,53 @@ public class DownloaderFactoryTests
         clientFactory.CreateClient("DownloadClient").Returns(httpClient);
 
         var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = new DownloaderService(clientFactory, _sut, headerProvider);
+        var service = new DownloaderService(clientFactory, _sut, headerProvider, NullLogger<DownloaderService>.Instance);
 
-        await service
-            .Invoking(s => s.ResolveAsync(new("https://example.com/post/1")))
-            .Should()
-            .ThrowAsync<DownloaderContractException>();
+        var urls = await service.ResolveAsync(new("https://example.com/post/1"));
+
+        urls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldSkipDownloaderWhenMatchUrlFailsAtRuntime()
+    {
+        var broken = _downloaders.CreateSubdirectory("broken");
+        AddFileToSubdir(broken, "metadata", new("""
+                                                Downloader = {
+                                                    name = "broken downloader",
+                                                    creator = "Octans tests",
+                                                    version = "1.0"
+                                                }
+                                                """));
+        AddFileToSubdir(broken, "classifier", new("""
+                                                   function match_url(url)
+                                                       error('runtime match failure')
+                                                   end
+                                                   function classify_url(url) return 'post' end
+                                                   """));
+        AddFileToSubdir(broken, "parser", _parser);
+
+        var working = _downloaders.CreateSubdirectory("working");
+        AddFileToSubdir(working, "metadata", new("""
+                                                 Downloader = {
+                                                     name = "working downloader",
+                                                     creator = "Octans tests",
+                                                     version = "1.0"
+                                                 }
+                                                 """));
+        AddFileToSubdir(working, "classifier", _classifier);
+        AddFileToSubdir(working, "parser", _parser);
+
+        var clientFactory = Substitute.For<IHttpClientFactory>();
+        using var httpClient = new HttpClient(new StaticHttpMessageHandler("<html></html>"));
+        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
+
+        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
+        var service = new DownloaderService(clientFactory, _sut, headerProvider, NullLogger<DownloaderService>.Instance);
+
+        var urls = await service.ResolveAsync(new("https://example.com/post/1"));
+
+        urls.Should().Equal(new Uri("https://example.com/image.jpg"));
     }
 
     private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)

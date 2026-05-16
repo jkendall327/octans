@@ -104,7 +104,7 @@ public sealed class Downloader : IDisposable
     {
         if (_generateGalleryUrl is null)
         {
-            throw new InvalidOperationException("No GUG provided for downloader");
+            throw new DownloaderContractException("No GUG provided for downloader.");
         }
 
         var result = _generateGalleryUrl.Call(input, page).FirstOrDefault() as string;

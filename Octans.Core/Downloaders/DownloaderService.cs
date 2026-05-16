@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Octans.Core.Http;
 
 namespace Octans.Core.Downloaders;
@@ -5,44 +6,66 @@ namespace Octans.Core.Downloaders;
 public class DownloaderService(
     IHttpClientFactory clientFactory,
     DownloaderFactory downloaderFactory,
-    IDownloadRequestHeaderProvider requestHeaderProvider)
+    IDownloadRequestHeaderProvider requestHeaderProvider,
+    ILogger<DownloaderService> logger)
 {
     public async Task<IReadOnlyList<Uri>> ResolveAsync(Uri uri)
     {
         var downloaders = await downloaderFactory.GetDownloaders();
 
-        var matching = downloaders.FirstOrDefault(d => d.MatchesUrl(uri));
-
-        if (matching is null)
-        {
-            return [];
-        }
-
 #pragma warning disable CA2000
         var client = clientFactory.CreateClient("DownloadClient");
 #pragma warning restore CA2000
 
-        var raw = await GetStringAsync(client, uri);
+        string? raw = null;
 
-        var classification = matching.ClassifyUrl(uri);
-
-        if (classification is DownloaderUrlClassification.Unknown)
+        foreach (var downloader in downloaders)
         {
-            return [];
+            if (!TryRun(downloader, "match_url", () => downloader.MatchesUrl(uri)))
+            {
+                continue;
+            }
+
+            var classification = TryRun<DownloaderUrlClassification?>(
+                downloader,
+                "classify_url",
+                () => downloader.ClassifyUrl(uri));
+            if (classification is null or DownloaderUrlClassification.Unknown)
+            {
+                continue;
+            }
+
+            var content = raw ??= await GetStringAsync(client, uri);
+            if (classification is DownloaderUrlClassification.Gallery)
+            {
+                var galleryUrl = TryRun(
+                    downloader,
+                    "generate_url",
+                    () => CreateHttpUri(downloader.GenerateGalleryUrl(uri.AbsoluteUri, 0), "generate_url"));
+
+                if (galleryUrl is null)
+                {
+                    continue;
+                }
+
+                content = await GetStringAsync(client, galleryUrl);
+            }
+
+            var urls = TryRun(
+                downloader,
+                "parse_html",
+                () => downloader
+                    .ParseHtml(content)
+                    .Select(u => CreateHttpUri(u, "parse_html"))
+                    .ToList());
+
+            if (urls is not null)
+            {
+                return urls;
+            }
         }
 
-        if (classification is DownloaderUrlClassification.Gallery)
-        {
-            var galleryUrl = CreateHttpUri(matching.GenerateGalleryUrl(uri.AbsoluteUri, 0), "generate_url");
-            raw = await GetStringAsync(client, galleryUrl);
-        }
-
-        var urls = matching
-            .ParseHtml(raw)
-            .Select(u => CreateHttpUri(u, "parse_html"))
-            .ToList();
-
-        return urls;
+        return [];
     }
 
     private async Task<string> GetStringAsync(HttpClient client, Uri uri)
@@ -68,5 +91,29 @@ public class DownloaderService(
         }
 
         return uri;
+    }
+
+    private T? TryRun<T>(Downloader downloader, string operation, Func<T> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (DownloaderContractException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Downloader {DownloaderName} failed during {DownloaderOperation}",
+                GetDownloaderName(downloader),
+                operation);
+            return default;
+        }
+    }
+
+    private static string GetDownloaderName(Downloader downloader)
+    {
+        return string.IsNullOrWhiteSpace(downloader.Metadata.Name)
+            ? "<unnamed>"
+            : downloader.Metadata.Name;
     }
 }
