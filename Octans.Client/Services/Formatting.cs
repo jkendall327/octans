@@ -7,7 +7,7 @@ public static class Formatting
 
     public static string FormatBytes(long bytes)
     {
-        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        string[] sizes = ["B", "KB", "MB", "GB", "TB"];
         double len = bytes;
         var order = 0;
         while (len >= 1024 && order < sizes.Length - 1)

@@ -38,7 +38,7 @@ public sealed class ImportFolderBackgroundService(
     {
         var request = new ImportRequest
         {
-            Items = new(),
+            Items = [],
             ImportType = ImportType.File,
             DeleteAfterImport = options.Value.DeleteAfterImport,
             FilterData = new()

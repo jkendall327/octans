@@ -13,7 +13,7 @@ public class NoteService(ServerDbContext context, TimeProvider timeProvider) : I
             .AsNoTracking()
             .FirstOrDefaultAsync(h => h.Hash == bytes);
 
-        return hashItem?.Notes.Select(MapNote).ToList() ?? new List<NoteDto>();
+        return hashItem?.Notes.Select(MapNote).ToList() ?? [];
     }
 
     public async Task<NoteDto> AddNoteAsync(string hash, string content)

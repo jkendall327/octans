@@ -9,7 +9,7 @@ public class DownloaderMetadata
     public Version Version { get; set; } = new(0, 0);
     public string Homepage { get; set; } = string.Empty;
 
-    public List<string> SupportedOperations { get; } = new();
+    public List<string> SupportedOperations { get; } = [];
 }
 
 public enum DownloaderUrlClassification
@@ -89,7 +89,7 @@ public sealed class Downloader : IDisposable
     {
         var result = _parseHtml.Call(htmlContent)?.FirstOrDefault() as LuaTable;
 
-        return result?.Values.Cast<string>().ToList() ?? new List<string>();
+        return result?.Values.Cast<string>().ToList() ?? [];
     }
 
     public string GenerateGalleryUrl(string input, int page)

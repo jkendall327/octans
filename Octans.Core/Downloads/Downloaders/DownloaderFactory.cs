@@ -12,7 +12,7 @@ public class DownloaderFactory(
 {
     private readonly GlobalSettings _globalSettings = globalSettings.Value;
 
-    private readonly List<Downloader> _downloaders = new();
+    private readonly List<Downloader> _downloaders = [];
 
     public string DownloaderDirectory => fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
 

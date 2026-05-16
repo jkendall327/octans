@@ -4,8 +4,8 @@ namespace Octans.Client.Components.Settings;
 
 public class SettingsContext
 {
-    private readonly List<SettingsPageDescriptor> _pages = new();
-    private readonly List<SettingDescriptor> _settings = new();
+    private readonly List<SettingsPageDescriptor> _pages = [];
+    private readonly List<SettingDescriptor> _settings = [];
 
     public IReadOnlyList<SettingsPageDescriptor> Pages => _pages;
     public IReadOnlyList<SettingDescriptor> Settings => _settings;
@@ -22,7 +22,7 @@ public class SettingsContext
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            return Array.Empty<SettingDescriptor>();
+            return [];
         }
 
         var comparison = StringComparison.OrdinalIgnoreCase;

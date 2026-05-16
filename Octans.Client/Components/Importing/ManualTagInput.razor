@@ -57,7 +57,7 @@
         var text = await Clipboard.GetFromClipboard();
         if (string.IsNullOrWhiteSpace(text)) return;
 
-        var parts = text.Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = text.Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries);
         var addedAny = false;
 
         foreach (var part in parts)

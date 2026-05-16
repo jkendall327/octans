@@ -71,8 +71,8 @@ else
     [Parameter]
     public string? SelectedHash { get; set; }
 
-    private List<NoteDto> Notes { get; set; } = new();
-    private List<TagViewer.Tag> Tags { get; set; } = new();
+    private List<NoteDto> Notes { get; set; } = [];
+    private List<TagViewer.Tag> Tags { get; set; } = [];
     private string NewNoteContent { get; set; } = string.Empty;
 
     protected override async Task OnParametersSetAsync()

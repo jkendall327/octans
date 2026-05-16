@@ -377,6 +377,6 @@ public class DownloadServiceTests
 
     private static bool IsOnlyInProgress(IReadOnlySet<DownloadState> states)
     {
-        return states.SetEquals(new[] { DownloadState.InProgress });
+        return states.SetEquals([DownloadState.InProgress]);
     }
 }

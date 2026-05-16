@@ -49,3 +49,10 @@ Instead of mocking out `ILogger<T>`, use `NullLogger<T>.Instance`.
 Instead of mocking out `TimeProvider`, create `Microsoft.Extensions.Time.Testing.FakeTimeProvider`.
 
 Instead of mocking out `IFilesystem`, create `MockFileSystem`.
+
+Use collection expressions where appropriate. They are a new C# feature that looks like this:
+```csharp
+private readonly List<string> _foo = [];
+private readonly List<string> _foo2 = ["test"];
+var item1 = new HashItem { Hash = [1], PerceptualHash = 0 };
+```

@@ -15,7 +15,7 @@ public class DownloaderService(
 
         if (matching is null)
         {
-            return Array.Empty<Uri>();
+            return [];
         }
 
 #pragma warning disable CA2000
@@ -28,7 +28,7 @@ public class DownloaderService(
 
         if (classification is DownloaderUrlClassification.Unknown)
         {
-            return Array.Empty<Uri>();
+            return [];
         }
 
         if (classification is DownloaderUrlClassification.Gallery)

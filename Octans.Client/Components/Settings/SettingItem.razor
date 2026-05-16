@@ -15,7 +15,7 @@
 
     [Parameter] public string Name { get; set; } = string.Empty;
     [Parameter] public string? Description { get; set; }
-    [Parameter] public IEnumerable<string> Tags { get; set; } = Enumerable.Empty<string>();
+    [Parameter] public IEnumerable<string> Tags { get; set; } = [];
     [Parameter] public RenderFragment? Control { get; set; }
 
     private ElementReference _element;

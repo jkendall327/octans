@@ -66,8 +66,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task FindDuplicates_ShouldIdentifySimilarItems()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 }; // Identical
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 }; // Identical
         _dbContext.Hashes.AddRange(item1, item2);
         await _dbContext.SaveChangesAsync();
 
@@ -87,11 +87,11 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task FindDuplicates_ShouldOnlyCreateCandidatesWithinSimilarityThreshold()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 0 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 0b111 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 0 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 0b111 };
         var item3 = new HashItem
         {
-            Hash = new byte[] { 3 },
+            Hash = [3],
             PerceptualHash = (1UL << 60) | (1UL << 61) | (1UL << 62) | (1UL << 63)
         };
         _dbContext.Hashes.AddRange(item1, item2, item3);
@@ -112,8 +112,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task FindDuplicates_ShouldSkipExistingCandidates()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2);
 
         var candidate = new DuplicateCandidate
@@ -137,8 +137,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task Resolve_ShouldCreateDecision_AndRemoveCandidate()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2);
 
         var candidate = new DuplicateCandidate
@@ -165,8 +165,8 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task FindDuplicates_ShouldRespectDecisions()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2);
 
         var decision = new DuplicateDecision
@@ -190,9 +190,9 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task Resolve_WithKeepOne_ShouldDeleteTheOther()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
-        var item3 = new HashItem { Hash = new byte[] { 3 }, PerceptualHash = 100 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 };
+        var item3 = new HashItem { Hash = [3], PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2, item3);
 
         var candidate = new DuplicateCandidate
@@ -238,9 +238,9 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
     public async Task Resolve_WithUnknownKeepHashId_ShouldThrowAndLeaveCandidateAlone()
     {
         // Arrange
-        var item1 = new HashItem { Hash = new byte[] { 1 }, PerceptualHash = 100 };
-        var item2 = new HashItem { Hash = new byte[] { 2 }, PerceptualHash = 100 };
-        var unrelatedItem = new HashItem { Hash = new byte[] { 3 }, PerceptualHash = 100 };
+        var item1 = new HashItem { Hash = [1], PerceptualHash = 100 };
+        var item2 = new HashItem { Hash = [2], PerceptualHash = 100 };
+        var unrelatedItem = new HashItem { Hash = [3], PerceptualHash = 100 };
         _dbContext.Hashes.AddRange(item1, item2, unrelatedItem);
 
         var candidate = new DuplicateCandidate

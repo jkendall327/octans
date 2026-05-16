@@ -12,7 +12,7 @@ public class TagSiblingService(ServerDbContext context)
         var tagList = tags.ToList();
         if (!tagList.Any())
         {
-            return Array.Empty<ResolvedTag>();
+            return [];
         }
 
         const char delimiter = '\u0001';

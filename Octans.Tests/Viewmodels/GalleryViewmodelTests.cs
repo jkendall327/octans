@@ -175,7 +175,7 @@ public class GalleryViewmodelTests
     {
         _commandProvider
             .GetCustomCommandsAsync()
-            .Returns(new List<CustomCommand>());
+            .Returns([]);
 
         await _sut.OnInitialized();
 
@@ -201,7 +201,7 @@ public class GalleryViewmodelTests
     {
         _commandProvider
             .GetCustomCommandsAsync()
-            .Returns(new List<CustomCommand>());
+            .Returns([]);
 
         await _sut.OnInitialized();
 

@@ -6,7 +6,7 @@
 </ul>
 
 @code {
-    [Parameter] public IEnumerable<SettingsPageDescriptor> Pages { get; set; } = Enumerable.Empty<SettingsPageDescriptor>();
+    [Parameter] public IEnumerable<SettingsPageDescriptor> Pages { get; set; } = [];
     [Parameter] public SettingsPageDescriptor? ActivePage { get; set; }
     [Parameter] public EventCallback<SettingsPageDescriptor> OnSelectPage { get; set; }
 }
