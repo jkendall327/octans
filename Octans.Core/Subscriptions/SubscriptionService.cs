@@ -15,7 +15,7 @@ public sealed class SubscriptionService(
 {
     public async Task CheckAndExecute(CancellationToken stoppingToken = default)
     {
-        using var db = await factory.CreateDbContextAsync(stoppingToken);
+        await using var db = await factory.CreateDbContextAsync(stoppingToken);
 
         var now = timeProvider.GetUtcNow();
 
@@ -48,7 +48,7 @@ public sealed class SubscriptionService(
 
     public async Task<List<SubscriptionStatusDto>> GetAllAsync()
     {
-        using var db = await factory.CreateDbContextAsync();
+        await using var db = await factory.CreateDbContextAsync();
 
         var subscriptions = await db.Subscriptions
             .Include(s => s.Provider)
@@ -74,7 +74,7 @@ public sealed class SubscriptionService(
 
     public async Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency)
     {
-        using var db = await factory.CreateDbContextAsync();
+        await using var db = await factory.CreateDbContextAsync();
 
         var provider = await db.Providers.FirstOrDefaultAsync(p => p.Name == downloaderName);
         if (provider is null)
@@ -98,7 +98,7 @@ public sealed class SubscriptionService(
 
     public async Task DeleteAsync(int id)
     {
-        using var db = await factory.CreateDbContextAsync();
+        await using var db = await factory.CreateDbContextAsync();
 
         var subscription = await db.Subscriptions.FindAsync(id);
         if (subscription is null) return;

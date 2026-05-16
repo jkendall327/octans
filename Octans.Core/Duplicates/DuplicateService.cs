@@ -38,7 +38,7 @@ public class DuplicateService(
 
             try
             {
-                using var stream = file.OpenRead();
+                await using var stream = file.OpenRead();
                 hashItem.PerceptualHash = await hashProvider.GetHash(stream, cancellationToken);
                 count++;
             }

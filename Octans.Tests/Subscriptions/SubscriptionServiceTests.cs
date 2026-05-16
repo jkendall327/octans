@@ -90,7 +90,7 @@ public class SubscriptionServiceTests
         await _sut.CheckAndExecute();
 
         // Assert
-        using (var context = await _factory.CreateDbContextAsync())
+        await using (var context = await _factory.CreateDbContextAsync())
         {
             var executions = await context.SubscriptionExecutions.ToListAsync();
             Assert.Single(executions);
