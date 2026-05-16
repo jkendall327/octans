@@ -11,9 +11,12 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     
     steps:
     - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
@@ -22,15 +25,12 @@ jobs:
         
     - name: Restore dependencies
       run: dotnet restore
-      
-    - name: Build Server
-      run: dotnet publish Octans.Server/Octans.Server.csproj -c Release -o publish/server
+
+    - name: Test
+      run: dotnet test --configuration Release --no-restore --verbosity normal
       
     - name: Build Client
       run: dotnet publish Octans.Client/Octans.Client.csproj -c Release -o publish/client
-      
-    - name: Zip Server
-      run: cd publish/server && zip -r ../../octans-server.zip .
       
     - name: Zip Client
       run: cd publish/client && zip -r ../../octans-client.zip .
@@ -46,7 +46,6 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          octans-server.zip
           octans-client.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
