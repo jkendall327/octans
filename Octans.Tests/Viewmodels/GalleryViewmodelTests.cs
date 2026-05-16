@@ -128,12 +128,12 @@ public class GalleryViewmodelTests
     [Fact]
     public async Task OnFilterComplete_writes_repository_requests()
     {
-        var result = new ImageViewer.FilterResult
+        var result = new ImageViewerFilterResult
         {
             Choices = new()
             {
-                ["/media/DEADBEEF"] = ImageViewer.FilterChoice.Archive,
-                ["/media/01234567"] = ImageViewer.FilterChoice.Delete
+                ["/media/DEADBEEF"] = ImageViewerFilterChoice.Archive,
+                ["/media/01234567"] = ImageViewerFilterChoice.Delete
             }
         };
 
@@ -155,12 +155,12 @@ public class GalleryViewmodelTests
     {
         _sut.ImageUrls.AddRange(Expected);
 
-        var result = new ImageViewer.FilterResult
+        var result = new ImageViewerFilterResult
         {
             Choices = new()
             {
-                ["/media/DEADBEEF"] = ImageViewer.FilterChoice.Archive,
-                ["/media/01234567"] = ImageViewer.FilterChoice.Delete
+                ["/media/DEADBEEF"] = ImageViewerFilterChoice.Archive,
+                ["/media/01234567"] = ImageViewerFilterChoice.Delete
             }
         };
 

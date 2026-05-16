@@ -1,11 +1,8 @@
 @inject ShellService ShellService
 @inject IDialogService DialogService
-@inject ITagService TagService
-@inject IKeybindingService KeybindingService
+@inject ImageViewerViewmodel Viewmodel
 @using Octans.Client.Components.Settings
 @using Octans.Client.Services
-@using Octans.Client.Settings
-@using Octans.Core.Tags
 @implements IDisposable
 
 <div class="image-viewer"
@@ -22,8 +19,8 @@
             Close
         </MudButton>
         <MudButton
-            OnClick="@(PreviousAsync)"
-            Disabled="@(CurrentImage is null)"
+            OnClick="@PreviousAsync"
+            Disabled="@(Viewmodel.CurrentImage is null)"
             Size="Size.Small"
             Class="mr-n3 mb-1"
             Color="Color.Default">
@@ -35,8 +32,8 @@
         @if (FilterMode)
         {
             <MudButton
-                OnClick="@(ArchiveAsync)"
-                Disabled="@(CurrentImage is null)"
+                OnClick="@ArchiveAsync"
+                Disabled="@(Viewmodel.CurrentImage is null)"
                 Size="Size.Small"
                 Class="mr-n3 mb-1"
                 Color="Color.Success">
@@ -44,8 +41,8 @@
             </MudButton>
 
             <MudButton
-                OnClick="@(DeleteAsync)"
-                Disabled="@(CurrentImage is null)"
+                OnClick="@DeleteAsync"
+                Disabled="@(Viewmodel.CurrentImage is null)"
                 Size="Size.Small"
                 Class="mr-n3 mb-1"
                 Color="Color.Error">
@@ -53,8 +50,8 @@
             </MudButton>
         }
         <MudButton
-            OnClick="@(NextAsync)"
-            Disabled="@(CurrentImage is null)"
+            OnClick="@NextAsync"
+            Disabled="@(Viewmodel.CurrentImage is null)"
             Size="Size.Small"
             Class="mr-n3 mb-1"
             Color="Color.Default">
@@ -64,27 +61,27 @@
 
     <section class="media-plane" @ondblclick="@OnClose">
         <div class="tag-list">
-            @if (_tags is null)
+            @if (Viewmodel.Tags is null)
             {
                 <p>Loading...</p>
             }
             else
             {
-                @foreach (var tag in _tags)
+                @foreach (var tag in Viewmodel.Tags)
                 {
                     <p>@tag.Namespace:@tag.Subtag</p>
                 }
             }
         </div>
         <div class="image-display" @onmousedown="OnImageMouseDown" @oncontextmenu:preventDefault>
-            @if (CurrentImage is null)
+            @if (Viewmodel.CurrentImage is null)
             {
                 <p>Loading...</p>
             }
             else
             {
                 <img
-                    src="@CurrentImage"
+                    src="@Viewmodel.CurrentImage"
                     alt="Gallery image"
                     loading="lazy"
                     decoding="async"
@@ -98,32 +95,26 @@
 @code {
     private ElementReference _root;
     private bool _shouldFocus;
+    private bool _subscribed;
 
     [Parameter, EditorRequired] public List<string> ImageUrls { get; set; } = [];
     [Parameter] public string? StartingImage { get; set; }
     [Parameter] public EventCallback<string> CurrentImageChanged { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public bool FilterMode { get; set; }
-    [Parameter] public EventCallback<FilterResult> OnFilterComplete { get; set; }
-
-    private string? CurrentImage { get; set; }
-    private Dictionary<string, FilterChoice> _choices = [];
-    private List<TagModel>? _tags;
+    [Parameter] public EventCallback<ImageViewerFilterResult> OnFilterComplete { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
-        CurrentImage = StartingImage ?? ImageUrls.First();
-        _shouldFocus = true;
-
-        if (FilterMode)
+        if (!_subscribed)
         {
-            _choices = [];
+            Viewmodel.StateChanged += Refresh;
+            _subscribed = true;
         }
 
+        _shouldFocus = true;
         ShellService.HideShell();
-
-        await KeybindingService.InitializeAsync();
-        await LoadTagsAsync();
+        await Viewmodel.InitializeAsync(ImageUrls, StartingImage, FilterMode);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -137,27 +128,7 @@
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
-        var action = KeybindingService.GetAction(e);
-        if (action == null) return;
-
-        switch (action)
-        {
-            case KeybindingActions.Previous: await PreviousAsync(); break;
-            case KeybindingActions.Next: await NextAsync(); break;
-            case KeybindingActions.Close:
-                if (FilterMode)
-                {
-                    await PromptCommitAsync();
-                }
-                else
-                {
-                    await OnClose.InvokeAsync();
-                }
-                break;
-            case KeybindingActions.Archive: await ArchiveAsync(); break;
-            case KeybindingActions.Delete: await DeleteAsync(); break;
-            case KeybindingActions.Inbox: await InboxAsync(); break;
-        }
+        await RunViewerActionAsync(() => Viewmodel.HandleKeyDownAsync(e));
     }
 
     private async Task OpenKeybindingManager()
@@ -168,176 +139,85 @@
 
     private async Task PreviousAsync()
     {
-        if (CurrentImage is null)
-        {
-            throw new InvalidOperationException("Current image was null after parameters being set");
-        }
-
-        var idx = ImageUrls.IndexOf(CurrentImage);
-
-        var prev = idx - 1;
-
-        CurrentImage = IsValidIndex(ImageUrls, prev) ? ImageUrls[prev] : ImageUrls.Last();
-
-        await CurrentImageChanged.InvokeAsync(CurrentImage);
-        await LoadTagsAsync();
+        await RunViewerActionAsync(Viewmodel.PreviousAsync);
     }
 
     private async Task NextAsync()
     {
-        if (CurrentImage is null)
-        {
-            throw new InvalidOperationException("Current image was null after parameters being set");
-        }
-
-        var idx = ImageUrls.IndexOf(CurrentImage);
-
-        var next = idx + 1;
-
-        CurrentImage = IsValidIndex(ImageUrls, next) ? ImageUrls[next] : ImageUrls.First();
-
-        await CurrentImageChanged.InvokeAsync(CurrentImage);
-        await LoadTagsAsync();
-    }
-
-    private async Task LoadTagsAsync()
-    {
-        if (CurrentImage is null)
-        {
-            return;
-        }
-
-        _tags = null;
-        StateHasChanged();
-
-        try
-        {
-            // URL format: /media/{hex}
-            var path = CurrentImage.Split('?')[0];
-            var segment = path.Split('/').Last();
-            var hex = segment.Contains('.') ? segment[..segment.LastIndexOf('.')] : segment;
-
-            _tags = await TagService.GetTagsForHashAsync(hex);
-        }
-        catch (Exception)
-        {
-            _tags = [];
-        }
+        await RunViewerActionAsync(Viewmodel.NextAsync);
     }
 
     private async Task ArchiveAsync()
     {
-        if (!FilterMode) return;
-        await RecordChoiceAsync(FilterChoice.Archive);
+        await RunViewerActionAsync(Viewmodel.ArchiveAsync);
     }
 
     private async Task DeleteAsync()
     {
-        if (!FilterMode) return;
-        await RecordChoiceAsync(FilterChoice.Delete);
-    }
-
-    private Task InboxAsync()
-    {
-        // Stub for Inbox action
-        return Task.CompletedTask;
-    }
-
-    private async Task RecordChoiceAsync(FilterChoice choice)
-    {
-        if (CurrentImage is null)
-        {
-            throw new InvalidOperationException("Current image was null after parameters being set");
-        }
-
-        _choices[CurrentImage] = choice;
-
-        var allImagesJudged = _choices.Count == ImageUrls.Count;
-        var onLastImage = ImageUrls.IndexOf(CurrentImage) == ImageUrls.Count - 1;
-
-        if (allImagesJudged || onLastImage)
-        {
-            await PromptCommitAsync(undoLast: true);
-        }
-        else
-        {
-            await NextAsync();
-        }
+        await RunViewerActionAsync(Viewmodel.DeleteAsync);
     }
 
     private async Task OnImageMouseDown(MouseEventArgs e)
     {
-        if (!FilterMode || CurrentImage is null)
+        await RunViewerActionAsync(() => Viewmodel.HandleImageMouseDownAsync(e.Button));
+    }
+
+    private async Task RunViewerActionAsync(Func<Task<ImageViewerAction>> actionFactory)
+    {
+        var previousImage = Viewmodel.CurrentImage;
+
+        await ApplyActionAsync(await actionFactory());
+
+        if (Viewmodel.CurrentImage is not null && Viewmodel.CurrentImage != previousImage)
         {
-            return;
-        }
-
-        switch (e.Button)
-        {
-            case 0:
-                await ArchiveAsync();
-
-                break;
-            case 1:
-                await PreviousAsync();
-
-                break;
-            case 2:
-                await DeleteAsync();
-
-                break;
+            await CurrentImageChanged.InvokeAsync(Viewmodel.CurrentImage);
         }
     }
 
-    private async Task PromptCommitAsync(bool undoLast = false)
+    private async Task ApplyActionAsync(ImageViewerAction action)
+    {
+        if (action.CloseRequested)
+        {
+            await OnClose.InvokeAsync();
+            return;
+        }
+
+        if (action.CommitPromptRequested)
+        {
+            await PromptCommitAsync(action);
+        }
+    }
+
+    private async Task PromptCommitAsync(ImageViewerAction action)
     {
         var result = await DialogService.ShowMessageBox("Finished", (MarkupString) "All images have been marked.", yesText: "Commit", noText: "Cancel", cancelText: "Stay");
 
         switch (result)
         {
             case true:
-            {
-                var filterResult = new FilterResult
-                {
-                    Choices = new(_choices)
-                };
-
-                await OnFilterComplete.InvokeAsync(filterResult);
+                await OnFilterComplete.InvokeAsync(Viewmodel.CreateFilterResult());
                 await OnClose.InvokeAsync();
-
                 break;
-            }
-            case false: await OnClose.InvokeAsync(); break;
+            case false:
+                await OnClose.InvokeAsync();
+                break;
             default:
-            {
-                if (undoLast && CurrentImage is not null)
-                {
-                    _choices.Remove(CurrentImage);
-                }
-
+                await Viewmodel.StayAfterPromptAsync(action);
                 break;
-            }
         }
     }
 
-    private bool IsValidIndex<T>(List<T> list, int index) => index >= 0 && index < list.Count;
+    private Task Refresh() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
+        if (_subscribed)
+        {
+            Viewmodel.StateChanged -= Refresh;
+        }
+
         ShellService.ShowShell();
     }
-
-    public enum FilterChoice
-    {
-        Archive,
-        Delete
-    }
-
-    public sealed class FilterResult
-    {
-        public required Dictionary<string, FilterChoice> Choices { get; init; }
-    }
-
 }
 
 <style>

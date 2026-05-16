@@ -204,9 +204,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocalFileImportViewmodel, LocalFileImportViewmodel>();
 
         services.AddScoped<GalleryViewmodel>();
+        services.AddScoped<ImageViewerViewmodel>();
         services.AddScoped<DetailsPaneViewmodel>();
         services.AddScoped<QueryBuilderViewmodel>();
         services.AddScoped<IKeybindingService, KeybindingService>();
+        services.AddScoped<KeybindingManagerViewmodel>();
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<MainToolbarViewmodel>();
         services.AddScoped<StatusBarViewmodel>();

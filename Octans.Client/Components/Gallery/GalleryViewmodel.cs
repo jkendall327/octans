@@ -274,7 +274,7 @@ public sealed class GalleryViewmodel(
         await _cts.CancelAsync();
     }
 
-    public async Task OnFilterComplete(ImageViewer.FilterResult result)
+    public async Task OnFilterComplete(ImageViewerFilterResult result)
     {
         foreach ((var url, var choice) in result.Choices)
         {
@@ -282,8 +282,8 @@ public sealed class GalleryViewmodel(
 
             var destination = choice switch
             {
-                ImageViewer.FilterChoice.Archive => RepositoryDestination.Archive,
-                ImageViewer.FilterChoice.Delete => RepositoryDestination.Trash,
+                ImageViewerFilterChoice.Archive => RepositoryDestination.Archive,
+                ImageViewerFilterChoice.Delete => RepositoryDestination.Trash,
                 _ => RepositoryDestination.Inbox
             };
 
@@ -291,7 +291,7 @@ public sealed class GalleryViewmodel(
         }
 
         ImageUrls.RemoveAll(url =>
-            result.Choices.TryGetValue(url, out var choice) && choice == ImageViewer.FilterChoice.Delete);
+            result.Choices.TryGetValue(url, out var choice) && choice == ImageViewerFilterChoice.Delete);
 
         await storage.ToSessionAsync("gallery", "gallery-images", ImageUrls);
 
