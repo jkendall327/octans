@@ -13,17 +13,15 @@ namespace Octans.Tests.Importing;
 
 public sealed class ImportJobServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private readonly DatabaseFixture _databaseFixture;
     private readonly IServiceProvider _provider;
     private readonly FakeTimeProvider _timeProvider = new(new(2026, 5, 14, 12, 0, 0, TimeSpan.Zero));
 
     public ImportJobServiceTests(DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
         var services = new ServiceCollection();
+        
+        databaseFixture.RegisterDbContext(services);
 
-        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
-            optionsLifetime: ServiceLifetime.Singleton);
         services.AddDbContextFactory<ServerDbContext>();
         services.AddSingleton<TimeProvider>(_timeProvider);
         services.AddSingleton<IImportJobNotifier, NoOpImportJobNotifier>();

@@ -30,9 +30,7 @@ public class FileDeleterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
         services.AddBusinessServices();
 
-        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
-            optionsLifetime: ServiceLifetime.Singleton);
-        services.AddDbContextFactory<ServerDbContext>();
+        databaseFixture.RegisterDbContext(services);
 
         services.AddSingleton<IFileSystem>(_fileSystem);
 

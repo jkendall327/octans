@@ -39,11 +39,8 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
         services.AddBusinessServices();
         services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
 
-        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
-            optionsLifetime: ServiceLifetime.Singleton);
-
-        services.AddDbContextFactory<ServerDbContext>();
-
+        databaseFixture.RegisterDbContext(services);
+        
         services.AddSingleton<IFileSystem>(_fileSystem);
 
         services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);

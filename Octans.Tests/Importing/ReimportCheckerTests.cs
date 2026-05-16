@@ -29,8 +29,7 @@ public class ReimportCheckerTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
 
-        services.AddDbContext<ServerDbContext>(options => { options.UseSqlite(databaseFixture.Connection); },
-            optionsLifetime: ServiceLifetime.Scoped);
+        databaseFixture.RegisterDbContext(services, ServiceLifetime.Scoped);
 
         services.AddScoped<ReimportChecker>();
 
