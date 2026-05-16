@@ -22,7 +22,7 @@ public class DuplicateService(
             .Take(100) // Process in batches
             .ToListAsync(cancellationToken);
 
-        int count = 0;
+        var count = 0;
         foreach (var hashItem in hashes)
         {
             if (cancellationToken.IsCancellationRequested) break;
@@ -30,7 +30,7 @@ public class DuplicateService(
             var hash = ContentHash.FromHashBytes(hashItem.Hash);
             var file = imageStorage.FindOriginal(hash, hashItem.Extension);
 
-            if (file == null || !file.Exists)
+            if (file is not { Exists: true })
             {
                 logger.LogWarning("File not found for hash {HashId}", hashItem.Id);
                 continue;
@@ -62,7 +62,7 @@ public class DuplicateService(
             .Select(h => new { h.Id, Hash = (ulong)h.PerceptualHash! })
             .ToListAsync(cancellationToken);
 
-        int found = 0;
+        var found = 0;
 
         // Existing decisions to skip
         var decisions = await context.DuplicateDecisions
@@ -86,9 +86,9 @@ public class DuplicateService(
             candidateSet.Add((Math.Min(c.HashId1, c.HashId2), Math.Max(c.HashId1, c.HashId2)));
         }
 
-        for (int i = 0; i < items.Count; i++)
+        for (var i = 0; i < items.Count; i++)
         {
-            for (int j = i + 1; j < items.Count; j++)
+            for (var j = i + 1; j < items.Count; j++)
             {
                 if (cancellationToken.IsCancellationRequested) break;
 

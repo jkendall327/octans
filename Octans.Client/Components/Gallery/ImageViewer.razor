@@ -291,7 +291,7 @@
 
     private async Task PromptCommitAsync(bool undoLast = false)
     {
-        bool? result = await DialogService.ShowMessageBox("Finished", (MarkupString) "All images have been marked.", yesText: "Commit", noText: "Cancel", cancelText: "Stay");
+        var result = await DialogService.ShowMessageBox("Finished", (MarkupString) "All images have been marked.", yesText: "Commit", noText: "Cancel", cancelText: "Stay");
 
         switch (result)
         {

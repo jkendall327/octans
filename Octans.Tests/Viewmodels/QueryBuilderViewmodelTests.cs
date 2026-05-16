@@ -51,7 +51,7 @@ public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<Database
         await _context.Tags.AddAsync(t1);
         await _context.SaveChangesAsync();
 
-        bool stateChanged = false;
+        var stateChanged = false;
         _sut.StateChanged = () => { stateChanged = true; return Task.CompletedTask; };
 
         // Act
