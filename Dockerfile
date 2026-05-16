@@ -1,29 +1,39 @@
 # syntax=docker/dockerfile:1
 
-# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG DOTNET_VERSION=10.0
+
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 WORKDIR /src
 
-COPY ["Octans.sln", "."]
 COPY ["Directory.Build.props", "."]
 COPY ["Directory.Packages.props", "."]
 COPY ["Octans.Client/Octans.Client.csproj", "Octans.Client/"]
 COPY ["Octans.Core/Octans.Core.csproj", "Octans.Core/"]
 COPY ["Octans.Data/Octans.Data.csproj", "Octans.Data/"]
-COPY ["Octans.Tests/Octans.Tests.csproj", "Octans.Tests/"]
 
 RUN dotnet restore "Octans.Client/Octans.Client.csproj"
 
 COPY . .
-WORKDIR /src/Octans.Client
-RUN dotnet publish "Octans.Client.csproj" -c Release -o /app/publish --no-restore
+RUN dotnet publish "Octans.Client/Octans.Client.csproj" \
+    --configuration Release \
+    --output /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS final
 WORKDIR /app
+
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    GlobalSettings__AppRoot=/data/octans
+
+EXPOSE 8080
+VOLUME ["/data/octans", "/app/keys"]
+
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+RUN mkdir -p /app/keys /data/octans \
+    && chown -R "$APP_UID:$APP_UID" /app /data/octans
+
+USER $APP_UID
 
 ENTRYPOINT ["dotnet", "Octans.Client.dll"]

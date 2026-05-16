@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/TestResults/
+
+.git/
+.idea/
+.vs/
+_ReSharper.Caches/
+
+.aider*
+*.db
+*.db-*
+*.suo
+*.user
+
+Octans.Client/wwwroot/uploads/
