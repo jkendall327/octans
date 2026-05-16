@@ -18,7 +18,6 @@ namespace Octans.Tests.Duplicates;
 
 public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private readonly DatabaseFixture _databaseFixture;
     private readonly ServiceProvider _provider;
     private readonly DuplicateService _sut;
     private readonly ServerDbContext _dbContext;
@@ -28,7 +27,6 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
     public DuplicateServiceTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
         var services = new ServiceCollection();
 
         services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
