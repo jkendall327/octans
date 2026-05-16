@@ -35,18 +35,14 @@ Run `dotnet test` on the `Octans.Tests` project to run automated tests.
    dotnet run --project Octans.Client
    ```
 
-A Dockerfile is provided for easy containerized setup.
+A Dockerfile is provided for easy container setup.
 
 ## Tech used
 
 - Blazor for the UI
-- EF Core w/ SQLite
+- EF Core with SQLite
 - SixLabors.ImageSharp for image processing
-- Lua for extensible downloaders
-
-## SBOM
-
-The continuous integration workflow generates a Software Bill of Materials (SBOM) using Anchore's SBOM action. An SPDX document (`sbom.spdx.json`) is produced for each build and uploaded as a workflow artifact to help track project dependencies.
+- Lua for extensible downloaders/user scripting
 
 ## License
 

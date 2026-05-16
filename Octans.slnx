@@ -4,6 +4,7 @@
     <File Path="BannedSymbols.txt" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
+    <File Path="Dockerfile" />
     <File Path="README.md" />
     <File Path=".github/workflows/ci.yaml" />
     <File Path=".github/workflows/release.yaml" />
