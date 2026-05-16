@@ -33,13 +33,13 @@ public class DownloaderService(
 
         if (classification is DownloaderUrlClassification.Gallery)
         {
-            var galleryUrl = matching.GenerateGalleryUrl(uri.AbsoluteUri, 0);
-            raw = await GetStringAsync(client, new Uri(galleryUrl));
+            var galleryUrl = CreateHttpUri(matching.GenerateGalleryUrl(uri.AbsoluteUri, 0), "generate_url");
+            raw = await GetStringAsync(client, galleryUrl);
         }
 
         var urls = matching
             .ParseHtml(raw)
-            .Select(u => new Uri(u))
+            .Select(u => CreateHttpUri(u, "parse_html"))
             .ToList();
 
         return urls;
@@ -53,5 +53,20 @@ public class DownloaderService(
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync();
+    }
+
+    private static Uri CreateHttpUri(string value, string source)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            throw new DownloaderContractException($"{source} returned an invalid absolute URL: '{value}'.");
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            throw new DownloaderContractException($"{source} returned a non-HTTP URL: '{value}'.");
+        }
+
+        return uri;
     }
 }

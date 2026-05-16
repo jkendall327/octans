@@ -96,19 +96,7 @@ public class SubscriptionsViewmodelTests
     public async Task AddSubscriptionAsync_ShouldAddSubscription_WhenDialogConfirmed()
     {
         // Arrange
-        // Mock DownloaderFactory to return a downloader
-        var lua = new NLua.Lua();
-        lua.DoString("function match_url(url) return true end function classify_url(url) return 'Post' end function parse_html(html) return {} end");
-        var functions = new Dictionary<string, NLua.Lua>
-        {
-            { "classifier", lua },
-            { "parser", lua }
-        };
-
-        _downloaderFactory.GetDownloaders().Returns(Task.FromResult(new List<Downloader>
-        {
-            new Downloader(functions, new DownloaderMetadata { Name = "TestDownloader" })
-        }));
+        _downloaderFactory.GetDownloaders().Returns(Task.FromResult(new List<Downloader>()));
 
         // Mock DialogService to return result
         var dialogReference = Substitute.For<IDialogReference>();

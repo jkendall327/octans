@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using Octans.Core;
 using Octans.Core.Downloaders;
+using Octans.Core.Http;
 
 namespace Octans.Tests.Importing;
 
@@ -29,10 +30,10 @@ public class DownloaderFactoryTests
 
     private readonly MockFileData _classifier = new("""
                                                     function match_url(url) return true end;
-                                                    function classify_url(url) return false end;
+                                                    function classify_url(url) return 'post' end;
                                                     """);
 
-    private readonly MockFileData _parser = new("function parse_html(content) return content end");
+    private readonly MockFileData _parser = new("function parse_html(content) return { 'https://example.com/image.jpg' } end");
     private readonly MockFileData _invalid = new("This is not valid Lua code");
 
     [Fact]
@@ -88,8 +89,110 @@ public class DownloaderFactoryTests
         downloaders.Single().Invoking(d => d.MatchesUrl(new("https://example.com"))).Should().NotThrow();
     }
 
+    [Fact]
+    public async Task ShouldHideDangerousGlobalsFromDownloaderScripts()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+
+        AddFileToSubdir(subdir, "classifier", new("""
+                                                   function match_url(url)
+                                                       return io ~= nil or os ~= nil or package ~= nil or debug ~= nil or luanet ~= nil or import ~= nil
+                                                   end
+                                                   function classify_url(url) return 'post' end
+                                                   """));
+        AddFileToSubdir(subdir, "parser", _parser);
+
+        var downloaders = await _sut.GetDownloaders();
+
+        downloaders.Single().MatchesUrl(new("https://example.com")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ShouldIgnoreScriptsThatExceedInstructionBudgetDuringLoad()
+    {
+        var first = _downloaders.CreateSubdirectory("first");
+        var second = _downloaders.CreateSubdirectory("second");
+
+        AddFileToSubdir(first, "classifier", new("while true do end"));
+
+        AddFileToSubdir(second, "classifier", _classifier);
+        AddFileToSubdir(second, "parser", _parser);
+
+        var downloaders = await _sut.GetDownloaders();
+
+        downloaders.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ShouldStopDownloaderFunctionsThatExceedInstructionBudget()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+
+        AddFileToSubdir(subdir, "classifier", new("""
+                                                   function match_url(url)
+                                                       while true do end
+                                                   end
+                                                   function classify_url(url) return 'post' end
+                                                   """));
+        AddFileToSubdir(subdir, "parser", _parser);
+
+        var downloaders = await _sut.GetDownloaders();
+
+        downloaders.Single()
+            .Invoking(d => d.MatchesUrl(new("https://example.com")))
+            .Should()
+            .Throw<DownloaderContractException>();
+    }
+
+    [Fact]
+    public async Task ShouldRejectParserResultsThatAreNotStringUrls()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", new("function parse_html(content) return { 'https://example.com/image.jpg', 42 } end"));
+
+        var downloaders = await _sut.GetDownloaders();
+
+        downloaders.Single()
+            .Invoking(d => d.ParseHtml("<html></html>"))
+            .Should()
+            .Throw<DownloaderContractException>();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldRejectNonHttpUrlsReturnedByParser()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", new("function parse_html(content) return { 'file:///tmp/image.jpg' } end"));
+
+        var clientFactory = Substitute.For<IHttpClientFactory>();
+        using var httpClient = new HttpClient(new StaticHttpMessageHandler("<html></html>"));
+        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
+
+        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
+        var service = new DownloaderService(clientFactory, _sut, headerProvider);
+
+        await service
+            .Invoking(s => s.ResolveAsync(new("https://example.com/post/1")))
+            .Should()
+            .ThrowAsync<DownloaderContractException>();
+    }
+
     private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)
     {
         _fileSystem.AddFile(dir.FullName + $"/{filename}.lua", data);
+    }
+
+    private sealed class StaticHttpMessageHandler(string content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage
+            {
+                Content = new StringContent(content)
+            });
     }
 }

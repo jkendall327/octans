@@ -1,8 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NLua;
-
 namespace Octans.Core.Downloaders;
 
 public class DownloaderFactory(
@@ -70,7 +68,7 @@ public class DownloaderFactory(
     {
         string[] names = ["metadata", "classifier", "parser", "gug", "api"];
 
-        var functions = new Dictionary<string, Lua>();
+        var functions = new Dictionary<string, DownloaderLuaContext>();
 
         var metadata = new DownloaderMetadata();
 
@@ -97,16 +95,21 @@ public class DownloaderFactory(
                 continue;
             }
 
-            var lua = new Lua();
+            var lua = DownloaderLuaContext.Create();
 
             try
             {
-                lua.DoString(raw);
+                lua.DoString(raw, $"{name}.lua");
             }
             catch (Exception e)
             {
                 logger.LogError(e, "Error loading raw Lua string");
                 lua.Dispose();
+                foreach (var loadedLua in functions.Values)
+                {
+                    loadedLua.Dispose();
+                }
+
                 return null;
             }
 
@@ -114,16 +117,29 @@ public class DownloaderFactory(
             functions.Add(name, lua);
         }
 
-        return new(functions, metadata);
+        try
+        {
+            return new(functions, metadata);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error creating downloader from Lua functions");
+            foreach (var lua in functions.Values)
+            {
+                lua.Dispose();
+            }
+
+            return null;
+        }
     }
 
     private DownloaderMetadata? ExtractMetadata(string raw)
     {
-        using Lua lua = new();
+        using var lua = DownloaderLuaContext.Create();
 
         try
         {
-            lua.DoString(raw);
+            lua.DoString(raw, "metadata.lua");
         }
         catch (Exception e)
         {
@@ -135,7 +151,8 @@ public class DownloaderFactory(
 
         if (downloaderTable == null)
         {
-            throw new InvalidOperationException("Downloader metadata table not found");
+            logger.LogError("Downloader metadata table not found");
+            return null;
         }
 
         var metadata = new DownloaderMetadata
