@@ -10,13 +10,8 @@ namespace Octans.Core.Importing.ImportFolders;
 public sealed class ImportFolderBackgroundService(
     IOptions<ImportFolderOptions> options,
     IServiceScopeFactory scopeFactory,
-    IFileSystem fileSystem,
-    IBackgroundProgressReporter progressReporter,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
 {
-    private readonly string[] _importFolders = options.Value.Directories.ToArray();
-    private static readonly HashSet<string> ImageExtensions = [".jpg", ".jpeg", ".png", ".gif"];
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.Enabled)
@@ -30,11 +25,31 @@ public sealed class ImportFolderBackgroundService(
         {
             logger.LogInformation("Checking for files in import folders...");
 
-            await ScanAndImportFolders(stoppingToken);
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var scanner = scope.ServiceProvider.GetRequiredService<ImportFolderScanner>();
+
+            await scanner.ScanAndImportFolders(stoppingToken);
         }
     }
+}
 
-    private async Task ScanAndImportFolders(CancellationToken stoppingToken)
+public sealed class ImportFolderScanner(
+    IOptions<ImportFolderOptions> options,
+    IFileSystem fileSystem,
+    IBackgroundProgressReporter progressReporter,
+    IImportJobService importJobService,
+    ILogger<ImportFolderScanner> logger)
+{
+    private readonly string[] _importFolders = options.Value.Directories.ToArray();
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif"
+    };
+
+    public async Task ScanAndImportFolders(CancellationToken stoppingToken = default)
     {
         var request = new ImportRequest
         {
@@ -77,17 +92,20 @@ public sealed class ImportFolderBackgroundService(
         }
 
         await progressReporter.Complete(handle.Id);
-        await SendImportRequest(request, stoppingToken);
+
+        if (request.Items.Count == 0)
+        {
+            logger.LogInformation("No image files found in import folders");
+            return;
+        }
+
+        await CreateImportJob(request, stoppingToken);
     }
 
-    private async Task SendImportRequest(ImportRequest importRequest, CancellationToken stoppingToken)
+    private async Task CreateImportJob(ImportRequest importRequest, CancellationToken stoppingToken)
     {
         try
         {
-            await using var scope = scopeFactory.CreateAsyncScope();
-
-            var importJobService = scope.ServiceProvider.GetRequiredService<ImportJobService>();
-
             await importJobService.Create(new()
             {
                 ImportType = importRequest.ImportType,
@@ -108,10 +126,7 @@ public sealed class ImportFolderBackgroundService(
 
     private bool IsImageFile(string filePath)
     {
-        var extension = fileSystem
-            .Path
-            .GetExtension(filePath)
-            .ToUpperInvariant();
+        var extension = fileSystem.Path.GetExtension(filePath);
 
         return ImageExtensions.Contains(extension);
     }

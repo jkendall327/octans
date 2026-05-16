@@ -62,6 +62,8 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<RepositoryChangeBackgroundService>();
 
         services.AddSingleton<IBackgroundProgressReporter, BackgroundProgressService>();
+        services.AddScoped<ImportFolderScanner>();
+        services.AddSingleton<RepositoryChangeProcessor>();
 
         services.AddSingleton<ImageStorage>();
         services.AddSingleton<StorageService>();

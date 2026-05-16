@@ -9,9 +9,7 @@ namespace Octans.Core.Repositories;
 
 public sealed class RepositoryChangeBackgroundService(
     ChannelReader<RepositoryChangeRequest> channel,
-    IDbContextFactory<ServerDbContext> contextFactory,
-    IBackgroundProgressReporter progressReporter,
-    ILogger<RepositoryChangeBackgroundService> logger) : BackgroundService
+    RepositoryChangeProcessor processor) : BackgroundService
 {
     private const int BatchSize = 50;
 
@@ -25,18 +23,24 @@ public sealed class RepositoryChangeBackgroundService(
 
             if (buffer.Count >= BatchSize)
             {
-                await ProcessBatch(buffer, stoppingToken);
+                await processor.ProcessBatch(buffer, stoppingToken);
                 buffer.Clear();
             }
         }
 
         if (buffer.Count > 0)
         {
-            await ProcessBatch(buffer, stoppingToken);
+            await processor.ProcessBatch(buffer, stoppingToken);
         }
     }
+}
 
-    private async Task ProcessBatch(List<RepositoryChangeRequest> batch, CancellationToken token)
+public sealed class RepositoryChangeProcessor(
+    IDbContextFactory<ServerDbContext> contextFactory,
+    IBackgroundProgressReporter progressReporter,
+    ILogger<RepositoryChangeProcessor> logger)
+{
+    public async Task ProcessBatch(IReadOnlyCollection<RepositoryChangeRequest> batch, CancellationToken token = default)
     {
         var handle = await progressReporter.Start("Repository changes", batch.Count);
 
