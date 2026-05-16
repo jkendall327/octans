@@ -1,31 +1,26 @@
-@using System.Threading.Channels
 @using Octans.Core.Notes
-@using Octans.Core.Repositories
-@using Octans.Core.Tags
-@inject INoteService NoteService
-@inject ITagService TagService
-@inject ISnackbar Snackbar
-@inject ChannelWriter<RepositoryChangeRequest> RepositoryChannel
+@inject DetailsPaneViewmodel Viewmodel
+@implements IDisposable
 
-@if (SelectedHash is not null)
+@if (Viewmodel.HasSelection)
 {
     <div class="details-pane">
         <section class="file-info">
             <MudText Typo="Typo.h6">File Details</MudText>
-            <MudText Typo="Typo.body2">Hash: @SelectedHash</MudText>
+            <MudText Typo="Typo.body2">Hash: @Viewmodel.SelectedHash</MudText>
 
             <div class="actions mt-2">
                  <MudButton Variant="Variant.Outlined"
                            Color="Color.Secondary"
                            StartIcon="@Icons.Material.Filled.Archive"
-                           OnClick="@ArchiveImage">
+                           OnClick="@Viewmodel.ArchiveImage">
                      Archive
                  </MudButton>
 
                   <MudButton Variant="Variant.Outlined"
                             Color="Color.Primary"
                             StartIcon="@Icons.Material.Filled.Inbox"
-                            OnClick="@InboxImage"
+                            OnClick="@Viewmodel.InboxImage"
                             Class="ml-2">
                       To Inbox
                   </MudButton>
@@ -33,13 +28,13 @@
         </section>
 
         <section class="tags-section">
-             <TagViewer Tags="@Tags" />
+             <TagViewer Tags="@Viewmodel.Tags" />
         </section>
 
         <section class="notes-section">
             <MudText Typo="Typo.h6">Notes</MudText>
             <MudList T="NoteDto" Dense="true">
-                @foreach (var note in Notes)
+                @foreach (var note in Viewmodel.Notes)
                 {
                     <MudListItem>
                         <MudCard Outlined="true" Class="pa-2 mb-2">
@@ -48,15 +43,15 @@
                                  <MudText Typo="Typo.caption" Color="Color.Secondary">@Formatting.FormatLocalTime(note.CreatedAt)</MudText>
                              </MudCardContent>
                              <MudCardActions>
-                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => DeleteNote(note))" Color="Color.Error" />
+                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => Viewmodel.DeleteNote(note))" Color="Color.Error" />
                              </MudCardActions>
                         </MudCard>
                     </MudListItem>
                 }
             </MudList>
 
-            <MudTextField @bind-Value="NewNoteContent" Label="Add a note" Variant="Variant.Outlined" Lines="3" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddNote" Disabled="@string.IsNullOrWhiteSpace(NewNoteContent)" Class="mt-2">Add Note</MudButton>
+            <MudTextField @bind-Value="Viewmodel.NewNoteContent" Label="Add a note" Variant="Variant.Outlined" Lines="3" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Viewmodel.AddNote" Disabled="@(!Viewmodel.CanAddNote)" Class="mt-2">Add Note</MudButton>
         </section>
     </div>
 }
@@ -71,78 +66,24 @@ else
     [Parameter]
     public string? SelectedHash { get; set; }
 
-    private List<NoteDto> Notes { get; set; } = [];
-    private List<TagViewer.Tag> Tags { get; set; } = [];
-    private string NewNoteContent { get; set; } = string.Empty;
+    protected override void OnInitialized()
+    {
+        Viewmodel.StateChanged += Refresh;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadData();
+        await Viewmodel.SelectHashAsync(SelectedHash);
     }
 
-    private async Task LoadData()
+    private Task Refresh()
     {
-        if (SelectedHash is not null)
-        {
-            Notes = await NoteService.GetNotesAsync(SelectedHash);
-            var tagModels = await TagService.GetTagsForHashAsync(SelectedHash);
-            Tags = tagModels.Select(t => new TagViewer.Tag(t.Namespace, t.Subtag, 0)).ToList();
-        }
-        else
-        {
-            Notes.Clear();
-            Tags.Clear();
-        }
+        return InvokeAsync(StateHasChanged);
     }
 
-    private async Task ArchiveImage()
+    public void Dispose()
     {
-        if (SelectedHash is not null)
-        {
-            await RepositoryChannel.WriteAsync(new(SelectedHash, RepositoryDestination.Archive));
-            Snackbar.Add("Archived", Severity.Success);
-        }
-    }
-
-    private async Task InboxImage()
-    {
-        if (SelectedHash is not null)
-        {
-            await RepositoryChannel.WriteAsync(new(SelectedHash, RepositoryDestination.Inbox));
-             Snackbar.Add("Moved to Inbox", Severity.Success);
-        }
-    }
-
-    private async Task AddNote()
-    {
-        if (SelectedHash is not null && !string.IsNullOrWhiteSpace(NewNoteContent))
-        {
-            try
-            {
-                var note = await NoteService.AddNoteAsync(SelectedHash, NewNoteContent);
-                Notes.Add(note);
-                NewNoteContent = string.Empty;
-                Snackbar.Add("Note added", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Failed to add note: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task DeleteNote(NoteDto note)
-    {
-        try
-        {
-            await NoteService.DeleteNoteAsync(note.Id);
-            Notes.Remove(note);
-            Snackbar.Add("Note deleted", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to delete note: {ex.Message}", Severity.Error);
-        }
+        Viewmodel.StateChanged -= Refresh;
     }
 }
 
