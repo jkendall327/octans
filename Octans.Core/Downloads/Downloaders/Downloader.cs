@@ -111,9 +111,7 @@ public sealed class Downloader : IDisposable
             throw new InvalidOperationException("No API component provided for downloader");
         }
 
-        var result = _processApiQuery.Call(query)?.FirstOrDefault() as LuaTable;
-
-        if (result is null)
+        if (_processApiQuery.Call(query)?.FirstOrDefault() is not LuaTable result)
         {
             return string.Empty;
         }

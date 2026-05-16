@@ -115,8 +115,7 @@ public sealed class CustomCommandProvider(
         {
             lua.DoString(luaContent);
 
-            var executeFunction = lua["execute"] as LuaFunction;
-            if (executeFunction is null)
+            if (lua["execute"] is not LuaFunction executeFunction)
             {
                 logger.LogWarning("No 'execute' function found in Lua script {ScriptPath}", scriptPath);
                 return;
