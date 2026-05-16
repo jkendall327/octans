@@ -161,6 +161,44 @@ public class DownloaderFactoryTests
     }
 
     [Fact]
+    public async Task ConcurrentDownloaderFunctionCalls_ShouldSerializeSharedLuaContextExecution()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+
+        AddFileToSubdir(subdir, "classifier", new("""
+                                                   local active_calls = 0
+
+                                                   function match_url(url)
+                                                       active_calls = active_calls + 1
+
+                                                       if active_calls ~= 1 then
+                                                           error('shared Lua context was entered concurrently')
+                                                       end
+
+                                                       local total = 0
+                                                       for i = 1, 20000 do
+                                                           total = total + i
+                                                       end
+
+                                                       active_calls = active_calls - 1
+                                                       return true
+                                                   end
+
+                                                   function classify_url(url) return 'post' end
+                                                   """));
+        AddFileToSubdir(subdir, "parser", _parser);
+
+        var downloader = (await _sut.GetDownloaders()).Single();
+        var tasks = Enumerable
+            .Range(0, 100)
+            .Select(i => Task.Run(() => downloader.MatchesUrl(new($"https://example.com/{i}"))));
+
+        var results = await Task.WhenAll(tasks);
+
+        results.Should().OnlyContain(r => r);
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldRejectNonHttpUrlsReturnedByParser()
     {
         var subdir = _downloaders.CreateSubdirectory("first");

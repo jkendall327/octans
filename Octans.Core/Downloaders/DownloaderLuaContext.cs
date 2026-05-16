@@ -27,6 +27,7 @@ internal sealed class DownloaderLuaContext : IDisposable
 
     private readonly Lua _lua;
     private readonly LuaHookFunction _instructionHook;
+    private readonly object _executionLock = new();
     private int _remainingHookCalls;
     private string _currentOperation = "Lua script";
 
@@ -66,27 +67,34 @@ internal sealed class DownloaderLuaContext : IDisposable
 
     public void Dispose()
     {
-        _lua.Dispose();
+        lock (_executionLock)
+        {
+            _lua.Dispose();
+        }
     }
 
     private T RunWithBudget<T>(string operation, Func<T> action)
     {
-        _currentOperation = operation;
-        _remainingHookCalls = Math.Max(1, MaxInstructionCount / InstructionHookInterval);
-        _lua.State.SetHook(_instructionHook, LuaHookMask.Count, InstructionHookInterval);
+        // Downloader instances cache Lua contexts, so every call into an NLua state is serialized here.
+        lock (_executionLock)
+        {
+            _currentOperation = operation;
+            _remainingHookCalls = Math.Max(1, MaxInstructionCount / InstructionHookInterval);
+            _lua.State.SetHook(_instructionHook, LuaHookMask.Count, InstructionHookInterval);
 
-        try
-        {
-            return action();
-        }
-        catch (Exception ex) when (ex is not DownloaderContractException)
-        {
-            throw new DownloaderContractException($"Downloader {operation} failed.", ex);
-        }
-        finally
-        {
-            _lua.State.SetHook(null, LuaHookMask.Disabled, 0);
-            _currentOperation = "Lua script";
+            try
+            {
+                return action();
+            }
+            catch (Exception ex) when (ex is not DownloaderContractException)
+            {
+                throw new DownloaderContractException($"Downloader {operation} failed.", ex);
+            }
+            finally
+            {
+                _lua.State.SetHook(null, LuaHookMask.Disabled, 0);
+                _currentOperation = "Lua script";
+            }
         }
     }
 }
