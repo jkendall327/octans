@@ -32,7 +32,7 @@ jobs:
       run: dotnet build --no-restore
 
     - name: Test
-      run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
     - name: Generate SBOM
       uses: anchore/sbom-action@v0
