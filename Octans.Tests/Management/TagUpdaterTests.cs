@@ -1,12 +1,6 @@
-using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Octans.Client;
-using Octans.Core;
-using Octans.Core.Filesystem;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
@@ -17,37 +11,19 @@ namespace Octans.Tests.Management;
 
 public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private const string AppRoot = "/app";
     private readonly TagUpdater _sut;
-
-    private readonly IServiceProvider _provider;
-    private readonly DatabaseFixture _databaseFixture;
-    private readonly MockFileSystem _fileSystem = new();
+    private readonly OctansTestHost _host;
 
     public TagUpdaterTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
-
-        var services = new ServiceCollection();
-
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
-        services.AddBusinessServices();
-
-        databaseFixture.RegisterDbContext(services);
-
-        services.AddSingleton<IFileSystem>(_fileSystem);
-
-        services.Configure<GlobalSettings>(s => s.AppRoot = AppRoot);
-
-        _provider = services.BuildServiceProvider();
-
-        _sut = _provider.GetRequiredService<TagUpdater>();
+        _host = OctansTestHost.Create(testOutputHelper, databaseFixture);
+        _sut = _host.GetRequiredService<TagUpdater>();
     }
 
     [Fact]
     public async Task UpdateTags_ValidRequest_ReturnsOk()
     {
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hash = await SetupInitialData(db);
@@ -116,15 +92,12 @@ public class TagUpdaterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
-
-        var folders = _provider.GetRequiredService<ImageStorage>();
-
-        folders.EnsureStorage();
+        await _host.ResetDatabaseAsync();
+        _host.EnsureImageStorage();
     }
 
     public Task DisposeAsync()
     {
-        return Task.CompletedTask;
+        return _host.DisposeAsync().AsTask();
     }
 }

@@ -1,11 +1,7 @@
-using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Channels;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
@@ -20,10 +16,7 @@ namespace Octans.Tests.Infrastructure;
 
 public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private const string AppRoot = "/app";
-    private readonly DatabaseFixture _databaseFixture;
-    private readonly IServiceProvider _provider;
-    private readonly MockFileSystem _fileSystem = new();
+    private readonly OctansTestHost _host;
     private readonly IImporter _importer;
     private readonly TagUpdater _tagUpdater;
     private readonly FileDeleter _fileDeleter;
@@ -31,45 +24,35 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
 
     public MultiEndpointIntegrationTests(ITestOutputHelper helper, DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
-        var services = new ServiceCollection();
+        _host = OctansTestHost.Create(
+            helper,
+            databaseFixture,
+            services =>
+            {
+                services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
+                services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);
+                services.AddHttpClient();
+            });
 
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(helper)));
-
-        services.AddBusinessServices();
-
-        // Register services not covered by AddBusinessServices or needing mocks
-        services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
-        services.AddSingleton<IFileSystem>(_fileSystem);
-        services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);
-        services.AddHttpClient();
-
-        services.Configure<GlobalSettings>(s => s.AppRoot = AppRoot);
-
-        // Register Database
-        databaseFixture.RegisterDbContext(services);
-
-        _provider = services.BuildServiceProvider();
-
-        _importer = _provider.GetRequiredService<IImporter>();
-        _tagUpdater = _provider.GetRequiredService<TagUpdater>();
-        _fileDeleter = _provider.GetRequiredService<FileDeleter>();
+        _importer = _host.GetRequiredService<IImporter>();
+        _tagUpdater = _host.GetRequiredService<TagUpdater>();
+        _fileDeleter = _host.GetRequiredService<FileDeleter>();
     }
 
     [Fact]
     public async Task ImportUpdateAndDeleteImage_ShouldSucceed()
     {
         var imagePath = "C:/test_image.jpg";
-        _fileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
+        _host.FileSystem.AddFile(imagePath, new(TestingConstants.MinimalJpeg));
 
-        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        var imageStorage = _host.GetRequiredService<ImageStorage>();
         var hash = ContentHash.FromContent(TestingConstants.MinimalJpeg);
         var metadata = imageStorage.GetMetadata(TestingConstants.MinimalJpeg);
         var expectedFilePath = imageStorage.GetOriginalDestination(hash, metadata);
 
         await ImportFile(imagePath, expectedFilePath);
 
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hashItem = await context.Hashes.SingleAsync();
@@ -108,7 +91,7 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
             .Should()
             .BeTrue("this import has no reason to fail");
 
-        _fileSystem
+        _host.FileSystem
             .FileExists(expectedFilePath)
             .Should()
             .BeTrue("we write the bytes to the hex bucket on import");
@@ -181,7 +164,7 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
             .NotBeNull("we soft-delete items by setting this value to something non-null");
 
         // Verify removal from filesystem
-        _fileSystem
+        _host.FileSystem
             .FileExists(expectedFilepath)
             .Should()
             .BeFalse("we remove the physical file even for soft-deletes");
@@ -198,15 +181,12 @@ public class MultiEndpointIntegrationTests : IAsyncLifetime, IClassFixture<Datab
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
-
-        var folders = _provider.GetRequiredService<ImageStorage>();
-
-        folders.EnsureStorage();
+        await _host.ResetDatabaseAsync();
+        _host.EnsureImageStorage();
     }
 
     public Task DisposeAsync()
     {
-        return Task.CompletedTask;
+        return _host.DisposeAsync().AsTask();
     }
 }

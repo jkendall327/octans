@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Octans.Client;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
@@ -12,25 +10,19 @@ namespace Octans.Tests.Management;
 
 public class TagSiblingServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    readonly IServiceProvider _provider;
-    readonly TagSiblingService _sut;
-    readonly DatabaseFixture _databaseFixture;
+    private readonly OctansTestHost _host;
+    private readonly TagSiblingService _sut;
 
     public TagSiblingServiceTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
-        var services = new ServiceCollection();
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
-        services.AddBusinessServices();
-        databaseFixture.RegisterDbContext(services);
-        _provider = services.BuildServiceProvider();
-        _sut = _provider.GetRequiredService<TagSiblingService>();
+        _host = OctansTestHost.Create(testOutputHelper, databaseFixture);
+        _sut = _host.GetRequiredService<TagSiblingService>();
     }
 
     [Fact]
     public async Task Resolve_ReplacesWithIdealTag()
     {
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var nonIdeal = new Tag
@@ -59,7 +51,7 @@ public class TagSiblingServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixt
     [Fact]
     public async Task Resolve_NoSibling_ReturnsOriginal()
     {
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var tag = new Tag
@@ -80,8 +72,8 @@ public class TagSiblingServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixt
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
+        await _host.ResetDatabaseAsync();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public Task DisposeAsync() => _host.DisposeAsync().AsTask();
 }

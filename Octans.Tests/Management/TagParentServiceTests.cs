@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
@@ -12,29 +11,20 @@ namespace Octans.Tests.Management;
 public class TagParentServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
     private readonly TagParentService _sut;
-    private readonly DatabaseFixture _fixture;
-    private readonly ServiceProvider _provider;
+    private readonly OctansTestHost _host;
 
     public TagParentServiceTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
-        _fixture = databaseFixture;
-        var services = new ServiceCollection();
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
-
-        _fixture.RegisterDbContext(services);
-
-        services.AddScoped<TagParentService>();
-
-        _provider = services.BuildServiceProvider();
-        _sut = _provider.GetRequiredService<TagParentService>();
+        _host = OctansTestHost.Create(testOutputHelper, databaseFixture);
+        _sut = _host.GetRequiredService<TagParentService>();
     }
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
+        await _host.ResetDatabaseAsync();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public Task DisposeAsync() => _host.DisposeAsync().AsTask();
 
     [Fact]
     public async Task AddParentAsync_AddsRelationship()
@@ -44,7 +34,7 @@ public class TagParentServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
         await _sut.AddParentAsync(child, parent);
 
-        using var scope = _provider.CreateScope();
+        using var scope = _host.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
         var relationship = await db.TagParents
             .Include(tp => tp.Child).ThenInclude(t => t.Subtag)
@@ -129,7 +119,7 @@ public class TagParentServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         await _sut.AddParentAsync(child, parent);
         await _sut.RemoveParentAsync(child, parent);
 
-        using var scope = _provider.CreateScope();
+        using var scope = _host.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
         db.TagParents.Should().BeEmpty();
     }

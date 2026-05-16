@@ -1,11 +1,8 @@
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading.Channels;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
@@ -21,37 +18,23 @@ namespace Octans.Tests.Importing;
 
 public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private readonly DatabaseFixture _databaseFixture;
-    private const string AppRoot = "/app";
-
     private readonly IImporter _sut;
-
-    private readonly MockFileSystem _fileSystem = new();
+    private readonly OctansTestHost _host;
     private readonly SpyChannelWriter<ThumbnailCreationRequest> _spy = new();
-    private readonly IServiceProvider _provider;
 
     public ImporterTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
     {
-        _databaseFixture = databaseFixture;
-        var services = new ServiceCollection();
+        _host = OctansTestHost.Create(
+            testOutputHelper,
+            databaseFixture,
+            services =>
+            {
+                services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
+                services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);
+                services.AddHttpClient();
+            });
 
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
-        services.AddBusinessServices();
-        services.AddSingleton<IBackgroundProgressReporter, NoOpProgressReporter>();
-
-        databaseFixture.RegisterDbContext(services);
-        
-        services.AddSingleton<IFileSystem>(_fileSystem);
-
-        services.AddSingleton<ChannelWriter<ThumbnailCreationRequest>>(_spy);
-
-        services.AddHttpClient();
-
-        services.Configure<GlobalSettings>(s => s.AppRoot = AppRoot);
-
-        _provider = services.BuildServiceProvider();
-
-        _sut = _provider.GetRequiredService<IImporter>();
+        _sut = _host.GetRequiredService<IImporter>();
     }
 
     [Fact]
@@ -81,13 +64,13 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         _ = await SendSimpleValidRequest();
 
-        var expectedPath = _fileSystem.Path.Join(AppRoot,
+        var expectedPath = _host.FileSystem.Path.Join(_host.AppRoot,
             "db",
             "files",
             "f61",
             "61F461B34DCF8D8227A8691A6625444C1E2C793A181C7D0AD5EF8B15D5E6D040.jpg");
 
-        var file = _fileSystem.GetFile(expectedPath);
+        var file = _host.FileSystem.GetFile(expectedPath);
 
         file
             .Should()
@@ -99,7 +82,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         _ = await SendSimpleValidRequest();
 
-        using var serviceScope = _provider.CreateScope();
+        using var serviceScope = _host.CreateScope();
 
         var db = serviceScope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
@@ -157,7 +140,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldNotReimportByDefault()
     {
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hash = await SetupDeletedImage(db);
@@ -196,7 +179,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     [Fact]
     public async Task Import_PreviouslyDeletedImage_ShouldReimportWhenAllowed()
     {
-        await using var scope = _provider.CreateAsyncScope();
+        await using var scope = _host.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var hash = await SetupDeletedImage(db);
@@ -249,7 +232,7 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
     private ImportRequest BuildReimportRequest()
     {
-        _fileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
+        _host.FileSystem.AddFile("C:/myfile.jpeg", new(TestingConstants.MinimalJpeg));
 
         var item = new ImportItem
         {
@@ -272,9 +255,9 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
     {
         var mockFile = new MockFileData(TestingConstants.MinimalJpeg);
 
-        var filepath = _fileSystem.Path.Join(AppRoot, "image.jpg");
+        var filepath = _host.FileSystem.Path.Join(_host.AppRoot, "image.jpg");
 
-        _fileSystem.AddFile(filepath, mockFile);
+        _host.FileSystem.AddFile(filepath, mockFile);
 
         var request = BuildRequest(filepath, "category", "example");
 
@@ -305,15 +288,12 @@ public sealed class ImporterTests : IAsyncLifetime, IClassFixture<DatabaseFixtur
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
-
-        var folders = _provider.GetRequiredService<ImageStorage>();
-
-        folders.EnsureStorage();
+        await _host.ResetDatabaseAsync();
+        _host.EnsureImageStorage();
     }
 
     public Task DisposeAsync()
     {
-        return Task.CompletedTask;
+        return _host.DisposeAsync().AsTask();
     }
 }

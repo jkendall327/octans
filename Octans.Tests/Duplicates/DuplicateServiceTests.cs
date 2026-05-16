@@ -1,10 +1,7 @@
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core;
 using Octans.Core.Duplicates;
@@ -18,68 +15,40 @@ namespace Octans.Tests.Duplicates;
 
 public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
 {
-    private readonly ServiceProvider _provider;
+    private readonly OctansTestHost _host;
     private readonly DuplicateService _sut;
     private readonly ServerDbContext _dbContext;
-    private readonly MockFileSystem _fileSystem;
     private readonly IPerceptualHashProvider _hashProvider;
-    private readonly string _appRoot = "/app";
 
-    public DuplicateServiceTests(ITestOutputHelper testOutputHelper, DatabaseFixture databaseFixture)
+    public DuplicateServiceTests(ITestOutputHelper output, DatabaseFixture db)
     {
-        var services = new ServiceCollection();
-
-        services.AddLogging(s => s.AddProvider(new XUnitLoggerProvider(testOutputHelper)));
-
-        databaseFixture.RegisterDbContext(services, ServiceLifetime.Scoped);
-        
-        services.AddScoped<DuplicateService>();
-        services.AddScoped<FileDeleter>();
-
-        _fileSystem = new MockFileSystem();
-        services.AddSingleton<IFileSystem>(_fileSystem);
-        services.AddSingleton<TimeProvider>(new FakeTimeProvider(TestClock.UtcNow));
-        services.Configure<GlobalSettings>(s => s.AppRoot = _appRoot);
-        services.AddSingleton<ImageStorage>();
-
         _hashProvider = Substitute.For<IPerceptualHashProvider>();
-        services.AddSingleton(_hashProvider);
 
-        _provider = services.BuildServiceProvider();
-        _dbContext = _provider.GetRequiredService<ServerDbContext>();
-        _sut = _provider.GetRequiredService<DuplicateService>();
+        _host = OctansTestHost.Create(
+            output,
+            db,
+            services => services.ReplaceExistingRegistrationsWith(_hashProvider),
+            dbLifetime: ServiceLifetime.Scoped);
 
-        var imageStorage = _provider.GetRequiredService<ImageStorage>();
-        imageStorage.EnsureStorage();
+        _dbContext = _host.GetRequiredService<ServerDbContext>();
+        _sut = _host.GetRequiredService<DuplicateService>();
     }
 
     public async Task InitializeAsync()
     {
-        await DatabaseFixture.ResetAsync(_provider);
+        await _host.ResetDatabaseAsync();
+        _host.EnsureImageStorage();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public Task DisposeAsync() => _host.DisposeAsync().AsTask();
 
     [Fact]
     public async Task CalculateMissingHashes_ShouldCalculateAndSaveHash()
     {
         // Arrange
         var bytes = new byte[] { 1, 2, 3 };
-        var hash = ContentHash.FromContent(bytes);
         var metadata = new ImageMetadata("jpg", "image/jpeg");
-
-        var hashItem = new HashItem
-        {
-            Hash = hash.Bytes,
-            Extension = metadata.Extension,
-            ContentType = metadata.ContentType
-        };
-        _dbContext.Hashes.Add(hashItem);
-        await _dbContext.SaveChangesAsync();
-
-        var imageStorage = _provider.GetRequiredService<ImageStorage>();
-        var destination = imageStorage.GetOriginalDestination(hash, metadata);
-        _fileSystem.AddFile(destination, new MockFileData(bytes));
+        await _host.AddStoredImageAsync(bytes, metadata, _dbContext);
 
         _hashProvider.GetHash(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(12345ul);
@@ -210,14 +179,14 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         await _dbContext.SaveChangesAsync();
 
         // Simulate file existence for deletion
-        var imageStorage = _provider.GetRequiredService<ImageStorage>();
+        var imageStorage = _host.GetRequiredService<ImageStorage>();
         var hash2 = ContentHash.FromHashBytes(item2.Hash);
         var metadata = new ImageMetadata("jpg", "image/jpeg");
         item2.Extension = metadata.Extension;
         item2.ContentType = metadata.ContentType;
         await _dbContext.SaveChangesAsync();
         var dest2 = imageStorage.GetOriginalDestination(hash2, metadata);
-        _fileSystem.AddFile(dest2, new MockFileData("content"));
+        _host.FileSystem.AddFile(dest2, new MockFileData("content"));
 
         // Act
         // Keep item1, so item2 should be deleted
@@ -229,6 +198,6 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
         var deletedItem2 = await _dbContext.Hashes.FindAsync(item2.Id);
         deletedItem2!.DeletedAt.Should().NotBeNull();
 
-        _fileSystem.FileExists(dest2).Should().BeFalse();
+        _host.FileSystem.FileExists(dest2).Should().BeFalse();
     }
 }
