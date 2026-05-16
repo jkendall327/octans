@@ -1,11 +1,10 @@
 ## Repository Map
 
 - `Octans.Core/Communication` – API client interfaces and state change notifications.
-- `Octans.Core/Deletion` – utilities for removing files from storage.
 - `Octans.Core/Downloads` – download queue, bandwidth limiting, and individual downloaders in `Downloads/Downloaders`.
 - `Octans.Core/Duplicates` – perceptual hashing to detect duplicate files.
 - `Octans.Core/Extensions` – project-wide extension methods.
-- `Octans.Core/Filesystem` – helpers for managing storage folders.
+- `Octans.Core/Filesystem` – helpers for managing storage folders, deleting stuff etc.
 - `Octans.Core/Importing` – pipeline for importing files into the repository.
 - `Octans.Core/Progress` – background progress tracking utilities.
 - `Octans.Core/Querying` – parsing and executing search queries.
@@ -19,11 +18,31 @@
 - `Octans.Data` – Entity Framework Core models and migrations.
 - `Octans.Tests` – unit tests covering core services and client view models.
 
-## General notes
+## What is this app?
+
+My reimplementation of the Hydrus Network, a tag-based image archival/storage/viewer.
+
+Features of note:
+- Content importing. Content can come from the local filesystem or downloaded from the web.
+- Subscriptions. Periodic web scans of sources for content.
+- Tags/querying. See `docs/Querying.md` if curious.
+- Duplicates. Scanning for near-duplicate images based on perceptual hashes.
+- Downloaders. User-created scripts for interfacing with arbitrary websites via Lua.
+- HTTP downloading. Distinct from the above. Feature-agnostic subsystem for managing HTTP requests, respecting site bandwidth limits, etc.
+
+See `docs/Architectural decisions.md` for explanations of why certain tech or design patterns were used.
+See `docs/Terminology.md` for clarifications of what certain words mean in this project.
+
+## What changes are appropriate?
 
 This is not a production app yet.
 I have a dev database I don't want to explode, so use proper EF migrations.
 But if I need to start up a new database for something really radical, it's not the end of the world.
+
+I'm open to changing the design of things in small and big ways.
+
+I'm specifically not wedded to using Blazor for the frontend.
+I'm toying with a React frontend instead for simplicity, hence the currently not-really-used API endpoints.
 
 ## Verification
 

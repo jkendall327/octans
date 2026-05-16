@@ -13,7 +13,7 @@ Goals:
 Anti-goals:
 - Maximum flexibility
 - Making everything dynamic/not hardcoding things to make them easier
-- Natural language queries (maybe plug in an AI down the road)
+- Natural language queries
 - Complex boolean expressions beyond AND/OR/NOT
 
 ## Searching
@@ -103,37 +103,3 @@ The above example, for instance, is equivalent to `or:character:mario OR stage:1
 
 ### Query executor
 !TODO: ???
-
-## Maintainability
-
-### Unit Tests
-- Parser edge cases
-- Predicate combinations
-- Optimization rules
-
-### Integration Tests
-- End-to-end query execution
-- Performance benchmarks
-- Concurrency scenarios
-
-### Performance Tests
-- Large dataset benchmarks
-- Memory usage monitoring
-- Query optimization effectiveness
-
-### Performance Metrics
-- Query execution time
-- Cache hit rates
-- Memory usage patterns
-- Query pattern frequency
-
-### Error Handling
-- Clear error messages for users
-- Detailed logging for debugging
-- Graceful degradation under load
-
-### Documentation
-- Maintain this specification
-- Document optimization rules
-- Keep example queries updated
-- Include performance tuning guide

@@ -29,6 +29,9 @@ I'm developing it because:
 - `Octans.Core`: Core business logic and domain models.
 - `Octans.Data`: Database context, migrations, and data access.
 
+If you would like to understand more about the technical aspects of the app, read the docs written for AI, starting with the `AGENTS.md`.
+They're deliberately dual-use.
+
 Run `dotnet test` on the `Octans.Tests` project to run automated tests.
 
    ```bash
