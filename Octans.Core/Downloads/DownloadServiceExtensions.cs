@@ -26,7 +26,6 @@ public static class DownloadServiceExtensions
         services.RemoveAll<DownloadManagerOptions>();
         services.AddOptions<DownloadManagerOptions>()
             .Configure(options => configure?.Invoke(options));
-        services.AddSingleton(sp => sp.GetRequiredService<IOptions<DownloadManagerOptions>>().Value);
 
         services.TryAddSingleton<IDownloadStateService, DownloadStatusTracker>();
         services.TryAddSingleton<IActiveDownloadRegistry, ActiveDownloadRegistry>();
@@ -45,8 +44,7 @@ public static class DownloadServiceExtensions
 
         services.AddHttpClient("DownloadClient")
             .AddStandardResilienceHandler()
-            .Configure((resilienceOptions, provider) =>
-                ConfigureDownloadResilience(resilienceOptions, provider))
+            .Configure(ConfigureDownloadResilience)
             .SelectPipelineBy(_ => request => request.RequestUri?.Host ?? "unknown-host");
 
         return services;
