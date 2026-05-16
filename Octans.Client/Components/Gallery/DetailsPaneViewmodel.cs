@@ -1,6 +1,5 @@
 using System.Threading.Channels;
 using MudBlazor;
-using Octans.Core.Communication;
 using Octans.Core.Notes;
 using Octans.Core.Repositories;
 using Octans.Core.Tags;
@@ -11,9 +10,8 @@ public sealed class DetailsPaneViewmodel(
     INoteService noteService,
     ITagService tagService,
     ISnackbar snackbar,
-    ChannelWriter<RepositoryChangeRequest> repositoryChannel) : INotifyStateChanged
+    ChannelWriter<RepositoryChangeRequest> repositoryChannel) : ViewmodelBase
 {
-    public Func<Task>? StateChanged { get; set; }
     public string? SelectedHash { get; private set; }
     public List<NoteDto> Notes { get; private set; } = [];
     public List<TagViewer.Tag> Tags { get; private set; } = [];
@@ -99,13 +97,5 @@ public sealed class DetailsPaneViewmodel(
         Notes = await noteService.GetNotesAsync(SelectedHash);
         var tagModels = await tagService.GetTagsForHashAsync(SelectedHash);
         Tags = tagModels.Select(t => new TagViewer.Tag(t.Namespace, t.Subtag, 0)).ToList();
-    }
-
-    private async Task NotifyStateChanged()
-    {
-        if (StateChanged is not null)
-        {
-            await StateChanged.Invoke();
-        }
     }
 }

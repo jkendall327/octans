@@ -2,7 +2,6 @@ using System.Threading.Channels;
 using MudBlazor;
 using Octans.Client.Components.StatusBar;
 using Octans.Client.Services;
-using Octans.Core.Communication;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
@@ -26,14 +25,13 @@ public sealed class GalleryViewmodel(
     ICustomCommandProvider customCommandProvider,
     ChannelWriter<RepositoryChangeRequest> repositoryChannel,
     IBrowserService browserService,
-    ILogger<GalleryViewmodel> logger) : IAsyncDisposable, INotifyStateChanged
+    ILogger<GalleryViewmodel> logger) : ViewmodelBase, IAsyncDisposable
 {
     private CancellationTokenSource _cts = new();
 
     public List<string> ImageUrls { get; private set; } = [];
     public bool Searching { get; private set; }
     public string? LastError { get; private set; }
-    public Func<Task>? StateChanged { get; set; }
     public string? CurrentImage { get; set; }
     public string? SelectedImageHash { get; set; }
     public bool FilterMode { get; set; }
@@ -265,12 +263,10 @@ public sealed class GalleryViewmodel(
         _cts = new();
     }
 
-    public async Task NotifyStateChanged()
+    public async Task SelectImage(string url)
     {
-        if (StateChanged is not null)
-        {
-            await StateChanged.Invoke();
-        }
+        SelectedImageHash = url[(url.LastIndexOf('/') + 1)..];
+        await NotifyStateChanged();
     }
 
     public async Task OnCancel()

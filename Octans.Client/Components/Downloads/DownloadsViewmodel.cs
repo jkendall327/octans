@@ -5,13 +5,11 @@ using Octans.Data.Models;
 namespace Octans.Client.Components.Downloads;
 
 public sealed class DownloadsViewmodel(
-    IDownloadStateService stateService) : IDisposable
+    IDownloadStateService stateService) : ViewmodelBase, IDisposable
 {
     private bool _subscribed;
 
     public List<DownloadStatusDto> ActiveDownloads { get; private set; } = [];
-
-    public event Func<Task>? StateChanged;
 
     public async Task InitializeAsync()
     {
@@ -29,11 +27,7 @@ public sealed class DownloadsViewmodel(
     public async ValueTask Handle(DownloadsChanged notification)
     {
         ActiveDownloads = stateService.GetAllDownloads().Select(MapStatus).ToList();
-        var handler = StateChanged;
-        if (handler != null)
-        {
-            await handler();
-        }
+        await NotifyStateChanged();
     }
 
     public async ValueTask Handle(DownloadStatusChanged notification)
@@ -48,11 +42,7 @@ public sealed class DownloadsViewmodel(
         {
             ActiveDownloads.Add(status);
         }
-        var handler = StateChanged;
-        if (handler != null)
-        {
-            await handler();
-        }
+        await NotifyStateChanged();
     }
 
     public void Dispose()

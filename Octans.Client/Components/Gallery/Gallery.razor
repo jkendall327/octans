@@ -133,12 +133,7 @@
 
     private async Task SetSelectedImage(string url)
     {
-        // Extract hex from url: /media/{hex}
-        var hex = url[(url.LastIndexOf('/') + 1)..];
-        Viewmodel.SelectedImageHash = hex;
-        // Trigger state change so sidebar updates
-        await Viewmodel.NotifyStateChanged();
-        // Trigger local state change to highlight selection if implemented (or just to be safe)
+        await Viewmodel.SelectImage(url);
         StateHasChanged();
     }
 

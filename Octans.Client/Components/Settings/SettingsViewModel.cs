@@ -1,6 +1,5 @@
 using Octans.Client.Services;
 using Octans.Client.Settings;
-using Octans.Core.Communication;
 
 namespace Octans.Client.Components.Settings;
 
@@ -9,7 +8,7 @@ public sealed class SettingsViewModel(
     ILogger<SettingsViewModel> logger,
     IThemePreferenceService themeJsInterop,
     ThemeService themeService,
-    TimeProvider timeProvider) : IDisposable, INotifyStateChanged
+    TimeProvider timeProvider) : ViewmodelBase, IDisposable
 {
     public SettingsContext Context { get; } = new();
     public SettingsModel Settings { get; } = new();
@@ -23,8 +22,6 @@ public sealed class SettingsViewModel(
     public bool SaveSuccess { get; private set; }
     public bool SaveError { get; private set; }
     public string ErrorMessage { get; private set; } = string.Empty;
-
-    public Func<Task>? StateChanged { get; set; }
 
     public async Task InitializeAsync()
     {
@@ -66,7 +63,7 @@ public sealed class SettingsViewModel(
         SaveSuccess = false;
         SaveError = false;
 
-        await OnStateChanged();
+        await NotifyStateChanged();
 
         try
         {
@@ -76,7 +73,7 @@ public sealed class SettingsViewModel(
 
             SaveSuccess = true;
 
-            await OnStateChanged();
+            await NotifyStateChanged();
 
             await Task.Delay(TimeSpan.FromSeconds(3), timeProvider);
 
@@ -91,14 +88,6 @@ public sealed class SettingsViewModel(
         finally
         {
             IsSaving = false;
-        }
-    }
-
-    private async Task OnStateChanged()
-    {
-        if (StateChanged is not null)
-        {
-            await StateChanged.Invoke();
         }
     }
 

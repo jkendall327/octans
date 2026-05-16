@@ -1,10 +1,9 @@
-using Octans.Core.Communication;
 using Octans.Core.Querying;
 using DataTag = Octans.Data.Models.Tagging.Tag;
 
 namespace Octans.Client.Components.Gallery;
 
-public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder) : IDisposable, INotifyStateChanged
+public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder) : ViewmodelBase, IDisposable
 {
     private CancellationTokenSource? _debounceCts;
     private CancellationTokenSource? _requestCts;
@@ -14,7 +13,6 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     private readonly List<QueryParameter> _parameters = [];
     private readonly List<QuerySuggestionDto> _suggestions = [];
 
-    public Func<Task>? StateChanged { get; set; }
     public Func<List<QueryParameter>, Task>? QueryChanged { get; set; }
 
     public IReadOnlyList<QueryParameter> Parameters => _parameters;
@@ -38,7 +36,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
         _initialized = true;
 
-        await InvokeStateHasChanged();
+        await NotifyStateChanged();
     }
 
     public async Task HandleKeyDownAsync(string key)
@@ -58,7 +56,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     {
         Current = value ?? string.Empty;
 
-        await InvokeStateHasChanged();
+        await NotifyStateChanged();
 
         await DebouncedFetchAsync(Current, debounceMs);
     }
@@ -69,7 +67,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
         if (removed)
         {
-            await InvokeStateHasChanged();
+            await NotifyStateChanged();
             await NotifyQueryChangedAsync();
         }
     }
@@ -77,7 +75,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     private async Task ClearSuggestions()
     {
         _suggestions.Clear();
-        await InvokeStateHasChanged();
+        await NotifyStateChanged();
     }
 
     private async Task DebouncedFetchAsync(string term, int delayMs)
@@ -130,7 +128,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
                 .ThenBy(t => t.Subtag)
                 .Select(MapSuggestion));
 
-            await InvokeStateHasChanged();
+            await NotifyStateChanged();
         }
         catch (OperationCanceledException)
         {
@@ -159,7 +157,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
         Current = string.Empty;
 
-        await InvokeStateHasChanged();
+        await NotifyStateChanged();
 
         await ClearSuggestions();
 
@@ -170,7 +168,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
     {
         Current = $"{tag.Namespace}:{tag.Subtag}";
 
-        await InvokeStateHasChanged();
+        await NotifyStateChanged();
         await AddCurrentAsync();
     }
 
@@ -186,14 +184,6 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         }
 
         await QueryChanged.Invoke(_parameters);
-    }
-
-    private async Task InvokeStateHasChanged()
-    {
-        if (StateChanged is not null)
-        {
-            await StateChanged.Invoke();
-        }
     }
 
     public void Dispose()
