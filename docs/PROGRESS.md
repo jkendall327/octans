@@ -46,7 +46,6 @@ Important current limitations:
 - File writes and database writes are not atomic as one operation. `ImportItemProcessor` writes bytes first and then saves the DB row, so a failed DB save can leave orphaned files; the reverse class of DB/file mismatch is also possible after crashes.
 - There is no startup reconciliation for missing originals, missing thumbnails, orphaned files, duplicate files, stale thumbnails, or DB rows whose physical bytes are gone.
 - `HashItem.Hash` is not protected by a database unique index in the current model snapshot, so duplicate rows for the same content hash are still possible under concurrent imports.
-- `FilesystemWriter` writes directly to the final original path. There is no `.part` staging file, atomic move, fsync/durability step, or cleanup of interrupted writes for imported media.
 - `ImageStorage.FindOriginal` can fall back to scanning a bucket when extension metadata is missing. That helps old rows, but it keeps a slower legacy path alive and can hide metadata gaps.
 - The system still calls this `ImageStorage`, even though the product language says media and the importer may eventually support videos, archives, and other file types.
 - Thumbnail storage assumes JPEG thumbnails and image-decodable content. Non-image media types do not have a clear derivative strategy.
