@@ -22,7 +22,19 @@ await service.QueueDownloadAsync(new()
     Url = new("https://upload.wikimedia.org/wikipedia/commons/d/de/Nokota_Horses_cropped.jpg"),
     DestinationPath = "/home/janedoe/Downloads/horse.jpg"
 });
+
+var result = await service.QueueDownloadAndWaitAsync(new()
+{
+    Url = new("https://example.com/image.jpg"),
+    DestinationPath = "/tmp/image.jpg"
+});
 ```
+
+`QueueDownloadAndWaitAsync` keeps the queue-based subsystem underneath, but gives
+callers a sequential async workflow when they need the completed file before
+continuing. It wakes from in-process download state notifications and falls back
+to polling the durable result store, using
+`DownloadManagerOptions.CompletionPollingInterval`.
 
 ## Setup
 
@@ -37,6 +49,7 @@ builder.Services.AddDownloadManager(options =>
 {
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;
+    options.CompletionPollingInterval = TimeSpan.FromSeconds(2);
     options.DiskSpace.RequiredFreeSpaceHeadroomBytes = 250L * 1024 * 1024;
     options.SizeLimits.MaxBytes = 10L * 1024 * 1024 * 1024;
     options.ContentTypeValidation.AllowMissingContentType = true;
@@ -64,7 +77,7 @@ hosts or callers.
 
 ## Components
 
-- `IDownloadService` accepts feature-level download requests and exposes cancel/pause/resume/retry commands.
+- `IDownloadService` accepts feature-level download requests, exposes cancel/pause/resume/retry commands, and can wait asynchronously for terminal job results.
 - `IDownloadStateService` owns atomic status-plus-queue transitions for new, paused, canceled, resumed, and retried downloads.
 - `IDownloadQueue` restores queued work and chooses the next job by priority, queued time, and saturated-domain exclusions.
 - `DownloadBackgroundService` is registered by `AddDownloadManager` and runs the worker loop.

@@ -72,6 +72,29 @@ public sealed class DownloadManagerIntegrationTests
     }
 
     [Fact]
+    public async Task DownloadManager_QueueDownloadAndWaitAsync_ReturnsTerminalResult()
+    {
+        await using var harness = await DownloadManagerHarness.Create();
+        harness.HttpHandler.AddResponse("https://cdn.example/files/sequential.txt", "sequential");
+
+        var downloadService = harness.Services.GetRequiredService<IDownloadService>();
+
+        await harness.StartAsync();
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var result = await downloadService.QueueDownloadAndWaitAsync(new()
+        {
+            Url = new("https://cdn.example/files/sequential.txt"),
+            DestinationPath = "/downloads/sequential.txt",
+            DisplayName = "Sequential"
+        }, cancellationToken: timeout.Token);
+
+        Assert.Equal(DownloadTerminalOutcome.Completed, result.Outcome);
+        Assert.Equal("Sequential", result.DisplayName);
+        Assert.Equal("sequential", await harness.FileSystem.File.ReadAllTextAsync("/downloads/sequential.txt"));
+    }
+
+    [Fact]
     public async Task DownloadManager_NotifiesTerminalHttpFailureResult()
     {
         await using var harness = await DownloadManagerHarness.Create();

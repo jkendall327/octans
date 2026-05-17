@@ -7,6 +7,7 @@ public class DownloadManagerOptions
 {
     public int MaxConcurrentDownloads { get; set; } = 3;
     public int MaxConcurrentDownloadsPerDomain { get; set; } = 2;
+    public TimeSpan CompletionPollingInterval { get; set; } = TimeSpan.FromSeconds(2);
     public DownloadDiskSpaceOptions DiskSpace { get; set; } = new();
     public DownloadSizeLimitOptions SizeLimits { get; set; } = new();
     public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();

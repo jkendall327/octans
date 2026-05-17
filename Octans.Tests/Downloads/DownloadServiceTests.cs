@@ -14,6 +14,7 @@ public class DownloadServiceTests
     private readonly IActiveDownloadRegistry _activeDownloads = Substitute.For<IActiveDownloadRegistry>();
     private readonly IDownloadCompletionNotifier _completionNotifier = Substitute.For<IDownloadCompletionNotifier>();
     private readonly IDownloadJobResultService _jobResults = Substitute.For<IDownloadJobResultService>();
+    private readonly IDownloadCompletionWaiter _completionWaiter = Substitute.For<IDownloadCompletionWaiter>();
     private readonly DownloadLifecycleService _lifecycle;
     private readonly DownloadService _service;
 
@@ -28,7 +29,7 @@ public class DownloadServiceTests
             timeProvider,
             NullLogger<DownloadLifecycleService>.Instance);
 
-        _service = new(_lifecycle, _jobResults);
+        _service = new(_lifecycle, _jobResults, _completionWaiter);
     }
 
     [Fact]
@@ -63,6 +64,59 @@ public class DownloadServiceTests
         var actual = await _service.GetResultAsync(handle);
 
         Assert.Same(result, actual);
+    }
+
+    [Fact]
+    public async Task WaitForCompletionAsync_ShouldDelegateToCompletionWaiter()
+    {
+        var handle = new DownloadJobHandle(Guid.NewGuid());
+        var result = new DownloadJobResult
+        {
+            DownloadId = handle.Id,
+            Outcome = DownloadTerminalOutcome.Completed,
+            Url = "https://example.com/file.zip",
+            DestinationPath = "/downloads/file.zip"
+        };
+
+        _completionWaiter.WaitForCompletionAsync(handle, TimeSpan.FromMilliseconds(50), Arg.Any<CancellationToken>())
+            .Returns(result);
+
+        var actual = await _service.WaitForCompletionAsync(handle, TimeSpan.FromMilliseconds(50));
+
+        Assert.Same(result, actual);
+    }
+
+    [Fact]
+    public async Task QueueDownloadAndWaitAsync_ShouldQueueThenWaitForCompletion()
+    {
+        var request = new DownloadRequest
+        {
+            Url = new("https://example.com/file.zip"),
+            DestinationPath = "/downloads/file.zip"
+        };
+        var result = new DownloadJobResult
+        {
+            DownloadId = Guid.NewGuid(),
+            Outcome = DownloadTerminalOutcome.Completed,
+            Url = request.Url.ToString(),
+            DestinationPath = request.DestinationPath
+        };
+
+        _completionWaiter.WaitForCompletionAsync(
+                Arg.Any<DownloadJobHandle>(),
+                TimeSpan.FromMilliseconds(50),
+                Arg.Any<CancellationToken>())
+            .Returns(result);
+
+        var actual = await _service.QueueDownloadAndWaitAsync(request, TimeSpan.FromMilliseconds(50));
+
+        Assert.Same(result, actual);
+        await _mockStateService.Received(1).QueueDownloadAsync(Arg.Is<DownloadStatus>(ds =>
+            ds.Url == request.Url.ToString()));
+        await _completionWaiter.Received(1).WaitForCompletionAsync(
+            Arg.Is<DownloadJobHandle>(handle => handle.Id != Guid.Empty),
+            TimeSpan.FromMilliseconds(50),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
