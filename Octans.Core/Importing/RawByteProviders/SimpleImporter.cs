@@ -1,5 +1,6 @@
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
+using Octans.Core.Filesystem;
 using Octans.Core.Http;
 using Octans.Core.Http.Models;
 using Octans.Data.Models;
@@ -11,6 +12,7 @@ namespace Octans.Core.Importing.RawByteProviders;
 /// </summary>
 public sealed class SimpleImporter(
     IDownloadService downloadService,
+    IRobustFileWriter fileWriter,
     IFileSystem fileSystem,
     ILogger<SimpleImporter> logger) : IRawByteProvider
 {
@@ -20,34 +22,29 @@ public sealed class SimpleImporter(
                   throw new ArgumentException(
                       "Import item had a null URL, despite having an Import Type of RawUrl.",
                       nameof(item));
-        var destination = BuildTempDestination(url);
+        using var destination = fileWriter.CreateTemporaryFile(
+            fileSystem.Path.Combine(fileSystem.Path.GetTempPath(), "octans-imports"),
+            GetFileName(url));
 
-        logger.LogInformation("Downloading remote file from {RemoteUrl} to {DestinationPath}", url, destination);
+        logger.LogInformation("Downloading remote file from {RemoteUrl} to {DestinationPath}", url, destination.Path);
 
-        try
+        var result = await downloadService.QueueDownloadAndWaitAsync(new()
         {
-            var result = await downloadService.QueueDownloadAndWaitAsync(new()
-            {
-                Url = url,
-                DestinationPath = destination,
-                SourceType = nameof(ImportType.RawUrl),
-                SourceId = url.ToString()
-            });
+            Url = url,
+            DestinationPath = destination.Path,
+            SourceType = nameof(ImportType.RawUrl),
+            SourceId = url.ToString()
+        });
 
-            if (result.Outcome is not DownloadTerminalOutcome.Completed)
-            {
-                throw new InvalidOperationException(GetFailureMessage(result));
-            }
-
-            return await fileSystem.File.ReadAllBytesAsync(destination);
-        }
-        finally
+        if (result.Outcome is not DownloadTerminalOutcome.Completed)
         {
-            DeleteTempFileBestEffort(destination);
+            throw new InvalidOperationException(GetFailureMessage(result));
         }
+
+        return await fileSystem.File.ReadAllBytesAsync(destination.Path);
     }
 
-    private string BuildTempDestination(Uri url)
+    private string GetFileName(Uri url)
     {
         var fileName = fileSystem.Path.GetFileName(url.LocalPath);
         if (string.IsNullOrWhiteSpace(fileName))
@@ -55,25 +52,7 @@ public sealed class SimpleImporter(
             fileName = "download";
         }
 
-        return fileSystem.Path.Combine(
-            fileSystem.Path.GetTempPath(),
-            "octans-imports",
-            $"{Guid.NewGuid():N}-{fileName}");
-    }
-
-    private void DeleteTempFileBestEffort(string path)
-    {
-        try
-        {
-            if (fileSystem.File.Exists(path))
-            {
-                fileSystem.File.Delete(path);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to delete temporary raw URL download {DestinationPath}", path);
-        }
+        return fileName;
     }
 
     private static string GetFailureMessage(DownloadJobResult result)

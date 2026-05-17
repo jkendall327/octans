@@ -1,4 +1,3 @@
-using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Filesystem;
 
@@ -6,7 +5,7 @@ namespace Octans.Core.Importing;
 
 public class FilesystemWriter(
     ImageStorage imageStorage,
-    IFileSystem fileSystem,
+    IRobustFileWriter fileWriter,
     ILogger<FilesystemWriter> logger)
 {
     public async Task WriteOriginal(ContentHash hash, ImageMetadata metadata, byte[] bytes)
@@ -15,6 +14,6 @@ public class FilesystemWriter(
 
         logger.LogDebug("Persisting file to {Destination}", destination);
 
-        await fileSystem.File.WriteAllBytesAsync(destination, bytes);
+        await fileWriter.WriteAllBytesAsync(destination, bytes);
     }
 }

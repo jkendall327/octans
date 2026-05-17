@@ -125,6 +125,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DuplicateService>();
 
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IRobustFileWriter, RobustFileWriter>();
         services.AddBandwidthLimiter();
         services.AddDownloadManager();
         services.AddMediator();

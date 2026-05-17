@@ -2,6 +2,7 @@ using System.IO.Abstractions.TestingHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Octans.Core.Filesystem;
 using Octans.Core.Http;
 using Octans.Core.Http.Models;
 using Octans.Core.Importing;
@@ -18,7 +19,8 @@ public sealed class SimpleImporterTests
 
     public SimpleImporterTests()
     {
-        _sut = new(_downloadService, _fileSystem, NullLogger<SimpleImporter>.Instance);
+        var fileWriter = new RobustFileWriter(_fileSystem, NullLogger<RobustFileWriter>.Instance);
+        _sut = new(_downloadService, fileWriter, _fileSystem, NullLogger<SimpleImporter>.Instance);
     }
 
     [Fact]
