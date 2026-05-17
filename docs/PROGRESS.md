@@ -21,13 +21,71 @@ These descriptions will likely end up becoming GitHub issues.
 
 The backend-facing shape of the app as a product: the REST-ish API, service boundaries, DTOs, client-independent workflows, and the line between reusable backend behavior and the current Blazor UI.
 
-## Data Model, EF, and Migrations
-
-The database schema, EF Core models, migrations, persistence conventions, and whether durable state is modeled in the right place.
-
 ## Content Storage and Filesystem Layout
 
 Hash-based storage, original media placement, repository folders, filesystem safety, path handling, cleanup, and deletion from disk.
+
+What exists now:
+
+- The core storage model is content-addressed. `ContentHash` computes SHA-256 hashes, exposes hex/hash bytes, and derives bucket names.
+- `ImageStorage` is the central path API for originals, thumbnails, lookup, deletion, and storage initialization.
+- Originals live under `AppRoot/db/files/fXX/<HASH>.<extension>`, and thumbnails live under `AppRoot/db/files/tXX/<HASH>.jpeg`.
+- `ImageStorage.EnsureStorage` creates all 256 original buckets and all 256 thumbnail buckets at startup, plus the `downloaders` directory.
+- Imports detect media extension/content type through `ImageStorage.GetMetadata`, store originals through `FilesystemWriter`, persist `HashItem.Hash`, `Extension`, `ContentType`, and repository state through `DatabaseWriter`, and enqueue thumbnail creation.
+- New media rows default to Inbox unless import requests set `AutoArchive`, in which case they are stored as Archive.
+- `/media/{hash}` is the stable media-serving route. It parses the hash, looks up DB metadata, finds the original through `ImageStorage`, sets long immutable cache headers, uses the content hash as the ETag, and enables range processing.
+- `OctansClient.GetMediaUrl` and the gallery paths build URLs around `/media/{HASH}` rather than exposing physical storage paths.
+- `FileDeleter` removes the original and thumbnail, then soft-deletes the `HashItem` by setting `DeletedAt`.
+- Reimport handling can reactivate a deleted hash and restore the original file if the DB row exists but the bytes have been removed from disk.
+- Repository movement is DB-backed: Inbox/Archive/Trash are represented by `RepositoryId`, and the repository change background service applies queued changes by hash.
+- `StorageService` can compute rough app-root disk usage for the home stats surface.
+- Tests cover hash behavior, deterministic original lookup, fallback lookup by hash in a bucket, deletion from disk plus DB soft delete, storage size formatting, import metadata persistence, thumbnail queueing, and reimport restoration.
+
+Important current limitations:
+
+- File writes and database writes are not atomic as one operation. `ImportItemProcessor` writes bytes first and then saves the DB row, so a failed DB save can leave orphaned files; the reverse class of DB/file mismatch is also possible after crashes.
+- There is no startup reconciliation for missing originals, missing thumbnails, orphaned files, duplicate files, stale thumbnails, or DB rows whose physical bytes are gone.
+- `HashItem.Hash` is not protected by a database unique index in the current model snapshot, so duplicate rows for the same content hash are still possible under concurrent imports.
+- `FilesystemWriter` writes directly to the final original path. There is no `.part` staging file, atomic move, fsync/durability step, or cleanup of interrupted writes for imported media.
+- `ImageStorage.FindOriginal` can fall back to scanning a bucket when extension metadata is missing. That helps old rows, but it keeps a slower legacy path alive and can hide metadata gaps.
+- The system still calls this `ImageStorage`, even though the product language says media and the importer may eventually support videos, archives, and other file types.
+- Thumbnail storage assumes JPEG thumbnails and image-decodable content. Non-image media types do not have a clear derivative strategy.
+- `FileRecord` exists in the schema but is effectively unused, which makes the intended relationship between imported source paths, stored hashes, and physical files unclear.
+- `/approot/{**path}` exposes configured app-root files outside the content-addressed media route. That may be useful for local development/debugging, but it is a broad filesystem-serving surface and bypasses the `ImageStorage` boundary.
+- Deletion is soft in the database but destructive on disk. Trash semantics therefore mean "metadata row remains, original bytes may be gone", not a recoverable trash folder. // this is intended
+- There is no user-facing or API-level media metadata contract yet. Public file/search endpoints still expose raw `HashItem` rows rather than stable DTOs with hash, media URL, content type, size, dimensions, and repository state.
+- Disk usage is a recursive app-root total, not a storage subsystem view. It does not separate originals, thumbnails, database, download staging, logs, or orphaned data.
+
+Before this can be hooked up to everything else:
+
+- Decide the durable media abstraction: whether this remains image-specific or becomes a `MediaStorage`/`ContentStorage` boundary with originals, thumbnails/previews, and future derivatives.
+- Make the import write path crash-tolerant. Use deterministic staging beside the final destination, validate bytes/metadata, then move into place and persist DB state in a deliberate order with cleanup for failed attempts.
+- Add DB constraints/indexes for storage invariants, especially unique content hashes and repository FK assumptions.
+- Define a reconciliation service that can detect and report missing originals, missing thumbnails, orphaned original files, orphaned thumbnail files, and metadata rows that need repair.
+- Replace or clearly scope the broad `/approot` file-serving route. The normal frontend should use `/media/{hash}` or explicit safe endpoints, not arbitrary app-root paths.
+- Define stable media DTOs and endpoints: get media metadata by hash/id, get original URL, get thumbnail/preview URL, list derivatives, and expose repository/deleted state without leaking EF row shapes.
+- Decide the recoverability semantics for Trash. If deletion from disk is intentional, make the UI/API honest; if recovery is desired, trash needs to keep bytes or move them through a separate lifecycle.
+- Establish how non-image media should be stored and presented. Original storage is already generic enough, but metadata detection, thumbnails, content-type validation, and UI routes need explicit behavior.
+
+For day-to-day usability:
+
+- Show useful media metadata: content type, extension, byte size, dimensions for images, import date, repository, deletion state, and whether the original/thumbnail exists on disk.
+- Add a storage health/check page or command that can scan for missing files, orphaned files, stale thumbnails, and inconsistent metadata before the library grows large.
+- Add thumbnail regeneration controls for one file, all missing thumbnails, and all thumbnails.
+- Make storage usage actionable: break down originals, thumbnails, database, download staging, and other app-root data.
+- Provide clear messages when `/media/{hash}` cannot serve a file because the hash is invalid, the DB row is missing, or the physical file is missing.
+- Keep import/reimport messages precise. An already-present file, a deleted-and-restored file, and a missing-original-restored file should not all look like the same outcome.
+
+For long-term robustness:
+
+- Add content-store reconciliation and repair as a first-class maintenance workflow, not just developer diagnostics.
+- Consider recording original byte size, dimensions, detected content type, extension, created/imported timestamps, and maybe a storage version on `HashItem` or a related media metadata table.
+- Make derivative generation extensible: thumbnails for images, poster frames for video, icons/previews for other media, and explicit failure records for media that cannot produce derivatives.
+- Add large-library tests or benchmarks for bucket lookup, `/media/{hash}` serving, thumbnail regeneration, deletion batches, and reconciliation across many files.
+- Decide whether content should ever be migrated between layouts. If so, store enough versioning to support future bucket-layout changes safely.
+- Add backup/restore documentation and tests for the app-root shape: SQLite database, content buckets, thumbnails, downloader scripts, settings, download staging, and any future derivative folders.
+- Harden path safety around every user-influenced filesystem path, especially local imports, downloader scripts, app-root static serving, and any future export/backup paths.
+- Add observability around storage operations: bytes written/deleted, missing-file failures, thumbnail failures, reconciliation results, and media-serving errors.
 
 ## Importing
 
@@ -120,6 +178,68 @@ User-created website integration scripts: Lua downloader definitions, metadata, 
 ## Subscriptions
 
 Recurring scans of web sources: subscription definitions, scheduling, provider execution, status reporting, deduplication of discovered content, and failure/retry behavior.
+
+What exists now:
+
+- There is a persisted subscription model: `Provider`, `Subscription`, and `SubscriptionExecution`.
+- A subscription stores a name, provider/downloader, query string, check period, next-check timestamp, and a history of execution rows with executed-at time and item count.
+- `SubscriptionService` can add, list, delete, and periodically execute due subscriptions.
+- `SubscriptionBackgroundService` runs every minute and calls `SubscriptionService.CheckAndExecute`.
+- The Blazor subscriptions page can list subscriptions, show last run/items found/next check, and create or delete rows through a dialog.
+- The add-subscription dialog discovers downloader names from `DownloaderFactory`, so the UI already assumes subscriptions are tied to downloader definitions.
+- The executor boundary exists as `ISubscriptionExecutor`, returning `SubscriptionExecutionResult`.
+- Basic tests cover adding/listing/deleting subscriptions through the viewmodel and persisting an execution result.
+
+Important current limitations:
+
+- The registered executor is `NoOpSubscriptionExecutor`, so subscriptions do not currently scan any website or produce import/download work.
+- `SubscriptionExecutionResult` only records `ItemsFound`; it cannot represent discovered URLs, queued downloads/imports, failures, skipped duplicates, pagination state, or useful diagnostics.
+- The scheduler executes all due subscriptions sequentially inside one scoped service loop. There is no per-subscription locking, concurrency limit, cancellation model, manual run command, or protection against overlapping runs after process restarts.
+- Failure handling is too blunt. If one subscription executor throws, the whole check loop can stop before saving successful execution history or rescheduling later subscriptions.
+- `NextCheck` is advanced from the scheduler's initial `now`, not from actual completion time, and there is no failed-run/backoff policy.
+- The data model does not have an enabled/paused flag, last-success/last-failure fields, error messages, consecutive failure counts, stable cursor/checkpoint data, or per-subscription options.
+- `Provider` currently only has a name and is created on demand from the downloader name. It does not encode source type, base URL, credentials, policy, display metadata, or whether the referenced downloader still exists.
+- The API surface is effectively absent. `POST /subscriptions` still throws `NotImplementedException`, `SubscriptionRequest` is unused and incomplete, and there are no frontend-neutral endpoints for listing, creating, updating, deleting, pausing, or running subscriptions.
+- The existing UI is an admin table for rows, not a usable subscription workflow. It has no edit/enable/manual-run controls, no run history detail, no failure visibility, no import/download links, and no status refresh after background execution.
+- There is no deduplication or "already seen" model at the subscription layer. The app can avoid duplicate file imports later by hash/reimport logic, but subscriptions cannot yet remember which source URLs or posts they have already processed.
+- The downloader scripting surface has a `process_query` hook and gallery URL generation, but the subscription code does not use either. `DownloaderService.ResolveAsync` only resolves a concrete URL to downloadable URLs.
+- There is no clear bridge from a subscription scan to durable import jobs or durable download jobs. `PostImporter` can queue downloads for resolved post URLs, but it is not connected to subscriptions, and queued downloads are not yet imported after completion.
+- Subscription-generated HTTP work has not been placed behind the shared HTTP document/body-fetch abstraction called out in the download backlog.
+
+Before this can be hooked up to everything else:
+
+- Decide the subscription input model. A subscription probably needs at least downloader/provider, query or seed URL, frequency, tags to apply, import destination behavior, archive/inbox behavior, and maybe per-source HTTP policy.
+- Define the executor contract around real work, not just `ItemsFound`. It should return discovered source items, skipped/duplicate items, queued import/download handles, failure details, and any next-page/checkpoint information that must persist.
+- Implement a real downloader-backed executor. The first useful version can run downloader query/gallery logic, resolve discovered post/media URLs, and hand off to import/download jobs without trying to solve every website pattern.
+- Make subscriptions submit durable work rather than doing fragile in-memory work. The natural direction is: subscription execution discovers candidate sources, creates import jobs or download jobs with `SourceType = "Subscription"` and a stable source ID, then records what was queued.
+- Build the workflow continuation for "download then import" before subscriptions rely on raw queued downloads. Otherwise subscriptions can queue files into temporary paths without making them part of the library.
+- Add an "already seen" or source-item table before running subscriptions repeatedly. It should key on stable source identity/request fingerprint/post URL, not just final content hash, so the system can skip known posts before downloading them again.
+- Harden scheduling semantics: enabled/disabled state, manual run, per-subscription in-progress tracking, no overlapping executions, failed-run recording, retry/backoff, and continued processing when one subscription fails.
+- Replace the placeholder endpoint with a real API: list subscriptions, create/update/delete, enable/disable, run now, list executions, and inspect any import/download jobs created by an execution.
+- Decide whether subscription configuration should reference downloader names directly or stable downloader IDs/versions. Names are convenient but brittle if downloader files are renamed or upgraded.
+- Integrate with the shared HTTP policy layer for discovery pages and API calls. Subscription scans should share request headers, credentials, host limits, response caps, cancellation, and logging with downloader discovery fetches.
+
+For day-to-day usability:
+
+- Provide a subscription page that answers "what is this doing right now?": enabled state, next run, last success, last failure, current run status, items found, items queued, items imported, and useful error text.
+- Add edit, pause/enable, run-now, and delete controls, with confirmation when deleting history or queued work.
+- Show execution history with links to the import jobs/download jobs created by each run.
+- Let users attach tags and import options to a subscription so recurring imports land with useful metadata instead of becoming anonymous downloads.
+- Make duplicate/skipped behavior visible. Users should know whether a run found nothing, found only already-seen posts, queued new work, or failed before it could scan.
+- Add validation for bad downloader names, missing downloader capabilities, invalid query/URL input, too-small frequencies, and deleted or broken downloader scripts.
+- Make failure messages distinguish downloader-script contract errors, HTTP failures, auth/credential failures, parser failures, no-results runs, and import/download handoff failures.
+- Add per-subscription or per-provider policy knobs where they matter: frequency, retry/backoff, max pages/items per run, content-type expectations, size caps, credentials, and host throttling.
+
+For long-term robustness:
+
+- Treat subscription runs as durable jobs with phases, not just execution log rows. Discovery, queueing, downloading, importing, and final reconciliation each need observable state.
+- Add checkpoint/cursor support for paginated APIs and galleries so subscriptions can resume or continue without rescanning the entire source every time.
+- Build a source-item/history model that can handle post URL changes, multiple media per post, changed remote files, deleted remote posts, redirects, and conditional re-fetches.
+- Use conditional requests where possible once the HTTP layer supports `ETag`/`Last-Modified` re-fetches.
+- Make concurrency and fairness explicit across many subscriptions: per-provider limits, global subscription worker limits, queue priorities, and backpressure from the download/import systems.
+- Add structured metrics for subscription run counts, durations, discovered items, queued items, imported items, skips, failures, and per-provider health.
+- Add end-to-end integration coverage with fake downloader scripts, fake HTTP pages/API responses, durable import/download jobs, repeated runs, failures, restarts, and duplicate source items.
+- Decide the security model for downloader scripts and credentials. Subscriptions will run scripts unattended, so credential scoping, redaction, timeouts, and script failure isolation matter more than in manual one-off imports.
 
 ## Tags and Tag Relationships
 
@@ -239,6 +359,71 @@ Inbox/archive/trash semantics, repository membership, repository changes, file d
 
 Perceptual hashing, duplicate candidate generation, duplicate decisions, duplicate resolutions, and workflows for comparing or merging near-identical media.
 
+What exists now:
+
+- `HashItem` has an optional `PerceptualHash` column.
+- Duplicate state is persisted in `DuplicateCandidate` and `DuplicateDecision`.
+- `DuplicateCandidate` records a pair of hash IDs, a similarity score in the `Distance` column, and creation time.
+- `DuplicateDecision` records a pair of hash IDs, a resolution, and decision time.
+- `DuplicateResolution` currently supports `Distinct` and `KeepBoth`.
+- `PerceptualHashProvider` wraps `CoenM.ImageHash` and computes a 64-bit perceptual hash from an image stream.
+- `DuplicateService.CalculateMissingHashes` processes up to 100 non-deleted hashes with missing perceptual hashes, reads originals through `ImageStorage`, and saves calculated perceptual hashes.
+- `DuplicateService.FindDuplicates` loads non-deleted rows with perceptual hashes, builds an in-memory Hamming-distance index, and creates candidates above a 95% similarity threshold.
+- Existing candidates and previous decisions are treated as ignored pairs so duplicate scans do not keep recreating the same pair.
+- Resolving a candidate with no keep-hash records a `DuplicateDecision` and removes the candidate.
+- Resolving a candidate with a keep-hash deletes the other file through `FileDeleter` and removes all candidates involving the deleted hash.
+- There is a `/duplicates` Blazor page reachable from the toolbar. It can manually trigger hash calculation plus candidate search, list up to 50 candidates, and resolve visible pairs.
+- Tests cover missing perceptual-hash calculation, thresholded candidate creation, skipping existing candidates, respecting decisions, deleting the non-kept file, and rejecting a keep-hash that is not part of the candidate.
+
+Important current limitations:
+
+- Duplicate processing is manual and UI-driven. There is no durable duplicate-scan job, background worker, progress model, cancellation, resumability, or scheduled scan after imports.
+- There is no frontend-neutral API for duplicate scans, candidate listing, candidate detail, or resolution.
+- The Blazor viewmodel reads `ServerDbContext` directly and builds DTOs itself, so duplicate review is still tied to the current UI/data shape.
+- Candidate image URLs are currently built as `/api/files/{hash}`, but the real media route is `/media/{hash}`. The review UI may not render images correctly until that is fixed.
+- `DuplicateCandidate.Distance` actually stores a similarity percentage, not a distance. The name is misleading in the DB model and UI boundary.
+- The fixed 95% similarity threshold is hard-coded. There is no setting, no per-media-type strategy, and no way for the user to tune noisy or missed candidates.
+- Candidate generation loads all perceptually hashed, non-deleted rows into memory and compares through an in-process index. That is fine for a small library, but it is not a complete large-library plan.
+- Perceptual hashes are only calculated for files that `CoenM.ImageHash` can decode as images. Non-image media do not have duplicate handling.
+- Failed hash calculations are logged but not persisted. A broken/corrupt/unsupported file will be retried on every scan because there is no "hash failed" state.
+- There is no stale-candidate reconciliation when files are deleted, restored, moved to trash, reimported, or when perceptual hash logic changes.
+- The UI resolution language is muddy. Clicking "Keep This" passes `KeepBoth` plus a keep-hash, and the service deletes the other side while ignoring the resolution value.
+- Keep-one deletion records no duplicate decision. It deletes the non-kept file and removes related candidates, but there is no durable record explaining that the pair was resolved by deleting one side.
+- Decisions only support "distinct" and "keep both". There is no richer Hydrus-style duplicate relationship vocabulary such as better/worse, same quality, alternate, false positive, or unknown.
+- There is no tag/rating/note/repository merge workflow when one duplicate is deleted. Keeping one file can discard metadata attached to the deleted hash.
+
+Before this can be hooked up to everything else:
+
+- Fix the candidate DTO/media URL path so duplicate review uses `/media/{hash}` or a stable media DTO instead of `/api/files/{hash}`.
+- Split the duplicate workflow into clear backend operations: calculate missing perceptual hashes, find candidates, list candidates, inspect a candidate, resolve a candidate, and maybe run a full scan job.
+- Introduce a durable duplicate-scan job or integrate duplicate scanning into the existing background job patterns. Long scans need progress, cancellation, failure reporting, and safe restart behavior.
+- Define the resolution model before building more UI on top. At minimum, separate "not duplicates", "keep both but related", and "delete one side"; ideally decide whether Octans wants Hydrus-like duplicate relationship semantics.
+- Record keep-one outcomes durably, including which hash was kept, which was deleted, and why.
+- Decide how metadata should be handled when deleting one side: move/merge tags, notes, ratings, repository state, source/import metadata, and future relationship data, or explicitly leave them behind.
+- Persist hash-calculation failure state so unsupported/corrupt media do not get retried forever without explanation.
+- Add candidate cleanup/reconciliation for deleted hashes, restored hashes, missing originals, and changed perceptual hashes.
+- Expose duplicate operations through a frontend-neutral API and DTOs rather than raw EF models or Blazor-only viewmodels.
+
+For day-to-day usability:
+
+- Make duplicate review images actually render, show useful metadata beside each side, and make the keep/delete actions unambiguous.
+- Show candidate count, scan status, hashes remaining to process, candidates found, last scan time, and failures.
+- Add filters/sorting for candidates: similarity, import date, file size, dimensions, repository, whether one side is already trash, and maybe tags.
+- Support keyboard-driven review and batch operations once the semantics are safe.
+- Provide a safe "delete this one" flow with confirmation and metadata consequences made visible.
+- Add a way to regenerate perceptual hashes for selected files or all files after algorithm/threshold changes.
+- Make false positives easy to dismiss and hard to accidentally recreate.
+
+For long-term robustness:
+
+- Add database constraints or canonical pair handling so `(A, B)` and `(B, A)` cannot exist as duplicate candidate/decision duplicates.
+- Add scale tests or benchmarks for candidate generation across large libraries, and decide whether the in-memory index remains enough.
+- Consider storing additional comparison metadata: dimensions, size, content type, import date, exact hash, perceptual hash algorithm/version, and perhaps a candidate score breakdown.
+- Support richer media types with separate duplicate strategies: exact byte duplicates, image perceptual duplicates, video frame/clip similarity, and maybe archive/file-level duplicates.
+- Build a proper duplicate relationship graph if Octans grows beyond one-off pair decisions.
+- Add end-to-end tests through the UI/API path using real stored images, generated perceptual hashes, visible media URLs, and destructive keep-one decisions.
+- Add observability around duplicate scans: files scanned, hash failures, candidate counts, elapsed time, memory use, and resolution counts.
+
 ## Thumbnails and Media Derivatives
 
 Thumbnail creation, background thumbnail jobs, derivative storage, regeneration, cache invalidation, and display-oriented media metadata.
@@ -247,22 +432,6 @@ Thumbnail creation, background thumbnail jobs, derivative storage, regeneration,
 
 Non-tag metadata attached to files: notes, rating systems, hash ratings, and any other user-authored annotations that should survive UI rewrites.
 
-## Statistics and Storage Reporting
-
-Home stats, storage usage, repository counts, media counts, and any aggregate reporting needed for status pages or operational visibility.
-
-## Progress and Notifications
-
-Cross-subsystem progress reporting, background progress stores, status updates, UI notifications, and any future event stream such as SignalR, SSE, or WebSockets.
-
-## Background Work and Scheduling
-
-Hosted services, channels, outbox-like flows, startup recovery, concurrency rules, job ownership, shutdown behavior, and how background work coordinates through the database.
-
-## Configuration and Settings
-
-Application settings, user settings, feature options, keybindings, per-subsystem options, environment-specific configuration, and what belongs in durable settings versus local config.
-
 ## Custom Scripting
 
 User-defined commands outside website downloaders: command discovery, execution, inputs/outputs, sandboxing, error reporting, and integration points with files or tags.
@@ -270,31 +439,3 @@ User-defined commands outside website downloaders: command discovery, execution,
 ## API Contracts and Frontend Agnosticism
 
 The public contract a non-Blazor frontend would use: endpoint coverage, request/response types, error shapes, streaming/event mechanisms, versioning, and generated or documented clients.
-
-## Observability
-
-Structured logging, metrics, traces, health checks, operational status, failure visibility, and enough diagnostics to understand what long-running background work is doing.
-
-## Performance and Scalability
-
-Large-library behavior: database indexes, query planning, filesystem fan-out, thumbnail throughput, import/download throughput, duplicate scan cost, memory use, and UI/API pagination pressure.
-
-## Reliability and Recovery
-
-Crash recovery, idempotency, partial work cleanup, durable job state, startup reconciliation, retry policy, data integrity, and how safely the app behaves when interrupted.
-
-## Security and Sandboxing
-
-Downloader script sandboxing, custom command risk, credential storage, HTTP header handling, local file access boundaries, path traversal protection, and future multi-user implications if any.
-
-## Testing and Verification
-
-Unit tests, integration tests, real database coverage, filesystem fakes, HTTP fakes, migration tests, API tests, and the commands that should prove each subsystem still works.
-
-## Documentation and Operability
-
-User-facing docs, developer docs, architecture notes, subsystem READMEs, troubleshooting guides, local setup, migration guidance, and operational runbooks.
-
-## Current UI Shell
-
-The Blazor UI, view models, and component wiring. This matters as proof that workflows are usable today, but it is intentionally secondary to the backend and API surface because the frontend may change.
