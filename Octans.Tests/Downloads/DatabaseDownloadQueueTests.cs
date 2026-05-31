@@ -12,6 +12,7 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 {
     private readonly SqliteConnection _connection = new("Filename=:memory:");
     private readonly IDbContextFactory<ServerDbContext> _contextFactory = Substitute.For<IDbContextFactory<ServerDbContext>>();
+    private readonly DownloadTelemetry _telemetry = new();
     private readonly DatabaseDownloadQueue _sut;
 
     public DatabaseDownloadQueueTests()
@@ -24,7 +25,8 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
 
         _sut = new(
             _contextFactory,
-            NullLogger<DatabaseDownloadQueue>.Instance);
+            NullLogger<DatabaseDownloadQueue>.Instance,
+            _telemetry);
     }
 
     private ServerDbContext CreateContext()
@@ -322,7 +324,15 @@ public sealed class DatabaseDownloadQueueTests : IDisposable, IAsyncDisposable
         Assert.Equal(download1.Id, result.Id);
     }
 
-    public void Dispose() => _connection.Dispose();
+    public void Dispose()
+    {
+        _telemetry.Dispose();
+        _connection.Dispose();
+    }
 
-    public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        _telemetry.Dispose();
+        await _connection.DisposeAsync();
+    }
 }

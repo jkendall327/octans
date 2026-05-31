@@ -26,15 +26,15 @@ public interface IDownloadQueue
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
 public class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
-    ILogger<DatabaseDownloadQueue> logger) : IDownloadQueue
+    ILogger<DatabaseDownloadQueue> logger,
+    DownloadTelemetry telemetry) : IDownloadQueue
 {
     public async Task<Guid> EnqueueAsync(QueuedDownload download)
     {
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = download.Id,
-            ["Url"] = download.Url,
-            ["Domain"] = download.Domain,
+            ["OriginalHost"] = download.Domain,
             ["SourceType"] = download.SourceType,
             ["SourceId"] = download.SourceId
         });
@@ -52,6 +52,7 @@ public class DatabaseDownloadQueue(
 
         db.QueuedDownloads.Add(download);
         await db.SaveChangesAsync();
+        await RecordQueueDepthAsync(db);
 
         logger.LogDebug("Download successfully added to queue");
         return download.Id;
@@ -62,8 +63,7 @@ public class DatabaseDownloadQueue(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = status.Id,
-            ["Url"] = status.Url,
-            ["Domain"] = status.Domain,
+            ["OriginalHost"] = status.Domain,
             ["SourceType"] = status.SourceType,
             ["SourceId"] = status.SourceId
         });
@@ -72,6 +72,7 @@ public class DatabaseDownloadQueue(
         var exists = await db.QueuedDownloads.AnyAsync(d => d.Id == status.Id, cancellationToken);
         if (exists)
         {
+            await RecordQueueDepthAsync(db, cancellationToken);
             logger.LogDebug("Download already has a queued row");
             return;
         }
@@ -93,6 +94,7 @@ public class DatabaseDownloadQueue(
         });
 
         await db.SaveChangesAsync(cancellationToken);
+        await RecordQueueDepthAsync(db, cancellationToken);
         logger.LogInformation("Restored download to queue");
     }
 
@@ -131,6 +133,7 @@ public class DatabaseDownloadQueue(
             // Remove from queue
             db.QueuedDownloads.Remove(download);
             await db.SaveChangesAsync(cancellationToken);
+            await RecordQueueDepthAsync(db, cancellationToken);
 
             return download;
         }
@@ -145,6 +148,7 @@ public class DatabaseDownloadQueue(
 
         await using var db = await contextFactory.CreateDbContextAsync();
         var count = await db.QueuedDownloads.CountAsync();
+        await RecordQueueDepthAsync(db);
 
         logger.LogDebug("Current queue size: {Count} downloads", count);
         return count;
@@ -163,10 +167,31 @@ public class DatabaseDownloadQueue(
             logger.LogDebug("Found download in queue, removing");
             db.QueuedDownloads.Remove(download);
             await db.SaveChangesAsync();
+            await RecordQueueDepthAsync(db);
         }
         else
         {
             logger.LogDebug("Download not found in queue");
         }
+    }
+
+    private async Task RecordQueueDepthAsync(
+        ServerDbContext db,
+        CancellationToken cancellationToken = default)
+    {
+        var queueDepthByDomain = await db.QueuedDownloads
+            .GroupBy(download => download.Domain)
+            .Select(group => new
+            {
+                Domain = group.Key,
+                Count = group.Count()
+            })
+            .ToDictionaryAsync(
+                group => group.Domain,
+                group => group.Count,
+                StringComparer.OrdinalIgnoreCase,
+                cancellationToken);
+
+        telemetry.SetQueueDepth(queueDepthByDomain);
     }
 }

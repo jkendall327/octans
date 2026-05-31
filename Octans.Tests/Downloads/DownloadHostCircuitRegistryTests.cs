@@ -8,11 +8,12 @@ namespace Octans.Tests.Downloads;
 public sealed class DownloadHostCircuitRegistryTests
 {
     private readonly FakeTimeProvider _timeProvider = new(TestClock.UtcNow);
+    private readonly DownloadTelemetry _telemetry = new();
     private readonly DownloadHostCircuitRegistry _registry;
 
     public DownloadHostCircuitRegistryTests()
     {
-        _registry = new(_timeProvider, NullLogger<DownloadHostCircuitRegistry>.Instance);
+        _registry = new(_timeProvider, NullLogger<DownloadHostCircuitRegistry>.Instance, _telemetry);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO.Abstractions;
 using System.Security.Cryptography;
@@ -27,6 +28,7 @@ public class HttpDownloader(
     DownloadStagingPaths stagingPaths,
     TimeProvider timeProvider,
     IOptions<DownloadManagerOptions> options,
+    DownloadTelemetry telemetry,
     ILogger<HttpDownloader> logger)
 {
     /// <summary>
@@ -41,12 +43,13 @@ public class HttpDownloader(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = downloadId,
-            ["Url"] = download.Url,
-            ["Domain"] = download.Domain,
+            ["OriginalHost"] = download.Domain,
             ["DestinationPath"] = download.DestinationPath,
             ["SourceType"] = download.SourceType,
             ["SourceId"] = download.SourceId
         });
+        using var activity = telemetry.StartDownloadActivity(download);
+        var attempt = new DownloadAttempt(download.Domain, timeProvider.GetTimestamp());
 
         // Create a combined token for this specific download
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, downloadToken);
@@ -54,17 +57,24 @@ public class HttpDownloader(
 
         try
         {
-            await ProcessCore(download, downloadId, combinedToken);
+            await ProcessCore(download, downloadId, attempt, activity, combinedToken);
         }
         catch (OperationCanceledException)
             when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
-            logger.LogInformation("Download canceled: {Url}", download.Url);
+            var duration = attempt.GetElapsed(timeProvider);
+            telemetry.RecordDownloadCanceled(download, duration);
+            SetActivityTerminalTags(activity, attempt, DownloadTerminalOutcome.Canceled);
+            logger.LogInformation(
+                "Download canceled after {DurationMs} ms with {Bytes} bytes transferred",
+                duration.TotalMilliseconds,
+                attempt.BytesTransferred);
             await lifecycle.MarkCanceledAsync(downloadId);
         }
         catch (HttpRequestException ex) when (ex.StatusCode is { } statusCode)
         {
-            logger.LogWarning(ex, "Download failed with HTTP status {StatusCode}: {Url}", (int)statusCode, download.Url);
+            attempt.HttpStatusCode ??= (int)statusCode;
+            RecordFailure(download, attempt, DownloadFailureCategory.Http, DownloadTerminalOutcome.TerminalHttpFailure, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -74,11 +84,11 @@ public class HttpDownloader(
         }
         catch (BrokenCircuitException ex)
         {
+            RecordFailure(download, attempt, DownloadFailureCategory.Network, DownloadTerminalOutcome.Failed, ex);
             var message = hostCircuitRegistry.TryGetOpenCircuit(download.Domain, out var openUntil)
                 ? $"Host circuit for {download.Domain} is open until {openUntil:u}."
                 : $"Host circuit for {download.Domain} is open.";
 
-            logger.LogWarning(ex, "Download skipped because host circuit is open: {Url}", download.Url);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 message,
@@ -86,7 +96,7 @@ public class HttpDownloader(
         }
         catch (MissingDownloadCredentialsException ex)
         {
-            logger.LogWarning(ex, "Download cannot start because required credentials are missing: {Url}", download.Url);
+            RecordFailure(download, attempt, DownloadFailureCategory.Authentication, DownloadTerminalOutcome.ValidationFailed, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -96,7 +106,7 @@ public class HttpDownloader(
         }
         catch (DownloadContentTypeException ex)
         {
-            logger.LogWarning(ex, "Download content type validation failed: {Url}", download.Url);
+            RecordFailure(download, attempt, DownloadFailureCategory.Validation, DownloadTerminalOutcome.ValidationFailed, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -107,7 +117,7 @@ public class HttpDownloader(
         }
         catch (DownloadSizeLimitException ex)
         {
-            logger.LogWarning(ex, "Download size limit validation failed: {Url}", download.Url);
+            RecordFailure(download, attempt, DownloadFailureCategory.SizeLimit, DownloadTerminalOutcome.ValidationFailed, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -117,7 +127,7 @@ public class HttpDownloader(
         }
         catch (InvalidDataException ex)
         {
-            logger.LogWarning(ex, "Download validation failed: {Url}", download.Url);
+            RecordFailure(download, attempt, DownloadFailureCategory.Validation, DownloadTerminalOutcome.ValidationFailed, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -127,7 +137,7 @@ public class HttpDownloader(
         }
         catch (DownloadDiskSpaceException ex)
         {
-            logger.LogWarning(ex, "Download failed because disk space was insufficient: {Url}", download.Url);
+            RecordFailure(download, attempt, DownloadFailureCategory.Filesystem, DownloadTerminalOutcome.Failed, ex);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
@@ -135,33 +145,76 @@ public class HttpDownloader(
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !globalCancellation.IsCancellationRequested)
         {
-            logger.LogError(ex, "Download failed: {Url}", download.Url);
+            var failureCategory = CategorizeFailure(ex);
+            RecordFailure(download, attempt, failureCategory, DownloadTerminalOutcome.Failed, ex, LogLevel.Error);
             await lifecycle.MarkFailedAsync(
                 downloadId,
                 ex.Message,
-                CategorizeFailure(ex));
+                failureCategory);
+        }
+
+        void RecordFailure(
+            QueuedDownload failedDownload,
+            DownloadAttempt failedAttempt,
+            DownloadFailureCategory failureCategory,
+            DownloadTerminalOutcome outcome,
+            Exception exception,
+            LogLevel logLevel = LogLevel.Warning)
+        {
+            var duration = failedAttempt.GetElapsed(timeProvider);
+            telemetry.RecordDownloadFailed(
+                failedDownload,
+                failedAttempt.FinalHost,
+                failureCategory,
+                outcome,
+                failedAttempt.HttpStatusCode,
+                duration);
+            SetActivityTerminalTags(activity, failedAttempt, outcome, failureCategory);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            logger.Log(
+                logLevel,
+                exception,
+                "Download failed with category {FailureCategory}, outcome {Outcome}, HTTP status {HttpStatusCode}, final host {FinalHost}, {Bytes} bytes transferred after {DurationMs} ms",
+                failureCategory,
+                outcome,
+                failedAttempt.HttpStatusCode,
+                failedAttempt.FinalHost,
+                failedAttempt.BytesTransferred,
+                duration.TotalMilliseconds);
         }
     }
 
-    private async Task ProcessCore(QueuedDownload download, Guid downloadId, CancellationToken combinedToken)
+    private async Task ProcessCore(
+        QueuedDownload download,
+        Guid downloadId,
+        DownloadAttempt attempt,
+        Activity? activity,
+        CancellationToken combinedToken)
     {
         var started = await lifecycle.MarkInProgressAsync(downloadId);
         if (!started)
         {
-            logger.LogDebug("Skipping download because it is no longer queued: {Url}", download.Url);
+            logger.LogDebug("Skipping download because it is no longer queued");
             return;
         }
 
-        logger.LogInformation("Starting download: {Url} -> {Path}", download.Url, download.DestinationPath);
-
-        var stagingPath = stagingPaths.PrepareFreshStagingPath(download);
-        logger.LogDebug("Prepared staging path {StagingPath}", stagingPath);
-
-        using var httpClient = httpClientFactory.CreateClient("DownloadClient");
-        httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
+        telemetry.RecordDownloadStarted(download);
 
         try
         {
+            logger.LogInformation(
+                "Starting download for host {OriginalHost}, source {SourceType}/{SourceId} -> {DestinationPath}",
+                download.Domain,
+                download.SourceType,
+                download.SourceId,
+                download.DestinationPath);
+
+            var stagingPath = stagingPaths.PrepareFreshStagingPath(download);
+            logger.LogDebug("Prepared staging path {StagingPath}", stagingPath);
+
+            using var httpClient = httpClientFactory.CreateClient("DownloadClient");
+            httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
+
             using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(download.Url));
             requestHeaderProvider.ApplyHeaders(request);
 
@@ -169,6 +222,8 @@ public class HttpDownloader(
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
                 combinedToken);
+
+            attempt.CaptureResponse(response);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -226,6 +281,7 @@ public class HttpDownloader(
                 download,
                 stagingPath,
                 response,
+                attempt,
                 maxDownloadSizeBytes,
                 combinedToken);
             if (totalBytes >= 0 && bytesDownloaded != totalBytes)
@@ -255,15 +311,32 @@ public class HttpDownloader(
                 ResponseLastModified = response.Content.Headers.LastModified
             });
 
-            logger.LogInformation("Download completed: {Url} -> {Path}, {Bytes} bytes",
-                download.Url,
-                download.DestinationPath,
-                bytesDownloaded);
+            var processDuration = attempt.GetElapsed(timeProvider);
+            telemetry.RecordDownloadCompleted(
+                download,
+                attempt.FinalHost,
+                attempt.HttpStatusCode,
+                bytesDownloaded,
+                processDuration);
+            SetActivityTerminalTags(activity, attempt, DownloadTerminalOutcome.Completed);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+
+            logger.LogInformation(
+                "Download completed with HTTP status {HttpStatusCode}, final host {FinalHost}, content type {ContentType}, {Bytes} bytes transferred after {DurationMs} ms",
+                attempt.HttpStatusCode,
+                attempt.FinalHost,
+                attempt.ResponseContentType,
+                bytesDownloaded,
+                processDuration.TotalMilliseconds);
         }
         catch
         {
             DeleteStagingFileBestEffort(downloadId, download.DestinationPath);
             throw;
+        }
+        finally
+        {
+            telemetry.RecordDownloadStopped(download);
         }
     }
 
@@ -271,6 +344,7 @@ public class HttpDownloader(
         QueuedDownload download,
         string stagingPath,
         HttpResponseMessage response,
+        DownloadAttempt attempt,
         long? maxDownloadSizeBytes,
         CancellationToken combinedToken)
     {
@@ -310,6 +384,7 @@ public class HttpDownloader(
             }
 
             bytesDownloaded += bytesRead;
+            attempt.BytesTransferred = bytesDownloaded;
 
             // Get current elapsed time in milliseconds
             var currentElapsedMs = timeProvider.GetElapsedTime(startTime).TotalMilliseconds;
@@ -502,5 +577,44 @@ public class HttpDownloader(
             UnauthorizedAccessException => DownloadFailureCategory.Filesystem,
             _ => DownloadFailureCategory.Unknown
         };
+    }
+
+    private static void SetActivityTerminalTags(
+        Activity? activity,
+        DownloadAttempt attempt,
+        DownloadTerminalOutcome outcome,
+        DownloadFailureCategory? failureCategory = null)
+    {
+        activity?.SetTag("download.final_host", attempt.FinalHost);
+        activity?.SetTag("download.outcome", outcome.ToString());
+        activity?.SetTag("download.bytes", attempt.BytesTransferred);
+
+        if (attempt.HttpStatusCode is { } statusCode)
+        {
+            activity?.SetTag("http.response.status_code", statusCode);
+        }
+
+        if (failureCategory is { } category)
+        {
+            activity?.SetTag("download.failure_category", category.ToString());
+        }
+    }
+
+    private sealed class DownloadAttempt(string originalHost, long startedAt)
+    {
+        public string OriginalHost { get; } = originalHost;
+        public string? FinalHost { get; private set; } = originalHost;
+        public int? HttpStatusCode { get; set; }
+        public string? ResponseContentType { get; private set; }
+        public long BytesTransferred { get; set; }
+
+        public TimeSpan GetElapsed(TimeProvider timeProvider) => timeProvider.GetElapsedTime(startedAt);
+
+        public void CaptureResponse(HttpResponseMessage response)
+        {
+            FinalHost = response.RequestMessage?.RequestUri?.Host ?? OriginalHost;
+            HttpStatusCode = (int)response.StatusCode;
+            ResponseContentType = response.Content.Headers.ContentType?.ToString();
+        }
     }
 }

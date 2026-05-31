@@ -59,8 +59,7 @@ public sealed class DownloadLifecycleService(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = id,
-            ["Url"] = request.Url,
-            ["Domain"] = domain
+            ["OriginalHost"] = domain
         });
 
         logger.LogInformation("Queueing download for {Filename}", filename);
