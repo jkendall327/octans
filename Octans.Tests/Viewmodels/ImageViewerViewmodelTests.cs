@@ -1,28 +1,32 @@
 using Microsoft.AspNetCore.Components.Web;
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Services;
 using Octans.Client.Settings;
+using Octans.Core.Notes;
+using Octans.Core.Repositories;
 using Octans.Core.Tags;
+using Octans.Data.Models;
 
 namespace Octans.Tests.Viewmodels;
 
 public sealed class ImageViewerViewmodelTests
 {
-    private readonly ITagService _tagService = Substitute.For<ITagService>();
+    private readonly IOctansClient _client = Substitute.For<IOctansClient>();
     private readonly IKeybindingService _keybindingService = Substitute.For<IKeybindingService>();
     private readonly ImageViewerViewmodel _sut;
 
     public ImageViewerViewmodelTests()
     {
-        _tagService.GetTagsForHashAsync(Arg.Any<string>()).Returns([]);
-        _sut = new(_tagService, _keybindingService);
+        _client.GetMediaDetailsAsync(Arg.Any<string>()).Returns(Details("DEADBEEF", []));
+        _sut = new(_client, _keybindingService);
     }
 
     [Fact]
     public async Task InitializeAsync_loads_tags_for_current_media_hash()
     {
-        _tagService.GetTagsForHashAsync("DEADBEEF").Returns([new("artist", "someone")]);
+        _client.GetMediaDetailsAsync("DEADBEEF").Returns(Details("DEADBEEF", [new("artist", "someone")]));
 
         await _sut.InitializeAsync(["/media/DEADBEEF.jpg?width=200"], null, filterMode: false);
 
@@ -81,4 +85,14 @@ public sealed class ImageViewerViewmodelTests
 
         Assert.True(action.CloseRequested);
     }
+
+    private static MediaDetailsDto Details(string hash, IReadOnlyList<TagModel> tags) => new(
+        1,
+        hash,
+        ".jpg",
+        "image/jpeg",
+        RepositoryType.Inbox,
+        tags,
+        Array.Empty<NoteDto>(),
+        $"/media/{hash}");
 }

@@ -6,8 +6,12 @@ using System.Text.Json.Serialization;
 using Octans.Core;
 using Octans.Core.Downloaders;
 using Octans.Core.Filesystem;
+using Octans.Core.Http.Models;
 using Octans.Core.Importing;
+using Octans.Core.Notes;
+using Octans.Core.Repositories;
 using Octans.Core.Stats;
+using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
@@ -19,11 +23,38 @@ public interface IOctansClient
     Task<IReadOnlyList<HashItem>> GetFilesAsync(CancellationToken cancellationToken = default);
     Task<string?> GetFileAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<HashItem>> QueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
+    Task<int> CountQueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
+    Task<MediaDetailsDto?> GetMediaDetailsAsync(string hash, CancellationToken cancellationToken = default);
+    Task<NoteDto> AddNoteAsync(string hash, string content, CancellationToken cancellationToken = default);
+    Task UpdateNoteAsync(int id, string content, CancellationToken cancellationToken = default);
+    Task DeleteNoteAsync(int id, CancellationToken cancellationToken = default);
+    Task TransitionRepositoryItemsAsync(
+        IEnumerable<string> hashes,
+        RepositoryDestination destination,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TagModel>> GetQuerySuggestionsAsync(
+        string search,
+        bool exact = false,
+        CancellationToken cancellationToken = default);
     Task<ImportJobClientResult> ImportFilesAsync(ImportRequest request, CancellationToken cancellationToken = default);
+    Task<ImportJobClientResult> CreateImportJobAsync(
+        ImportJobCreateRequest request,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ImportJobDto>> GetImportJobsAsync(CancellationToken cancellationToken = default);
+    Task<ImportJobDto?> GetImportJobAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ImportJobDto?> PauseImportJobAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ImportJobDto?> ResumeImportJobAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ImportJobDto?> CancelImportJobAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> UpdateTagsAsync(UpdateTagsRequest request, CancellationToken cancellationToken = default);
     Task<DeleteResponse> DeleteFilesAsync(DeleteRequest request, CancellationToken cancellationToken = default);
     Task<DeleteResponse> DeleteFilesAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DownloaderMetadata>> GetDownloadersAsync(CancellationToken cancellationToken = default);
+    Task<DownloadersOverviewDto> GetDownloadersOverviewAsync(CancellationToken cancellationToken = default);
+    Task<DownloadersOverviewDto> RescanDownloadersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SubscriptionStatusDto>> GetSubscriptionsAsync(CancellationToken cancellationToken = default);
+    Task AddSubscriptionAsync(SubscriptionCreateRequest request, CancellationToken cancellationToken = default);
+    Task DeleteSubscriptionAsync(int id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DownloadStatusDto>> GetDownloadsAsync(CancellationToken cancellationToken = default);
     Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default);
     Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default);
     Task<DuplicateScanResultDto> ScanDuplicatesAsync(CancellationToken cancellationToken = default);
@@ -87,6 +118,95 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         return files ?? [];
     }
 
+    public async Task<int> CountQueryFilesAsync(
+        IEnumerable<string> queries,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("files/query/count", queries, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var count = await ReadRequiredJsonAsync<FileQueryCountDto>(response, cancellationToken);
+
+        return count.Count;
+    }
+
+    public async Task<MediaDetailsDto?> GetMediaDetailsAsync(
+        string hash,
+        CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"media/{hash}/details", UriKind.Relative);
+        using var response = await httpClient.GetAsync(uri, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<MediaDetailsDto>(response, cancellationToken);
+    }
+
+    public async Task<NoteDto> AddNoteAsync(
+        string hash,
+        string content,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            $"media/{hash}/notes",
+            new NoteCreateRequest(content),
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<NoteDto>(response, cancellationToken);
+    }
+
+    public async Task UpdateNoteAsync(
+        int id,
+        string content,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PutAsJsonAsync(
+            $"notes/{id.ToString(CultureInfo.InvariantCulture)}",
+            new NoteUpdateRequest(content),
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task DeleteNoteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"notes/{id.ToString(CultureInfo.InvariantCulture)}", UriKind.Relative);
+        using var response = await httpClient.DeleteAsync(uri, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task TransitionRepositoryItemsAsync(
+        IEnumerable<string> hashes,
+        RepositoryDestination destination,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new RepositoryTransitionRequest(hashes.ToList(), destination);
+        using var response = await httpClient.PostAsJsonAsync(
+            "repository/transitions",
+            request,
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TagModel>> GetQuerySuggestionsAsync(
+        string search,
+        bool exact = false,
+        CancellationToken cancellationToken = default)
+    {
+        var uri = $"tags/suggestions?search={Uri.EscapeDataString(search)}&exact={exact.ToString().ToLowerInvariant()}";
+        var response = await httpClient.GetFromJsonAsync<QuerySuggestionsDto>(uri, JsonOptions, cancellationToken);
+
+        return response?.Tags ?? [];
+    }
+
     public async Task<ImportJobClientResult> ImportFilesAsync(
         ImportRequest request,
         CancellationToken cancellationToken = default)
@@ -98,6 +218,52 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
         return new(created.JobId, $"/import-jobs/{created.JobId}");
     }
+
+    public async Task<ImportJobClientResult> CreateImportJobAsync(
+        ImportJobCreateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("import-jobs", request, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var created = await ReadRequiredJsonAsync<ImportJobCreatedDto>(response, cancellationToken);
+
+        return new(created.JobId, $"/import-jobs/{created.JobId}");
+    }
+
+    public async Task<IReadOnlyList<ImportJobDto>> GetImportJobsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<ImportJobDto>>(
+            "import-jobs",
+            JsonOptions,
+            cancellationToken);
+
+        return response ?? [];
+    }
+
+    public async Task<ImportJobDto?> GetImportJobAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"import-jobs/{id}", UriKind.Relative);
+        using var response = await httpClient.GetAsync(uri, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<ImportJobDto>(response, cancellationToken);
+    }
+
+    public Task<ImportJobDto?> PauseImportJobAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionImportJobAsync(id, "pause", cancellationToken);
+
+    public Task<ImportJobDto?> ResumeImportJobAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionImportJobAsync(id, "resume", cancellationToken);
+
+    public Task<ImportJobDto?> CancelImportJobAsync(Guid id, CancellationToken cancellationToken = default) =>
+        TransitionImportJobAsync(id, "cancel", cancellationToken);
 
     public async Task<bool> UpdateTagsAsync(UpdateTagsRequest request, CancellationToken cancellationToken = default)
     {
@@ -132,6 +298,54 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     {
         var response = await httpClient.GetFromJsonAsync<List<DownloaderMetadata>>(
             "downloaders",
+            JsonOptions,
+            cancellationToken);
+
+        return response ?? [];
+    }
+
+    public async Task<DownloadersOverviewDto> GetDownloadersOverviewAsync(CancellationToken cancellationToken = default)
+    {
+        return await ReadRequiredJsonAsync<DownloadersOverviewDto>("downloaders/overview", cancellationToken);
+    }
+
+    public async Task<DownloadersOverviewDto> RescanDownloadersAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync(new Uri("downloaders/rescan", UriKind.Relative), null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<DownloadersOverviewDto>(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<SubscriptionStatusDto>> GetSubscriptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<SubscriptionStatusDto>>(
+            "subscriptions",
+            JsonOptions,
+            cancellationToken);
+
+        return response ?? [];
+    }
+
+    public async Task AddSubscriptionAsync(
+        SubscriptionCreateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("subscriptions", request, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task DeleteSubscriptionAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var uri = new Uri($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}", UriKind.Relative);
+        using var response = await httpClient.DeleteAsync(uri, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DownloadStatusDto>> GetDownloadsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<DownloadStatusDto>>(
+            "downloads",
             JsonOptions,
             cancellationToken);
 
@@ -227,6 +441,24 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         var content = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
 
         return content ?? throw new InvalidOperationException($"Octans API returned an empty {typeof(T).Name} response.");
+    }
+
+    private async Task<ImportJobDto?> TransitionImportJobAsync(
+        Guid id,
+        string transition,
+        CancellationToken cancellationToken)
+    {
+        var uri = new Uri($"import-jobs/{id}/{transition}", UriKind.Relative);
+        using var response = await httpClient.PostAsync(uri, null, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<ImportJobDto>(response, cancellationToken);
     }
 }
 

@@ -7,7 +7,7 @@ using Octans.Core.Tags;
 namespace Octans.Client.Components.Gallery;
 
 public sealed class ImageViewerViewmodel(
-    ITagService tagService,
+    IOctansClient client,
     IKeybindingService keybindingService) : ViewmodelBase
 {
     private readonly Dictionary<string, ImageViewerFilterChoice> _choices = [];
@@ -165,7 +165,8 @@ public sealed class ImageViewerViewmodel(
 
         try
         {
-            Tags = await tagService.GetTagsForHashAsync(GetHashFromMediaUrl(CurrentImage));
+            var details = await client.GetMediaDetailsAsync(GetHashFromMediaUrl(CurrentImage));
+            Tags = details?.Tags.ToList() ?? [];
         }
         catch (Exception)
         {

@@ -1,6 +1,6 @@
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Downloads;
-using Octans.Core.Http;
 using Octans.Core.Http.Models;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
@@ -9,19 +9,19 @@ namespace Octans.Tests.Viewmodels;
 
 public class DownloadsViewmodelTests
 {
-    private readonly IDownloadStateService _stateService = Substitute.For<IDownloadStateService>();
+    private readonly IOctansClient _client = Substitute.For<IOctansClient>();
     private readonly DownloadsViewmodel _sut;
 
     public DownloadsViewmodelTests()
     {
-        _sut = new(_stateService);
+        _sut = new(_client);
     }
 
     [Fact]
     public async Task InitializeAsync_populates_active_downloads()
     {
         var status = CreateStatus();
-        _stateService.GetAllDownloads().Returns(new List<DownloadStatus> { status });
+        _client.GetDownloadsAsync().Returns([status]);
 
         await _sut.InitializeAsync();
 
@@ -30,10 +30,10 @@ public class DownloadsViewmodelTests
     }
 
     [Fact]
-    public async Task HandleDownloadsChanged_refreshes_and_raises_event()
+    public async Task RefreshAsync_refreshes_and_raises_event()
     {
         var status = CreateStatus();
-        _stateService.GetAllDownloads().Returns(new List<DownloadStatus> { status });
+        _client.GetDownloadsAsync().Returns([status]);
 
         var triggered = false;
         _sut.StateChanged += () =>
@@ -42,69 +42,38 @@ public class DownloadsViewmodelTests
             return Task.CompletedTask;
         };
 
-        await _sut.Handle(new DownloadsChanged { ChangeType = DownloadChangeType.Added });
+        await _sut.RefreshAsync();
 
         Assert.True(triggered);
         Assert.Single(_sut.ActiveDownloads);
         Assert.Equal(status.Id, _sut.ActiveDownloads[0].Id);
     }
 
-    [Fact]
-    public async Task HandleDownloadStatusChanged_updates_existing_and_raises_event()
-    {
-        var id = Guid.NewGuid();
-        var existing = CreateStatus(id, bytesDownloaded: 10);
-        _stateService.GetAllDownloads().Returns(new List<DownloadStatus> { existing });
-        await _sut.InitializeAsync();
-
-        var updated = CreateStatus(id, bytesDownloaded: 50);
-
-        var triggered = false;
-        _sut.StateChanged += () =>
-        {
-            triggered = true;
-            return Task.CompletedTask;
-        };
-
-        await _sut.Handle(new DownloadStatusChanged { Status = updated });
-
-        Assert.True(triggered);
-        Assert.Single(_sut.ActiveDownloads);
-        Assert.Equal(50, _sut.ActiveDownloads[0].BytesDownloaded);
-    }
-
-    [Fact]
-    public async Task HandleDownloadStatusChanged_adds_new_download_and_raises_event()
-    {
-        var status = CreateStatus();
-        var triggered = false;
-        _sut.StateChanged += () =>
-        {
-            triggered = true;
-            return Task.CompletedTask;
-        };
-
-        await _sut.Handle(new DownloadStatusChanged { Status = status });
-
-        Assert.True(triggered);
-        Assert.Single(_sut.ActiveDownloads);
-        Assert.Equal(status.Id, _sut.ActiveDownloads[0].Id);
-    }
-
-    private static DownloadStatus CreateStatus(Guid? id = null, long bytesDownloaded = 0)
-    {
-        return new DownloadStatus
-        {
-            Id = id ?? Guid.NewGuid(),
-            Url = "https://example.com/file.zip",
-            Filename = "file.zip",
-            DestinationPath = "/downloads/file.zip",
-            Domain = "example.com",
-            TotalBytes = 100,
-            BytesDownloaded = bytesDownloaded,
-            State = DownloadState.InProgress,
-            CreatedAt = TestClock.UtcNow,
-            LastUpdated = TestClock.UtcNow
-        };
-    }
+    private static DownloadStatusDto CreateStatus(Guid? id = null, long bytesDownloaded = 0) => new(
+        id ?? Guid.NewGuid(),
+        "https://example.com/file.zip",
+        "file.zip",
+        null,
+        "/downloads/file.zip",
+        "example.com",
+        0,
+        100,
+        bytesDownloaded,
+        bytesDownloaded,
+        0,
+        DownloadState.InProgress,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        TestClock.UtcNow,
+        null,
+        null,
+        TestClock.UtcNow);
 }

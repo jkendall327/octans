@@ -95,6 +95,17 @@ internal static class Endpoints
 
     private static void MapDownloaderEndpoints(WebApplication app)
     {
+        app.MapGet("/downloaders/overview",
+            async ([FromServices] IDownloaderFactory ds) =>
+            {
+                var downloaders = await ds.GetDownloaders();
+
+                return new DownloadersOverviewDto(
+                    ds.DownloaderDirectory,
+                    downloaders.Select(d => d.Metadata).ToList());
+            })
+            .WithName("GetDownloadersOverview");
+
         app.MapGet("/downloaders",
             async ([FromServices] IDownloaderFactory ds) =>
             {
@@ -112,6 +123,17 @@ internal static class Endpoints
 
                 return downloader;
             });
+
+        app.MapPost("/downloaders/rescan",
+            async ([FromServices] IDownloaderFactory ds) =>
+            {
+                var downloaders = await ds.Rescan();
+
+                return new DownloadersOverviewDto(
+                    ds.DownloaderDirectory,
+                    downloaders.Select(d => d.Metadata).ToList());
+            })
+            .WithName("RescanDownloaders");
     }
 
     private static void MapFileEndpoints(WebApplication app)

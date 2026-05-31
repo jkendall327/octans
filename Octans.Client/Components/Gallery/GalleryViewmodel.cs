@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using MudBlazor;
 using Octans.Client.Components.StatusBar;
 using Octans.Client.Services;
@@ -18,12 +17,11 @@ public record GalleryContextMenuItem(
 };
 
 public sealed class GalleryViewmodel(
-    IQueryService service,
+    IOctansClient client,
     IBrowserStorage storage,
     IClipboardService clipboard,
     StatusService status,
     ICustomCommandProvider customCommandProvider,
-    ChannelWriter<RepositoryChangeRequest> repositoryChannel,
     IBrowserService browserService,
     ILogger<GalleryViewmodel> logger) : ViewmodelBase, IAsyncDisposable
 {
@@ -138,8 +136,7 @@ public sealed class GalleryViewmodel(
         {
             try
             {
-                var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Archive));
+                await client.TransitionRepositoryItemsAsync([GetHashFromUrl(url)], RepositoryDestination.Archive);
             }
             catch (Exception e)
             {
@@ -156,8 +153,7 @@ public sealed class GalleryViewmodel(
         {
             try
             {
-                var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Inbox));
+                await client.TransitionRepositoryItemsAsync([GetHashFromUrl(url)], RepositoryDestination.Inbox);
             }
             catch (Exception e)
             {
@@ -174,8 +170,7 @@ public sealed class GalleryViewmodel(
         {
             try
             {
-                var hex = url[(url.LastIndexOf('/') + 1)..];
-                await repositoryChannel.WriteAsync(new(hex, RepositoryDestination.Trash));
+                await client.TransitionRepositoryItemsAsync([GetHashFromUrl(url)], RepositoryDestination.Trash);
                 ImageUrls.Remove(url);
             }
             catch (Exception e)
@@ -204,9 +199,9 @@ public sealed class GalleryViewmodel(
                 .Select(s => s.Raw)
                 .ToList();
 
-            _total = await service.CountAsync(raw, _cts.Token);
+            _total = await client.CountQueryFilesAsync(raw, _cts.Token);
 
-            await foreach (var result in service.Query(raw, _cts.Token))
+            foreach (var result in await client.QueryFilesAsync(raw, _cts.Token))
             {
                 // Build a stable, lower-case hex string for the route
                 var hex = Convert
@@ -278,8 +273,6 @@ public sealed class GalleryViewmodel(
     {
         foreach ((var url, var choice) in result.Choices)
         {
-            var hex = url[(url.LastIndexOf('/') + 1)..];
-
             var destination = choice switch
             {
                 ImageViewerFilterChoice.Archive => RepositoryDestination.Archive,
@@ -287,7 +280,7 @@ public sealed class GalleryViewmodel(
                 _ => RepositoryDestination.Inbox
             };
 
-            await repositoryChannel.WriteAsync(new(hex, destination));
+            await client.TransitionRepositoryItemsAsync([GetHashFromUrl(url)], destination);
         }
 
         ImageUrls.RemoveAll(url =>
@@ -303,4 +296,6 @@ public sealed class GalleryViewmodel(
         await _cts.CancelAsync();
         _cts.Dispose();
     }
+
+    private static string GetHashFromUrl(string url) => url[(url.LastIndexOf('/') + 1)..];
 }

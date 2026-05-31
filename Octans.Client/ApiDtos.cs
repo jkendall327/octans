@@ -1,3 +1,4 @@
+using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Http.Models;
 using Octans.Core.Notes;
@@ -30,6 +31,10 @@ public sealed record RepositoryTransitionRequest(
 public sealed record QuerySuggestionsDto(IReadOnlyList<TagModel> Tags);
 
 public sealed record FileQueryCountDto(int Count);
+
+public sealed record DownloadersOverviewDto(
+    string DownloaderDirectory,
+    IReadOnlyList<DownloaderMetadata> Downloaders);
 
 public sealed record SubscriptionCreateRequest(
     string Name,

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Importing;
 using Octans.Core.Importing;
 
@@ -7,20 +8,20 @@ namespace Octans.Tests.Viewmodels;
 
 public class RawUrlImportViewmodelTests
 {
-    private readonly IImportJobService _importJobService;
+    private readonly IOctansClient _client;
     private readonly RawUrlImportViewmodel _sut;
 
     public RawUrlImportViewmodelTests()
     {
-        _importJobService = Substitute.For<IImportJobService>();
+        _client = Substitute.For<IOctansClient>();
 
-        var created = new ImportJobCreatedDto(Guid.NewGuid());
+        var created = new ImportJobClientResult(Guid.NewGuid(), "/import-jobs/test");
 
-        _importJobService
-            .Create(Arg.Any<ImportJobCreateRequest>())
+        _client
+            .CreateImportJobAsync(Arg.Any<ImportJobCreateRequest>())
             .Returns(Task.FromResult(created));
 
-        _sut = new(_importJobService, NullLogger<RawUrlImportViewmodel>.Instance);
+        _sut = new(_client, NullLogger<RawUrlImportViewmodel>.Instance);
     }
 
     [Fact]
@@ -31,9 +32,9 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _importJobService
+        await _client
             .Received(1)
-            .Create(Arg.Is<ImportJobCreateRequest>(r =>
+            .CreateImportJobAsync(Arg.Is<ImportJobCreateRequest>(r =>
                 r.ImportType == ImportType.RawUrl && r.DeleteAfterImport == false && r.AllowReimportDeleted &&
                 r.Sources.Count == 2));
 
@@ -47,8 +48,8 @@ public class RawUrlImportViewmodelTests
 
         await _sut.SendUrlsToServer();
 
-        await _importJobService
+        await _client
             .DidNotReceive()
-            .Create(Arg.Any<ImportJobCreateRequest>());
+            .CreateImportJobAsync(Arg.Any<ImportJobCreateRequest>());
     }
 }

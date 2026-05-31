@@ -1,7 +1,7 @@
 @page "/downloads"
 @inject DownloadsViewmodel Viewmodel
 @using Octans.Client.Services
-@implements IDisposable
+@implements IAsyncDisposable
 @rendermode InteractiveServer
 
 <PageTitle>Octans - Downloads</PageTitle>
@@ -38,17 +38,39 @@ else
 }
 
 @code {
+    private readonly CancellationTokenSource _polling = new();
+
     protected override async Task OnInitializedAsync()
     {
         Viewmodel.StateChanged += Refresh;
         await Viewmodel.InitializeAsync();
+        _ = Poll();
+    }
+
+    private async Task Poll()
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+            while (await timer.WaitForNextTickAsync(_polling.Token))
+            {
+                await InvokeAsync(() => Viewmodel.RefreshAsync(_polling.Token));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private Task Refresh() => InvokeAsync(StateHasChanged);
 
-    public void Dispose()
+    public ValueTask DisposeAsync()
     {
         Viewmodel.StateChanged -= Refresh;
-        Viewmodel.Dispose();
+        _polling.Cancel();
+        _polling.Dispose();
+
+        return ValueTask.CompletedTask;
     }
 }

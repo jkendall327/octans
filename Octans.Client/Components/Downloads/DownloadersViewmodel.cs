@@ -2,28 +2,25 @@ using Octans.Core.Downloaders;
 
 namespace Octans.Client.Components.Downloads;
 
-public class DownloadersViewmodel
+public class DownloadersViewmodel(IOctansClient client)
 {
-    private readonly IDownloaderFactory _factory;
-
-    public DownloadersViewmodel(IDownloaderFactory factory)
-    {
-        _factory = factory;
-    }
-
     public List<DownloaderMetadata> Downloaders { get; private set; } = [];
 
-    public string DownloaderDirectory => _factory.DownloaderDirectory;
+    public string DownloaderDirectory { get; private set; } = string.Empty;
 
     public async Task Load()
     {
-        var downloaders = await _factory.GetDownloaders();
-        Downloaders = downloaders.Select(d => d.Metadata).ToList();
+        Apply(await client.GetDownloadersOverviewAsync());
     }
 
     public async Task Rescan()
     {
-        var downloaders = await _factory.Rescan();
-        Downloaders = downloaders.Select(d => d.Metadata).ToList();
+        Apply(await client.RescanDownloadersAsync());
+    }
+
+    private void Apply(DownloadersOverviewDto overview)
+    {
+        DownloaderDirectory = overview.DownloaderDirectory;
+        Downloaders = overview.Downloaders.ToList();
     }
 }

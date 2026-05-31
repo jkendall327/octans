@@ -1,101 +1,43 @@
-using System.IO.Abstractions;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using MudBlazor;
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Subscriptions;
-using Octans.Core;
 using Octans.Core.Downloaders;
-using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
-using Octans.Data.Models;
-using Octans.Data.Models.Subscriptions;
 using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Client.Components.Subscriptions;
 
 public class SubscriptionsViewmodelTests
 {
-    private readonly SubscriptionService _subscriptionService;
-    private readonly IDownloaderFactory _downloaderFactory;
-    private readonly IDialogService _dialogService;
+    private readonly IOctansClient _client = Substitute.For<IOctansClient>();
+    private readonly IDialogService _dialogService = Substitute.For<IDialogService>();
     private readonly SubscriptionsViewmodel _sut;
-    private readonly ServerDbContext _dbContext;
 
     public SubscriptionsViewmodelTests()
     {
-        var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
-        connection.Open();
-
-        var options = new DbContextOptionsBuilder<ServerDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        _dbContext = new ServerDbContext(options);
-        _dbContext.Database.EnsureCreated();
-
-        // Create a new context for each factory call to simulate scope
-        var factory = Substitute.For<IDbContextFactory<ServerDbContext>>();
-        factory.CreateDbContextAsync(Arg.Any<CancellationToken>()).Returns(_ =>
-        {
-            var ctx = new ServerDbContext(options);
-            return ctx;
-        });
-        factory.CreateDbContextAsync().Returns(_ =>
-        {
-            var ctx = new ServerDbContext(options);
-            return ctx;
-        });
-
-        var timeProvider = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
-        timeProvider.SetUtcNow(TestClock.UtcNow);
-
-        var reporter = Substitute.For<IBackgroundProgressReporter>();
-        var executor = Substitute.For<ISubscriptionExecutor>();
-        var logger = NullLogger<SubscriptionService>.Instance;
-
-        _subscriptionService = new SubscriptionService(factory, timeProvider, reporter, executor, logger);
-
-        _downloaderFactory = Substitute.For<IDownloaderFactory>();
-
-        _dialogService = Substitute.For<IDialogService>();
-
-        _sut = new SubscriptionsViewmodel(_subscriptionService, _downloaderFactory, _dialogService);
+        _sut = new(_client, _dialogService);
     }
 
     [Fact]
     public async Task InitializeAsync_ShouldLoadSubscriptions()
     {
-        // Arrange
-        var provider = new Provider { Name = "TestDownloader" };
-        _dbContext.Providers.Add(provider);
-        _dbContext.Subscriptions.Add(new Subscription
-        {
-            Name = "TestSub",
-            Provider = provider,
-            Query = "TestQuery",
-            CheckPeriod = TimeSpan.FromMinutes(60),
-            NextCheck = TestClock.UtcNow
-        });
-        await _dbContext.SaveChangesAsync();
+        var subscription = CreateSubscription();
+        _client.GetSubscriptionsAsync().Returns([subscription]);
 
-        // Act
         await _sut.InitializeAsync();
 
-        // Assert
-        _sut.Subscriptions.Should().HaveCount(1);
-        _sut.Subscriptions[0].Name.Should().Be("TestSub");
-        _sut.Subscriptions[0].DownloaderName.Should().Be("TestDownloader");
+        _sut.Subscriptions.Should().ContainSingle().Which.Should().Be(subscription);
     }
 
     [Fact]
     public async Task AddSubscriptionAsync_ShouldAddSubscription_WhenDialogConfirmed()
     {
-        // Arrange
-        _downloaderFactory.GetDownloaders().Returns(Task.FromResult(new List<Downloader>()));
+        _client.GetDownloadersAsync().Returns([new DownloaderMetadata { Name = "TestDownloader" }]);
+        _client.GetSubscriptionsAsync().Returns(
+            [CreateSubscription(name: "NewSub", downloaderName: "TestDownloader", query: "NewQuery")]);
 
-        // Mock DialogService to return result
         var dialogReference = Substitute.For<IDialogReference>();
         var formModel = new AddSubscriptionDialog.FormModel
         {
@@ -104,41 +46,49 @@ public class SubscriptionsViewmodelTests
             Query = "NewQuery",
             FrequencyMinutes = 30
         };
-        var dialogResult = DialogResult.Ok(formModel);
-        dialogReference.Result.Returns(Task.FromResult<DialogResult?>(dialogResult));
-        _dialogService.ShowAsync<AddSubscriptionDialog>(Arg.Any<string>(), Arg.Any<DialogParameters<AddSubscriptionDialog>>())
+        dialogReference.Result.Returns(Task.FromResult<DialogResult?>(DialogResult.Ok(formModel)));
+        _dialogService.ShowAsync<AddSubscriptionDialog>(
+                Arg.Any<string>(),
+                Arg.Any<DialogParameters<AddSubscriptionDialog>>())
             .Returns(Task.FromResult(dialogReference));
 
-        // Act
         await _sut.AddSubscriptionAsync();
 
-        // Assert
-        _dbContext.Subscriptions.Should().ContainSingle(s => s.Name == "NewSub" && s.Query == "NewQuery");
+        await _client
+            .Received(1)
+            .AddSubscriptionAsync(Arg.Is<SubscriptionCreateRequest>(r =>
+                r.Name == "NewSub"
+                && r.DownloaderName == "TestDownloader"
+                && r.Query == "NewQuery"
+                && r.FrequencyMinutes == 30));
         _sut.Subscriptions.Should().ContainSingle(s => s.Name == "NewSub");
     }
 
     [Fact]
     public async Task DeleteSubscriptionAsync_ShouldRemoveSubscription()
     {
-        // Arrange
-        var provider = new Provider { Name = "TestDownloader" };
-        _dbContext.Providers.Add(provider);
-        var sub = new Subscription
-        {
-            Name = "TestSub",
-            Provider = provider,
-            Query = "TestQuery",
-            CheckPeriod = TimeSpan.FromMinutes(60),
-            NextCheck = TestClock.UtcNow
-        };
-        _dbContext.Subscriptions.Add(sub);
-        await _dbContext.SaveChangesAsync();
+        _client.GetSubscriptionsAsync().Returns([CreateSubscription()]);
 
-        // Act
-        await _sut.DeleteSubscriptionAsync(sub.Id);
+        await _sut.InitializeAsync();
+        _client.GetSubscriptionsAsync().Returns([]);
+        await _sut.DeleteSubscriptionAsync(7);
 
-        // Assert
-        _dbContext.Subscriptions.Should().BeEmpty();
+        await _client.Received(1).DeleteSubscriptionAsync(7);
         _sut.Subscriptions.Should().BeEmpty();
     }
+
+    private static SubscriptionStatusDto CreateSubscription(
+        int id = 7,
+        string name = "TestSub",
+        string downloaderName = "TestDownloader",
+        string query = "TestQuery") =>
+        new(
+            id,
+            name,
+            downloaderName,
+            query,
+            TimeSpan.FromMinutes(60),
+            null,
+            null,
+            TestClock.UtcNow);
 }
