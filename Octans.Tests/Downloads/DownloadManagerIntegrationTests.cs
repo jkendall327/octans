@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Net;
@@ -153,8 +152,8 @@ public sealed class DownloadManagerIntegrationTests
         await harness.StartAsync();
 
         await WaitUntilAsync(
-            () => harness.Notifier.FinishedDownloads.Length == 2,
-            () => Task.FromResult($"completed={harness.Notifier.FinishedDownloads.Length}, " +
+            () => harness.Notifier.FinishedDownloads.Count == 2,
+            () => Task.FromResult($"completed={harness.Notifier.FinishedDownloads.Count}, " +
                                   $"states={DescribeStates(harness.Services, transient, terminal)}"));
 
         var stateService = harness.Services.GetRequiredService<IDownloadStateService>();
@@ -241,8 +240,8 @@ public sealed class DownloadManagerIntegrationTests
         harness.HttpHandler.ReleaseResponses();
 
         await WaitUntilAsync(
-            () => harness.Notifier.FinishedDownloads.Length == 3,
-            async () => $"completed={harness.Notifier.FinishedDownloads.Length}, " +
+            () => harness.Notifier.FinishedDownloads.Count == 3,
+            async () => $"completed={harness.Notifier.FinishedDownloads.Count}, " +
                         $"started={string.Join(", ", harness.HttpHandler.StartedRequests.Select(u => u.ToString()))}, " +
                         $"states={DescribeStates(harness.Services, firstSame, secondSame, other)}, " +
                         $"queued={await harness.Services.GetRequiredService<IDownloadQueue>().GetQueuedCountAsync()}");
@@ -285,7 +284,7 @@ public sealed class DownloadManagerIntegrationTests
 
         await WaitUntilAsync(
             () => harness.Notifier.FinishedDownloads.Any(d => d.DownloadId == deferred),
-            async () => $"completed={harness.Notifier.FinishedDownloads.Length}, " +
+            async () => $"completed={harness.Notifier.FinishedDownloads.Count}, " +
                         $"started={string.Join(", ", harness.HttpHandler.StartedRequests.Select(u => u.ToString()))}, " +
                         $"states={DescribeStates(harness.Services, deferred, ready)}, " +
                         $"queued={await harness.Services.GetRequiredService<IDownloadQueue>().GetQueuedCountAsync()}");
@@ -382,7 +381,7 @@ public sealed class DownloadManagerIntegrationTests
             SqliteConnection connection,
             ServiceProvider services,
             MockFileSystem fileSystem,
-            IntegrationHttpMessageHandler httpHandler,
+            DownloadManagerHttpMessageHandler httpHandler,
             TrackingCompletionNotifier notifier)
         {
             _connection = connection;
@@ -394,7 +393,7 @@ public sealed class DownloadManagerIntegrationTests
 
         public ServiceProvider Services { get; }
         public MockFileSystem FileSystem { get; }
-        public IntegrationHttpMessageHandler HttpHandler { get; }
+        public DownloadManagerHttpMessageHandler HttpHandler { get; }
         public TrackingCompletionNotifier Notifier { get; }
         public IDownloadHostCircuitRegistry HostCircuitRegistry =>
             Services.GetRequiredService<IDownloadHostCircuitRegistry>();
@@ -415,7 +414,7 @@ public sealed class DownloadManagerIntegrationTests
                 TotalFreeSpace = 1024 * 1024 * 1024,
                 TotalSize = 1024L * 1024 * 1024 * 10
             });
-            var httpHandler = new IntegrationHttpMessageHandler();
+            var httpHandler = new DownloadManagerHttpMessageHandler();
             var notifier = new TrackingCompletionNotifier();
             var timeProvider = new FakeTimeProvider(TestClock.UtcNow);
 
@@ -464,158 +463,4 @@ public sealed class DownloadManagerIntegrationTests
             Services.GetServices<IHostedService>().OfType<DownloadBackgroundService>().Single();
     }
 
-    private sealed class TrackingCompletionNotifier : IDownloadCompletionNotifier
-    {
-        private readonly ConcurrentQueue<DownloadJobResult> _finishedDownloads = new();
-
-        public DownloadJobResult[] FinishedDownloads => _finishedDownloads.ToArray();
-
-        public Task DownloadFinishedAsync(DownloadJobResult result, CancellationToken cancellationToken = default)
-        {
-            _finishedDownloads.Enqueue(result);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class IntegrationHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly Lock _lock = new();
-        private readonly Dictionary<Uri, byte[]> _responses = new();
-        private readonly Dictionary<Uri, Queue<Func<HttpResponseMessage>>> _responseSequences = new();
-        private readonly Dictionary<Uri, int> _requestCounts = new();
-        private readonly Dictionary<string, int> _activeRequestsByHost = new(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<string, int> _maxActiveRequestsByHost = new(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<Uri> _startedRequests = [];
-        private readonly TaskCompletionSource _releaseResponses =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public bool PauseBeforeResponding { get; set; }
-
-        public int ActiveRequestCount
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _activeRequestCount;
-                }
-            }
-        }
-
-        private int _activeRequestCount;
-
-        public IReadOnlyCollection<Uri> StartedRequests
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _startedRequests.ToArray();
-                }
-            }
-        }
-
-        public void AddResponse(string url, string body)
-        {
-            _responses[new(url)] = System.Text.Encoding.UTF8.GetBytes(body);
-        }
-
-        public void AddResponse(string url, HttpStatusCode statusCode)
-        {
-            AddResponseSequence(url, () => new(statusCode));
-        }
-
-        public void AddResponseSequence(string url, params Func<HttpResponseMessage>[] responses)
-        {
-            _responseSequences[new(url)] = new(responses);
-        }
-
-        public int MaxActiveRequestsForHost(string host)
-        {
-            lock (_lock)
-            {
-                return _maxActiveRequestsByHost.GetValueOrDefault(host);
-            }
-        }
-
-        public int RequestCountFor(Uri uri)
-        {
-            lock (_lock)
-            {
-                return _requestCounts.GetValueOrDefault(uri);
-            }
-        }
-
-        public void ReleaseResponses()
-        {
-            _releaseResponses.TrySetResult();
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            var requestUri = request.RequestUri ?? throw new InvalidOperationException("Request URI is required.");
-            TrackRequestStarted(requestUri);
-
-            try
-            {
-                if (PauseBeforeResponding)
-                {
-                    await _releaseResponses.Task.WaitAsync(cancellationToken);
-                }
-
-                if (!_responses.TryGetValue(requestUri, out var body))
-                {
-                    if (_responseSequences.TryGetValue(requestUri, out var sequence) && sequence.TryDequeue(out var next))
-                    {
-                        return next();
-                    }
-
-                    return new(HttpStatusCode.NotFound);
-                }
-
-                return new(HttpStatusCode.OK)
-                {
-                    Content = new ByteArrayContent(body)
-                };
-            }
-            finally
-            {
-                TrackRequestFinished(requestUri.Host);
-            }
-        }
-
-        private void TrackRequestStarted(Uri requestUri)
-        {
-            lock (_lock)
-            {
-                _activeRequestCount++;
-                _requestCounts.TryGetValue(requestUri, out var requestCount);
-                _requestCounts[requestUri] = requestCount + 1;
-                _startedRequests.Add(requestUri);
-                _activeRequestsByHost.TryGetValue(requestUri.Host, out var hostCount);
-                hostCount++;
-                _activeRequestsByHost[requestUri.Host] = hostCount;
-                _maxActiveRequestsByHost.TryGetValue(requestUri.Host, out var maxHostCount);
-                _maxActiveRequestsByHost[requestUri.Host] = Math.Max(maxHostCount, hostCount);
-            }
-        }
-
-        private void TrackRequestFinished(string host)
-        {
-            lock (_lock)
-            {
-                _activeRequestCount--;
-                _activeRequestsByHost.TryGetValue(host, out var hostCount);
-                if (hostCount <= 1)
-                {
-                    _activeRequestsByHost.Remove(host);
-                    return;
-                }
-
-                _activeRequestsByHost[host] = hostCount - 1;
-            }
-        }
-    }
 }
