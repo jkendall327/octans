@@ -30,12 +30,18 @@ internal sealed class DownloaderLuaContext : IDisposable
     private readonly object _executionLock = new();
     private int _remainingHookCalls;
     private string _currentOperation = "Lua script";
+    private CancellationToken _currentCancellationToken = CancellationToken.None;
 
     private DownloaderLuaContext(Lua lua)
     {
         _lua = lua;
         _instructionHook = (_, _) =>
         {
+            if (_currentCancellationToken.IsCancellationRequested)
+            {
+                _lua.State.Error("Downloader {0} was canceled.", _currentOperation);
+            }
+
             _remainingHookCalls--;
             if (_remainingHookCalls > 0)
             {
@@ -59,11 +65,15 @@ internal sealed class DownloaderLuaContext : IDisposable
 
     public LuaTable? GetTable(string tableName) => _lua.GetTable(tableName);
 
-    public object[] DoString(string script, string operation) =>
-        RunWithBudget(operation, () => _lua.DoString(script, operation));
+    public object[] DoString(string script, string operation, CancellationToken cancellationToken = default) =>
+        RunWithBudget(operation, () => _lua.DoString(script, operation), cancellationToken);
 
-    public object[] Call(LuaFunction function, string operation, params object[] args) =>
-        RunWithBudget(operation, () => function.Call(args));
+    public object[] Call(
+        LuaFunction function,
+        string operation,
+        CancellationToken cancellationToken = default,
+        params object[] args) =>
+        RunWithBudget(operation, () => function.Call(args), cancellationToken);
 
     public void Dispose()
     {
@@ -73,20 +83,28 @@ internal sealed class DownloaderLuaContext : IDisposable
         }
     }
 
-    private T RunWithBudget<T>(string operation, Func<T> action)
+    private T RunWithBudget<T>(string operation, Func<T> action, CancellationToken cancellationToken)
     {
         // Downloader instances cache Lua contexts, so every call into an NLua state is serialized here.
         lock (_executionLock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _currentOperation = operation;
+            _currentCancellationToken = cancellationToken;
             _remainingHookCalls = Math.Max(1, MaxInstructionCount / InstructionHookInterval);
             _lua.State.SetHook(_instructionHook, LuaHookMask.Count, InstructionHookInterval);
 
             try
             {
-                return action();
+                var result = action();
+                cancellationToken.ThrowIfCancellationRequested();
+                return result;
             }
-            catch (Exception ex) when (ex is not DownloaderContractException)
+            catch (Exception ex) when (cancellationToken.IsCancellationRequested && ex is not OperationCanceledException)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not DownloaderContractException and not OperationCanceledException)
             {
                 throw new DownloaderContractException($"Downloader {operation} failed.", ex);
             }
@@ -94,6 +112,7 @@ internal sealed class DownloaderLuaContext : IDisposable
             {
                 _lua.State.SetHook(null, LuaHookMask.Disabled, 0);
                 _currentOperation = "Lua script";
+                _currentCancellationToken = CancellationToken.None;
             }
         }
     }
