@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Client;
+using Octans.Core.Importing;
 using Octans.Data.Models;
 
 namespace Octans.Tests.Infrastructure;
@@ -102,4 +103,48 @@ public class OctansClientTests
             .Be("/media/DEADBEEF");
     }
 
+    [Fact]
+    public async Task ImportFilesAsync_ReturnsCreatedImportJob()
+    {
+        var jobId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        HttpRequestMessage? observedRequest = null;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            observedRequest = request;
+
+            return StubHttpResponses.Json($$"""{"jobId":"{{jobId}}"}""");
+        });
+
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://octans.test")
+        };
+
+        var client = new OctansClient(httpClient);
+
+        var result = await client.ImportFilesAsync(new()
+        {
+            ImportType = ImportType.File,
+            DeleteAfterImport = false,
+            Items = [new() { Filepath = "/images/test.jpg" }]
+        });
+
+        observedRequest
+            .Should()
+            .NotBeNull();
+
+        observedRequest!
+            .Method
+            .Should()
+            .Be(HttpMethod.Post);
+
+        observedRequest
+            .RequestUri
+            .Should()
+            .Be(new Uri("https://octans.test/files"));
+
+        result
+            .Should()
+            .Be(new ImportJobClientResult(jobId, $"/import-jobs/{jobId}"));
+    }
 }

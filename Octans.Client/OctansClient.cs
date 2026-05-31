@@ -18,7 +18,7 @@ public interface IOctansClient
     Task<IReadOnlyList<HashItem>> GetFilesAsync(CancellationToken cancellationToken = default);
     Task<string?> GetFileAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<HashItem>> QueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
-    Task<ImportResult> ImportFilesAsync(ImportRequest request, CancellationToken cancellationToken = default);
+    Task<ImportJobClientResult> ImportFilesAsync(ImportRequest request, CancellationToken cancellationToken = default);
     Task<bool> UpdateTagsAsync(UpdateTagsRequest request, CancellationToken cancellationToken = default);
     Task<DeleteResponse> DeleteFilesAsync(DeleteRequest request, CancellationToken cancellationToken = default);
     Task<DeleteResponse> DeleteFilesAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default);
@@ -77,14 +77,16 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         return files ?? [];
     }
 
-    public async Task<ImportResult> ImportFilesAsync(
+    public async Task<ImportJobClientResult> ImportFilesAsync(
         ImportRequest request,
         CancellationToken cancellationToken = default)
     {
         using var response = await httpClient.PostAsJsonAsync("files", request, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
-        return await ReadRequiredJsonAsync<ImportResult>(response, cancellationToken);
+        var created = await ReadRequiredJsonAsync<ImportJobCreatedDto>(response, cancellationToken);
+
+        return new(created.JobId, $"/import-jobs/{created.JobId}");
     }
 
     public async Task<bool> UpdateTagsAsync(UpdateTagsRequest request, CancellationToken cancellationToken = default)

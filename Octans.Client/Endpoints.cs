@@ -1,15 +1,23 @@
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using Octans.Core;
+using Octans.Core.Duplicates;
 using Octans.Core.Downloaders;
 using Octans.Core.Filesystem;
+using Octans.Core.Http;
+using Octans.Core.Http.Models;
 using Octans.Core.Importing;
+using Octans.Core.Notes;
 using Octans.Core.Querying;
+using Octans.Core.Repositories;
 using Octans.Core.Stats;
+using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
 using Octans.Data.Models;
+using Octans.Data.Models.Duplicates;
 
 namespace Octans.Client;
 
@@ -19,7 +27,17 @@ internal static class Endpoints
     {
         MapFileEndpoints(app);
 
+        MapMediaMetadataEndpoints(app);
+
+        MapNoteEndpoints(app);
+
         MapTagEndpoints(app);
+
+        MapRepositoryEndpoints(app);
+
+        MapDuplicateEndpoints(app);
+
+        MapDownloadEndpoints(app);
 
         MapDownloaderEndpoints(app);
 
@@ -30,6 +48,39 @@ internal static class Endpoints
 
     private static void MapTagEndpoints(WebApplication app)
     {
+        app
+            .MapGet("/media/{hash}/tags",
+                async (string hash, [FromServices] ITagService tagService) =>
+                {
+                    if (!TryNormalizeHash(hash, out var normalized, out var error))
+                    {
+                        return Results.BadRequest(error);
+                    }
+
+                    return Results.Ok(await tagService.GetTagsForHashAsync(normalized));
+                })
+            .WithName("GetMediaTags")
+            .WithDescription("Gets tags for a media hash");
+
+        app
+            .MapGet("/tags/suggestions",
+                async (string search,
+                    bool? exact,
+                    [FromServices] QuerySuggestionFinder suggestionFinder,
+                    CancellationToken token) =>
+                {
+                    var suggestions = await suggestionFinder.GetAutocompleteTagIds(search, exact ?? false, token);
+                    var tags = suggestions
+                        .OrderBy(t => t.Namespace.Value)
+                        .ThenBy(t => t.Subtag.Value)
+                        .Select(t => new TagModel(t.Namespace.Value, t.Subtag.Value))
+                        .ToList();
+
+                    return new QuerySuggestionsDto(tags);
+                })
+            .WithName("GetTagSuggestions")
+            .WithDescription("Gets autocomplete tag suggestions");
+
         app
             .MapPost("/tags",
                 async ([FromBody] UpdateTagsRequest request, [FromServices] TagUpdater updater) =>
@@ -84,6 +135,23 @@ internal static class Endpoints
             .WithDescription("Retrieve files found by a tag query search");
 
         app
+            .MapPost("/files/query/count",
+                async ([FromBody] IEnumerable<string> queries,
+                    [FromServices] IQueryService service,
+                    CancellationToken token) =>
+                {
+                    var count = 0;
+                    await foreach (var _ in service.Query(queries, token))
+                    {
+                        count++;
+                    }
+
+                    return new FileQueryCountDto(count);
+                })
+            .WithName("CountSearchResults")
+            .WithDescription("Counts files found by a tag query search");
+
+        app
             .MapPost("/files",
                 async ([FromBody] ImportRequest request,
                     [FromServices] IImportJobService service,
@@ -105,6 +173,338 @@ internal static class Endpoints
                     return new DeleteResponse(results);
                 })
             .WithDescription("Delete one or more files and their associated data");
+    }
+
+    private static void MapMediaMetadataEndpoints(WebApplication app)
+    {
+        app
+            .MapGet("/media/{hash}/details",
+                async (string hash,
+                    [FromServices] ServerDbContext db,
+                    [FromServices] ITagService tagService,
+                    [FromServices] INoteService noteService) =>
+                {
+                    if (!TryNormalizeHash(hash, out var normalized, out var error))
+                    {
+                        return Results.BadRequest(error);
+                    }
+
+                    var bytes = Convert.FromHexString(normalized);
+                    var item = await db.Hashes
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(h => h.Hash == bytes);
+
+                    if (item is null)
+                    {
+                        return Results.NotFound();
+                    }
+
+                    var tags = await tagService.GetTagsForHashAsync(normalized);
+                    var notes = await noteService.GetNotesAsync(normalized);
+                    var dto = new MediaDetailsDto(
+                        item.Id,
+                        normalized,
+                        item.Extension,
+                        item.ContentType,
+                        (RepositoryType)item.RepositoryId,
+                        tags,
+                        notes,
+                        $"/media/{normalized}");
+
+                    return Results.Ok(dto);
+                })
+            .WithName("GetMediaDetails")
+            .WithDescription("Gets metadata, repository, tags, notes, and media URL for a media hash");
+    }
+
+    private static void MapNoteEndpoints(WebApplication app)
+    {
+        app
+            .MapGet("/media/{hash}/notes",
+                async (string hash, [FromServices] INoteService noteService) =>
+                {
+                    if (!TryNormalizeHash(hash, out var normalized, out var error))
+                    {
+                        return Results.BadRequest(error);
+                    }
+
+                    return Results.Ok(await noteService.GetNotesAsync(normalized));
+                })
+            .WithName("GetMediaNotes");
+
+        app
+            .MapPost("/media/{hash}/notes",
+                async (string hash, [FromBody] NoteCreateRequest request, [FromServices] INoteService noteService) =>
+                {
+                    if (!TryNormalizeHash(hash, out var normalized, out var error))
+                    {
+                        return Results.BadRequest(error);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(request.Content))
+                    {
+                        return Results.BadRequest("Note content is required.");
+                    }
+
+                    try
+                    {
+                        var note = await noteService.AddNoteAsync(normalized, request.Content);
+
+                        return Results.Created($"/notes/{note.Id}", note);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.NotFound(ex.Message);
+                    }
+                })
+            .WithName("CreateMediaNote");
+
+        app
+            .MapPut("/notes/{id:int}",
+                async (int id, [FromBody] NoteUpdateRequest request, [FromServices] INoteService noteService) =>
+                {
+                    if (string.IsNullOrWhiteSpace(request.Content))
+                    {
+                        return Results.BadRequest("Note content is required.");
+                    }
+
+                    try
+                    {
+                        await noteService.UpdateNoteAsync(id, request.Content);
+
+                        return Results.NoContent();
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.NotFound(ex.Message);
+                    }
+                })
+            .WithName("UpdateMediaNote");
+
+        app
+            .MapDelete("/notes/{id:int}",
+                async (int id, [FromServices] INoteService noteService) =>
+                {
+                    await noteService.DeleteNoteAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("DeleteMediaNote");
+    }
+
+    private static void MapRepositoryEndpoints(WebApplication app)
+    {
+        app
+            .MapPost("/repository/transitions",
+                async ([FromBody] RepositoryTransitionRequest request,
+                    [FromServices] ChannelWriter<RepositoryChangeRequest> channel,
+                    CancellationToken token) =>
+                {
+                    if (request.Hashes.Count == 0)
+                    {
+                        return Results.BadRequest("At least one hash is required.");
+                    }
+
+                    var normalizedHashes = new List<string>(request.Hashes.Count);
+                    foreach (var hash in request.Hashes)
+                    {
+                        if (!TryNormalizeHash(hash, out var normalized, out var error))
+                        {
+                            return Results.BadRequest(error);
+                        }
+
+                        normalizedHashes.Add(normalized);
+                    }
+
+                    foreach (var hash in normalizedHashes)
+                    {
+                        await channel.WriteAsync(new(hash, request.Destination), token);
+                    }
+
+                    return Results.Accepted();
+                })
+            .WithName("TransitionRepositoryItems")
+            .WithDescription("Moves one or more media hashes to inbox, archive, or trash");
+    }
+
+    private static void MapDuplicateEndpoints(WebApplication app)
+    {
+        app
+            .MapPost("/duplicates/scan",
+                async ([FromServices] DuplicateService duplicateService, CancellationToken token) =>
+                {
+                    var calculated = await duplicateService.CalculateMissingHashes(token);
+                    var created = await duplicateService.FindDuplicates(token);
+
+                    return new DuplicateScanResultDto(calculated, created);
+                })
+            .WithName("ScanDuplicates");
+
+        app
+            .MapGet("/duplicates/candidates",
+                async ([FromServices] ServerDbContext db, CancellationToken token) =>
+                {
+                    var candidates = await db.DuplicateCandidates
+                        .Include(c => c.Hash1)
+                        .Include(c => c.Hash2)
+                        .AsNoTracking()
+                        .OrderBy(c => c.Id)
+                        .ToListAsync(token);
+
+                    return candidates
+                        .Select(c => new DuplicateCandidateDto(
+                            c.Id,
+                            c.HashId1,
+                            Convert.ToHexString(c.Hash1.Hash),
+                            $"/media/{Convert.ToHexString(c.Hash1.Hash)}",
+                            c.HashId2,
+                            Convert.ToHexString(c.Hash2.Hash),
+                            $"/media/{Convert.ToHexString(c.Hash2.Hash)}",
+                            c.Distance))
+                        .ToList();
+                })
+            .WithName("GetDuplicateCandidates");
+
+        app
+            .MapPost("/duplicates/candidates/{id:int}/resolution",
+                async (int id,
+                    [FromBody] DuplicateResolutionRequest request,
+                    [FromServices] DuplicateService duplicateService,
+                    CancellationToken token) =>
+                {
+                    try
+                    {
+                        await duplicateService.Resolve(id, request.Resolution, request.KeepHashId, token);
+
+                        return Results.NoContent();
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(ex.Message);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        return Results.Problem(ex.Message);
+                    }
+                })
+            .WithName("ResolveDuplicateCandidate");
+    }
+
+    private static void MapDownloadEndpoints(WebApplication app)
+    {
+        app
+            .MapPost("/downloads",
+                async ([FromBody] DownloadQueueRequest request, [FromServices] IDownloadService downloads) =>
+                {
+                    if (string.IsNullOrWhiteSpace(request.DestinationPath))
+                    {
+                        return Results.BadRequest("Destination path is required.");
+                    }
+
+                    var downloadRequest = new DownloadRequest
+                    {
+                        Url = request.Url,
+                        DestinationPath = request.DestinationPath,
+                        DisplayName = request.DisplayName,
+                        SourceType = request.SourceType,
+                        SourceId = request.SourceId,
+                        Priority = request.Priority
+                    };
+
+                    foreach (var contentType in request.AllowedContentTypes)
+                    {
+                        downloadRequest.AllowedContentTypes.Add(contentType);
+                    }
+
+                    foreach (var expectedHash in request.ExpectedHashes)
+                    {
+                        downloadRequest.ExpectedHashes.Add(expectedHash);
+                    }
+
+                    var handle = await downloads.QueueDownloadJobAsync(downloadRequest);
+
+                    return Results.Accepted(
+                        $"/downloads/{handle.Id}",
+                        new DownloadQueuedDto(handle.Id, $"/downloads/{handle.Id}", $"/downloads/{handle.Id}/result"));
+                })
+            .WithName("QueueDownload");
+
+        app
+            .MapGet("/downloads",
+                ([FromServices] IDownloadStateService stateService) =>
+                    stateService.GetAllDownloads().Select(MapDownloadStatus).ToList())
+            .WithName("GetDownloads");
+
+        app
+            .MapGet("/downloads/{id:guid}",
+                async (Guid id,
+                    [FromServices] IDownloadStateService stateService,
+                    [FromServices] ServerDbContext db,
+                    CancellationToken token) =>
+                {
+                    var active = stateService.GetDownloadById(id);
+                    if (active is not null)
+                    {
+                        return Results.Ok(MapDownloadStatus(active));
+                    }
+
+                    var status = await db.DownloadStatuses
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(d => d.Id == id, token);
+
+                    return status is null ? Results.NotFound() : Results.Ok(MapDownloadStatus(status));
+                })
+            .WithName("GetDownloadStatus");
+
+        app
+            .MapGet("/downloads/{id:guid}/result",
+                async (Guid id, [FromServices] IDownloadService downloads, CancellationToken token) =>
+                {
+                    var result = await downloads.GetResultAsync(id, token);
+
+                    return result is null ? Results.NotFound() : Results.Ok(result);
+                })
+            .WithName("GetDownloadResult");
+
+        app
+            .MapPost("/downloads/{id:guid}/pause",
+                async (Guid id, [FromServices] IDownloadService downloads) =>
+                {
+                    await downloads.PauseDownloadAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("PauseDownload");
+
+        app
+            .MapPost("/downloads/{id:guid}/resume",
+                async (Guid id, [FromServices] IDownloadService downloads) =>
+                {
+                    await downloads.ResumeDownloadAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("ResumeDownload");
+
+        app
+            .MapPost("/downloads/{id:guid}/cancel",
+                async (Guid id, [FromServices] IDownloadService downloads) =>
+                {
+                    await downloads.CancelDownloadAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("CancelDownload");
+
+        app
+            .MapPost("/downloads/{id:guid}/retry",
+                async (Guid id, [FromServices] IDownloadService downloads) =>
+                {
+                    await downloads.RetryDownloadAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("RetryDownload");
     }
 
     private static void MapImportJobEndpoints(WebApplication app)
@@ -194,14 +594,58 @@ internal static class Endpoints
     private static void MapInfrastructureEndpoints(WebApplication app)
     {
         app
+            .MapGet("/subscriptions",
+                async ([FromServices] ISubscriptionService subscriptionService) =>
+                    await subscriptionService.GetAllAsync())
+            .WithName("GetSubscriptions")
+            .WithDescription("Lists configured subscriptions");
+
+        app
             .MapPost("/subscriptions",
-                () =>
+                async ([FromBody] SubscriptionCreateRequest request,
+                    [FromServices] ISubscriptionService subscriptionService) =>
                 {
-                    // TODO: Implement subscription processing logic.
-                    throw new NotImplementedException("Subscription endpoint not yet implemented");
+                    if (string.IsNullOrWhiteSpace(request.Name))
+                    {
+                        return Results.BadRequest("Subscription name is required.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(request.DownloaderName))
+                    {
+                        return Results.BadRequest("Downloader name is required.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(request.Query))
+                    {
+                        return Results.BadRequest("Subscription query is required.");
+                    }
+
+                    if (request.FrequencyMinutes <= 0)
+                    {
+                        return Results.BadRequest("Frequency must be greater than zero minutes.");
+                    }
+
+                    await subscriptionService.AddAsync(
+                        request.Name,
+                        request.DownloaderName,
+                        request.Query,
+                        TimeSpan.FromMinutes(request.FrequencyMinutes));
+
+                    return Results.Accepted("/subscriptions");
                 })
             .WithName("SubmitSubscription")
             .WithDescription("Submits a subscription request for automated queries");
+
+        app
+            .MapDelete("/subscriptions/{id:int}",
+                async (int id, [FromServices] ISubscriptionService subscriptionService) =>
+                {
+                    await subscriptionService.DeleteAsync(id);
+
+                    return Results.NoContent();
+                })
+            .WithName("DeleteSubscription")
+            .WithDescription("Deletes a subscription");
 
         app.MapPost("/clearAllData",
             async ([FromServices] ServerDbContext db) =>
@@ -300,4 +744,55 @@ internal static class Endpoints
                     enableRangeProcessing: true);
             });
     }
+
+    private static bool TryNormalizeHash(string hash, out string normalized, out string error)
+    {
+        normalized = string.Empty;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(hash))
+        {
+            error = "Hash is required.";
+            return false;
+        }
+
+        try
+        {
+            normalized = ContentHash.FromHex(hash).Hex;
+            return true;
+        }
+        catch
+        {
+            error = "Hash must be hex.";
+            return false;
+        }
+    }
+
+    private static DownloadStatusDto MapDownloadStatus(DownloadStatus status) => new(
+        status.Id,
+        status.Url,
+        status.Filename,
+        status.DisplayName,
+        status.DestinationPath,
+        status.Domain,
+        status.Priority,
+        status.TotalBytes,
+        status.BytesDownloaded,
+        status.ProgressPercentage,
+        status.CurrentSpeed,
+        status.State,
+        status.TerminalOutcome,
+        status.ErrorMessage,
+        status.FailureCategory,
+        status.HttpStatusCode,
+        status.ResponseContentType,
+        status.ResponseETag,
+        status.ResponseLastModified,
+        status.ValidationMessage,
+        status.SourceType,
+        status.SourceId,
+        status.CreatedAt,
+        status.StartedAt,
+        status.CompletedAt,
+        status.LastUpdated);
 }
