@@ -759,7 +759,7 @@ internal static class Endpoints
 
                 http.Response.Headers[HeaderNames.CacheControl] = "public, max-age=31536000, immutable";
 
-                return Results.File(path: info.FullName,
+                return Results.Stream(info.OpenRead(),
                     contentType: contentType,
                     lastModified: info.LastWriteTimeUtc,
                     entityTag: etag,
