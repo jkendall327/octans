@@ -39,9 +39,11 @@ public static class ServiceCollectionExtensions
 #pragma warning restore RS0030
     }
 
-    public static IServiceCollection AddOctansServices(this IServiceCollection services)
+    public static IServiceCollection AddOctansServices(
+        this IServiceCollection services,
+        Action<OctansCoreServiceOptions>? configure = null)
     {
-        return services.AddOctansCoreServices();
+        return services.AddOctansCoreServices(configure);
     }
 
     public static void AddDatabase(this IServiceCollection services)

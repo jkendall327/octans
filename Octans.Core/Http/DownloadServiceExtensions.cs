@@ -21,7 +21,8 @@ public static class DownloadServiceExtensions
     /// </summary>
     public static IServiceCollection AddDownloadManager(
         this IServiceCollection services,
-        Action<DownloadManagerOptions>? configure = null)
+        Action<DownloadManagerOptions>? configure = null,
+        bool registerBackgroundService = true)
     {
         services.RemoveAll<DownloadManagerOptions>();
         services.AddOptions<DownloadManagerOptions>()
@@ -42,7 +43,10 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<HttpDownloader>();
         services.TryAddSingleton<IDownloadService, DownloadService>();
         services.TryAddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DownloadBackgroundService>());
+        if (registerBackgroundService)
+        {
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DownloadBackgroundService>());
+        }
 
         services.AddHttpClient("DownloadClient", client => client.Timeout = Timeout.InfiniteTimeSpan)
             .ConfigurePrimaryHttpMessageHandler(provider =>
@@ -141,12 +145,13 @@ public static class DownloadServiceExtensions
     public static IServiceCollection AddDownloadManager(
         this IServiceCollection services,
         IConfiguration configuration,
-        Action<DownloadManagerOptions>? configure = null)
+        Action<DownloadManagerOptions>? configure = null,
+        bool registerBackgroundService = true)
     {
         return services.AddDownloadManager(options =>
         {
             configuration.Bind(options);
             configure?.Invoke(options);
-        });
+        }, registerBackgroundService);
     }
 }

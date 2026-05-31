@@ -24,20 +24,38 @@ namespace Octans.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddOctansCoreServices(this IServiceCollection services)
+    private static readonly HashSet<Type> OctansBackgroundWorkerTypes =
+    [
+        typeof(ImportFolderBackgroundService),
+        typeof(ImportProcessorService),
+        typeof(SubscriptionBackgroundService),
+        typeof(RepositoryChangeBackgroundService),
+        typeof(DownloadBackgroundService),
+        typeof(ThumbnailCreationBackgroundService)
+    ];
+
+    public static IServiceCollection AddOctansCoreServices(
+        this IServiceCollection services,
+        Action<OctansCoreServiceOptions>? configure = null)
     {
+        var options = new OctansCoreServiceOptions();
+        configure?.Invoke(options);
+
         services.AddOctansChannels();
 
-        services.AddHostedService<ImportFolderBackgroundService>();
-        services.AddHostedService<ImportProcessorService>();
-        services.AddHostedService<SubscriptionBackgroundService>();
-        services.AddHostedService<RepositoryChangeBackgroundService>();
+        if (options.RegisterBackgroundWorkers)
+        {
+            services.AddHostedService<ImportFolderBackgroundService>();
+            services.AddHostedService<ImportProcessorService>();
+            services.AddHostedService<SubscriptionBackgroundService>();
+            services.AddHostedService<RepositoryChangeBackgroundService>();
+        }
 
         services.AddSingleton<IBackgroundProgressReporter, BackgroundProgressService>();
         services.AddScoped<ImportFolderScanner>();
         services.AddSingleton<RepositoryChangeProcessor>();
 
-        services.AddBusinessServices();
+        services.AddBusinessServices(options.RegisterDownloadBackgroundWorker);
 
         return services;
     }
@@ -63,7 +81,27 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddBusinessServices(this IServiceCollection services)
+    public static IServiceCollection RemoveOctansBackgroundWorkers(this IServiceCollection services)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var descriptor = services[i];
+            if (descriptor.ServiceType != typeof(IHostedService) ||
+                descriptor.ImplementationType is not { } implementationType ||
+                !OctansBackgroundWorkerTypes.Contains(implementationType))
+            {
+                continue;
+            }
+
+            services.RemoveAt(i);
+        }
+
+        return services;
+    }
+
+    public static IServiceCollection AddBusinessServices(
+        this IServiceCollection services,
+        bool registerDownloadBackgroundWorker = true)
     {
         // Imports
         services.AddScoped<SimpleImporter>();
@@ -100,7 +138,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IRobustFileWriter, RobustFileWriter>();
         services.AddBandwidthLimiter();
-        services.AddDownloadManager();
+        services.AddDownloadManager(registerBackgroundService: registerDownloadBackgroundWorker);
 
         // Queries
         services.AddScoped<IQueryService, QueryService>();
@@ -129,4 +167,10 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+}
+
+public sealed class OctansCoreServiceOptions
+{
+    public bool RegisterBackgroundWorkers { get; set; } = true;
+    public bool RegisterDownloadBackgroundWorker { get; set; } = true;
 }
