@@ -49,6 +49,11 @@ I'm toying with a React frontend instead for simplicity, hence the currently not
 
 Use standard `dotnet build` and `dotnet test` to verify your work.
 
+## GitHub
+
+Use the GitHub connector for GitHub operations such as opening PRs, reading PR metadata, and commenting.
+Do not assume `gh` is installed; use the CLI only as a fallback when the connector cannot perform the task.
+
 ## Migrations
 
 For EF migrations, use the data project as both the project and startup project so the design-time factory is used:
