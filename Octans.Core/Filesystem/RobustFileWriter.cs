@@ -7,13 +7,13 @@ namespace Octans.Core.Filesystem;
 /// Shared helpers for writing files through staging paths and managing
 /// temporary files that must be cleaned up after use.
 /// </summary>
-public interface IRobustFileWriter
+internal interface IRobustFileWriter
 {
     Task WriteAllBytesAsync(string destinationPath, byte[] bytes, CancellationToken cancellationToken = default);
     RobustTemporaryFile CreateTemporaryFile(string directoryPath, string suggestedFileName);
 }
 
-public sealed class RobustFileWriter(
+internal sealed class RobustFileWriter(
     IFileSystem fileSystem,
     ILogger<RobustFileWriter> logger) : IRobustFileWriter
 {
@@ -97,7 +97,7 @@ public sealed class RobustFileWriter(
     }
 }
 
-public sealed class RobustTemporaryFile(string path, Action<string> cleanup) : IDisposable
+internal sealed class RobustTemporaryFile(string path, Action<string> cleanup) : IDisposable
 {
     private bool _disposed;
 

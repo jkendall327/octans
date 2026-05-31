@@ -10,7 +10,7 @@ namespace Octans.Core.Importing.RawByteProviders;
 /// <summary>
 /// Handles the importing of resources from local and remote sources.
 /// </summary>
-public sealed class SimpleImporter(
+internal sealed class SimpleImporter(
     IDownloadService downloadService,
     IRobustFileWriter fileWriter,
     IFileSystem fileSystem,

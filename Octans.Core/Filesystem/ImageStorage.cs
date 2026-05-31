@@ -6,7 +6,7 @@ namespace Octans.Core.Filesystem;
 
 public sealed record ImageMetadata(string Extension, string ContentType);
 
-public class ImageStorage(IOptions<GlobalSettings> settings, IFileSystem fileSystem)
+public sealed class ImageStorage(IOptions<GlobalSettings> settings, IFileSystem fileSystem)
 {
     private const string Hexadecimal = "0123456789abcdef";
 

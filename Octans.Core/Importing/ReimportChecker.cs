@@ -5,7 +5,7 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Importing;
 
-public class ReimportChecker(
+internal sealed class ReimportChecker(
     ServerDbContext context,
     ImageStorage imageStorage,
     FilesystemWriter filesystemWriter,

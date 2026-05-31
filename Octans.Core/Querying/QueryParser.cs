@@ -6,7 +6,7 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Converts raw strings represent components of a query into strongly-typed predicates.
 /// </summary>
-public class QueryParser
+internal sealed class QueryParser
 {
     public List<IPredicate> Parse(IEnumerable<string> queries)
     {
@@ -123,7 +123,7 @@ public class QueryParser
 /// A raw string from the user that has undergone whitespace removal and colon-splitting,
 /// but hasn't yet been parsed as a system predicate, tag predicate, etc. 
 /// </summary>
-public class RawQuery
+internal sealed class RawQuery
 {
     public required string Prefix { get; init; }
     public required string Query { get; init; }

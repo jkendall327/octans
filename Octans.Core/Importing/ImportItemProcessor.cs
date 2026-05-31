@@ -7,7 +7,7 @@ using Octans.Core.Thumbnails;
 
 namespace Octans.Core.Importing;
 
-public class ImportItemProcessor(
+internal sealed class ImportItemProcessor(
     ImportFilterService filterService,
     ReimportChecker reimportChecker,
     DatabaseWriter databaseWriter,

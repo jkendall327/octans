@@ -16,7 +16,7 @@ namespace Octans.Core.Http;
 /// Streams queued HTTP downloads into staging files, validates the response and
 /// final payload, then commits successful downloads to their destination path.
 /// </summary>
-public class HttpDownloader(
+internal sealed class HttpDownloader(
     IDownloadBandwidthGate bandwidthGate,
     IDownloadDiskSpaceGuard diskSpaceGuard,
     IDownloadStateService stateService,

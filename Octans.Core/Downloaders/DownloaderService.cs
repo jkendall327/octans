@@ -5,9 +5,9 @@ using Octans.Core.Http;
 
 namespace Octans.Core.Downloaders;
 
-public class DownloaderService(
+internal sealed class DownloaderService(
     IHttpClientFactory clientFactory,
-    DownloaderFactory downloaderFactory,
+    IDownloaderFactory downloaderFactory,
     IDownloadRequestHeaderProvider requestHeaderProvider,
     IOptions<DownloaderResolverOptions> options,
     ILogger<DownloaderService> logger)

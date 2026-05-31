@@ -6,12 +6,20 @@ using Octans.Data.Models.Subscriptions;
 
 namespace Octans.Core.Subscriptions;
 
-public sealed class SubscriptionService(
+public interface ISubscriptionService
+{
+    Task CheckAndExecute(CancellationToken stoppingToken = default);
+    Task<List<SubscriptionStatusDto>> GetAllAsync();
+    Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency);
+    Task DeleteAsync(int id);
+}
+
+internal sealed class SubscriptionService(
     IDbContextFactory<ServerDbContext> factory,
     TimeProvider timeProvider,
     IBackgroundProgressReporter reporter,
     ISubscriptionExecutor executor,
-    ILogger<SubscriptionService> logger)
+    ILogger<SubscriptionService> logger) : ISubscriptionService
 {
     public async Task CheckAndExecute(CancellationToken stoppingToken = default)
     {

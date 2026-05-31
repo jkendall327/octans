@@ -7,7 +7,7 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Converts a rich query plan composed of IPredicates into 'raw' lists of tags/namespaces to include/exclude.
 /// </summary>
-public class QueryTagConverter
+internal sealed class QueryTagConverter
 {
     public DecomposedQuery Reduce(QueryPlan plan)
     {
@@ -89,7 +89,7 @@ public class QueryTagConverter
     }
 }
 
-public class DecomposedQuery
+internal sealed class DecomposedQuery
 {
     public List<SystemPredicate> SystemPredicates { get; init; } = [];
     public List<RepositoryType> RepositoryFilters { get; init; } = [];

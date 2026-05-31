@@ -28,8 +28,6 @@ builder.Services.AddOctansClient();
 builder.Services.AddInfrastructure();
 builder.Services.AddOctansServices();
 builder.Services.AddViewmodels();
-builder.Services.AddBusinessServices();
-builder.Services.AddChannels();
 builder.Services.AddDatabase();
 
 builder.Services.AddBandwidthLimiter(options =>

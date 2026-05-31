@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Duplicates;
 
-public class PerceptualHashProvider(ILogger<PerceptualHashProvider> logger) : IPerceptualHashProvider
+internal sealed class PerceptualHashProvider(ILogger<PerceptualHashProvider> logger) : IPerceptualHashProvider
 {
     public Task<ulong> GetHash(Stream imageStream, CancellationToken cancellationToken = default)
     {

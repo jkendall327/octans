@@ -14,7 +14,7 @@ public interface IDownloadCompletionNotifier
 /// <summary>
 /// Default notifier used when no feature has registered download completion work.
 /// </summary>
-public sealed class NoOpDownloadCompletionNotifier : IDownloadCompletionNotifier
+internal sealed class NoOpDownloadCompletionNotifier : IDownloadCompletionNotifier
 {
     public Task DownloadFinishedAsync(DownloadJobResult result, CancellationToken cancellationToken = default)
     {

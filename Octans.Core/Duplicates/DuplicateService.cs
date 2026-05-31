@@ -8,7 +8,7 @@ using Octans.Data.Models.Duplicates;
 
 namespace Octans.Core.Duplicates;
 
-public class DuplicateService(
+public sealed class DuplicateService(
     ServerDbContext context,
     IPerceptualHashProvider hashProvider,
     ImageStorage imageStorage,

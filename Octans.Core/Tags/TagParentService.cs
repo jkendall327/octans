@@ -4,7 +4,7 @@ using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Tags;
 
-public class TagParentService(ServerDbContext context)
+public sealed class TagParentService(ServerDbContext context)
 {
     public async Task AddParentAsync(TagModel child, TagModel parent, CancellationToken cancellationToken = default)
     {

@@ -9,7 +9,7 @@ using DataImportJobStatus = Octans.Data.Models.Importing.ImportJobStatus;
 
 namespace Octans.Core.Importing;
 
-public class ImportProcessorService(
+internal sealed class ImportProcessorService(
     IServiceProvider serviceProvider,
     ILogger<ImportProcessorService> logger) : BackgroundService
 {

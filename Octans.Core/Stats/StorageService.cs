@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace Octans.Core.Stats;
 
-public class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> settings)
+public sealed class StorageService(IFileSystem fileSystem, IOptions<GlobalSettings> settings)
 {
     private readonly string _appRoot = settings.Value.AppRoot;
 

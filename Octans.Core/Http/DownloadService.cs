@@ -33,7 +33,7 @@ public interface IDownloadService
 /// Thin facade that keeps callers on the stable download API while delegating
 /// lifecycle changes and terminal-result queries to dedicated services.
 /// </summary>
-public sealed class DownloadService(
+internal sealed class DownloadService(
     IDownloadLifecycleService lifecycle,
     IDownloadJobResultService jobResults,
     IDownloadCompletionWaiter completionWaiter) : IDownloadService

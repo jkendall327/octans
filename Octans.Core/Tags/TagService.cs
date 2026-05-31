@@ -3,7 +3,7 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Tags;
 
-public class TagService(ServerDbContext context) : ITagService
+internal sealed class TagService(ServerDbContext context) : ITagService
 {
     public async Task<List<TagModel>> GetTagsForHashAsync(string hashHex)
     {

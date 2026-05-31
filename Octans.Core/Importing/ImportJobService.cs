@@ -12,12 +12,12 @@ using DataImportType = Octans.Data.Models.Importing.ImportType;
 
 namespace Octans.Core.Importing;
 
-public interface IImportJobNotifier
+internal interface IImportJobNotifier
 {
     Task JobChanged(Guid jobId, CancellationToken cancellationToken = default);
 }
 
-public sealed class NoOpImportJobNotifier : IImportJobNotifier
+internal sealed class NoOpImportJobNotifier : IImportJobNotifier
 {
     public Task JobChanged(Guid jobId, CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
@@ -32,7 +32,7 @@ public interface IImportJobService
     Task<ImportJobDto?> CancelJob(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class ImportJobService(
+internal sealed class ImportJobService(
     ServerDbContext context,
     TimeProvider timeProvider,
     IImportJobNotifier notifier,

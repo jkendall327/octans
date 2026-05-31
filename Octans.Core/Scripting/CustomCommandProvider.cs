@@ -7,7 +7,7 @@ namespace Octans.Core.Scripting;
 
 public record ImageCommandMetadata(string Name, string Description, string Icon);
 
-public sealed class CustomCommandProvider(
+internal sealed class CustomCommandProvider(
     IFileSystem fileSystem,
     IOptions<GlobalSettings> globalSettings,
     ILogger<CustomCommandProvider> logger) : ICustomCommandProvider

@@ -11,7 +11,7 @@ public enum TagUpdateResult
     TagsUpdated
 }
 
-public class TagUpdater(ServerDbContext context)
+public sealed class TagUpdater(ServerDbContext context)
 {
     public async Task<TagUpdateResult> UpdateTags(UpdateTagsRequest request)
     {

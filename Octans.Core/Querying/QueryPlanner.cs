@@ -7,7 +7,7 @@ namespace Octans.Core.Querying;
 /// Service for optimising a set of generated predicates.
 /// Removes duplicates, short-circuits in case of negating predicates, removes redundant predicates, etc.
 /// </summary>
-public class QueryPlanner(IMemoryCache memoryCache)
+internal sealed class QueryPlanner(IMemoryCache memoryCache)
 {
     public QueryPlan OptimiseQuery(IList<IPredicate> predicates)
     {
@@ -59,7 +59,7 @@ public class QueryPlanner(IMemoryCache memoryCache)
     }
 }
 
-public class QueryPlan
+internal sealed class QueryPlan
 {
     public required List<IPredicate> Predicates { get; init; }
 

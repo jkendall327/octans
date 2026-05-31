@@ -6,7 +6,7 @@ namespace Octans.Core.Http;
 /// <summary>
 /// Builds and manages temporary staging paths for in-progress HTTP downloads.
 /// </summary>
-public sealed class DownloadStagingPaths(IFileSystem fileSystem)
+internal sealed class DownloadStagingPaths(IFileSystem fileSystem)
 {
     private const string StagingDirectoryName = ".octans-downloads";
 

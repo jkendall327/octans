@@ -7,7 +7,7 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Executes a query plan against the database and returns the relevant hashes.
 /// </summary>
-public class HashSearcher(ServerDbContext context, TagParentService tagParentService)
+internal sealed class HashSearcher(ServerDbContext context, TagParentService tagParentService)
 {
     public async Task<int> CountAsync(DecomposedQuery request, CancellationToken cancellationToken = default)
     {

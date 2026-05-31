@@ -7,7 +7,7 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Repositories;
 
-public sealed class RepositoryChangeBackgroundService(
+internal sealed class RepositoryChangeBackgroundService(
     ChannelReader<RepositoryChangeRequest> channel,
     RepositoryChangeProcessor processor) : BackgroundService
 {
@@ -35,7 +35,7 @@ public sealed class RepositoryChangeBackgroundService(
     }
 }
 
-public sealed class RepositoryChangeProcessor(
+internal sealed class RepositoryChangeProcessor(
     IDbContextFactory<ServerDbContext> contextFactory,
     IBackgroundProgressReporter progressReporter,
     ILogger<RepositoryChangeProcessor> logger)

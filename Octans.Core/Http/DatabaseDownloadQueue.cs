@@ -24,7 +24,7 @@ public interface IDownloadQueue
 /// Entity Framework implementation of the download queue.
 /// </summary>
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix")]
-public class DatabaseDownloadQueue(
+internal sealed class DatabaseDownloadQueue(
     IDbContextFactory<ServerDbContext> contextFactory,
     ILogger<DatabaseDownloadQueue> logger,
     DownloadTelemetry telemetry) : IDownloadQueue

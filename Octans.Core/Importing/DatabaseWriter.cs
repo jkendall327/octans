@@ -7,7 +7,7 @@ using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Importing;
 
-public class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
+internal sealed class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
 {
     public async Task AddItemToDatabase(ImportItem item, ContentHash hash, ImageMetadata metadata, bool autoArchive)
     {

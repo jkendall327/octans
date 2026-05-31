@@ -3,10 +3,17 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 namespace Octans.Core.Downloaders;
 
-public class DownloaderFactory(
+public interface IDownloaderFactory
+{
+    string DownloaderDirectory { get; }
+    Task<List<Downloader>> GetDownloaders();
+    Task<List<Downloader>> Rescan();
+}
+
+internal sealed class DownloaderFactory(
     IFileSystem fileSystem,
     IOptions<GlobalSettings> globalSettings,
-    ILogger<DownloaderFactory> logger)
+    ILogger<DownloaderFactory> logger) : IDownloaderFactory
 {
     private readonly GlobalSettings _globalSettings = globalSettings.Value;
 
@@ -14,7 +21,7 @@ public class DownloaderFactory(
 
     public string DownloaderDirectory => fileSystem.Path.Join(_globalSettings.AppRoot, "downloaders");
 
-    public virtual async Task<List<Downloader>> GetDownloaders()
+    public async Task<List<Downloader>> GetDownloaders()
     {
         if (_downloaders.Any())
         {

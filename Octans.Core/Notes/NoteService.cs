@@ -3,7 +3,7 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Notes;
 
-public class NoteService(ServerDbContext context, TimeProvider timeProvider) : INoteService
+internal sealed class NoteService(ServerDbContext context, TimeProvider timeProvider) : INoteService
 {
     public async Task<List<NoteDto>> GetNotesAsync(string hash)
     {

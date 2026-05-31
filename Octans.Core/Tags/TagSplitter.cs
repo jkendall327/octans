@@ -2,7 +2,7 @@ using Octans.Core.Querying;
 
 namespace Octans.Core.Tags;
 
-public class TagSplitter
+public sealed class TagSplitter
 {
     public (string space, string subtag) SplitTag(string tag)
     {

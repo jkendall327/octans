@@ -3,7 +3,7 @@ using Octans.Core.Filesystem;
 
 namespace Octans.Core.Importing;
 
-public class FilesystemWriter(
+internal sealed class FilesystemWriter(
     ImageStorage imageStorage,
     IRobustFileWriter fileWriter,
     ILogger<FilesystemWriter> logger)
