@@ -319,34 +319,4 @@ public class DownloaderFactoryTests
             Options.Create(resolverOptions ?? new DownloaderResolverOptions()),
             NullLogger<DownloaderService>.Instance);
 
-    private sealed class StaticHttpMessageHandler(string content) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage
-            {
-                Content = new StringContent(content)
-            });
-    }
-
-    private sealed class CancellableHttpMessageHandler : HttpMessageHandler
-    {
-        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public Task WaitUntilStarted() => _started.Task.WaitAsync(TimeSpan.FromSeconds(5));
-
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            _started.SetResult();
-            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
-
-            return new()
-            {
-                Content = new StringContent("<html></html>")
-            };
-        }
-    }
 }

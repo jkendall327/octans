@@ -1,5 +1,3 @@
-using System.Net;
-using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Client;
@@ -19,7 +17,7 @@ public class OctansClientTests
                 .Should()
                 .Be(new Uri("https://octans.test/version"));
 
-            return JsonResponse("""{"version":"1.2.3"}""");
+            return StubHttpResponses.Json("""{"version":"1.2.3"}""");
         });
 
         var services = new ServiceCollection();
@@ -48,7 +46,7 @@ public class OctansClientTests
         {
             observedRequest = request;
 
-            return JsonResponse("""[{"id":7,"hash":"AQID"}]""");
+            return StubHttpResponses.Json("""[{"id":7,"hash":"AQID"}]""");
         });
 
         var httpClient = new HttpClient(handler)
@@ -104,21 +102,4 @@ public class OctansClientTests
             .Be("/media/DEADBEEF");
     }
 
-    private static HttpResponseMessage JsonResponse(string content)
-    {
-        return new(HttpStatusCode.OK)
-        {
-            Content = new StringContent(content, Encoding.UTF8, "application/json")
-        };
-    }
-
-    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(respond(request));
-        }
-    }
 }

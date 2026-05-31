@@ -1,12 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Threading.Channels;
 
-namespace Octans.Tests.Helpers;
+namespace Octans.Tests.Infrastructure;
 
-/// <summary>
-/// Channel that lets us see what items are written to it for the sake of testing.
-/// </summary>
-public sealed class SpyChannelWriter<T> : ChannelWriter<T>
+internal sealed class SpyChannelWriter<T> : ChannelWriter<T>
 {
     public Channel<T> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<T>();
     public ICollection<T> WrittenItems { get; } = new Collection<T>();

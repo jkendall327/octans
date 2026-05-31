@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Components;
 using Octans.Client.Components.MainToolbar;
 
 namespace Octans.Tests.Viewmodels;
@@ -32,18 +31,5 @@ public class MainToolbarViewmodelTests
 
         // Assert
         _navigationManager.Uri.Should().EndWith(expectedUrl);
-    }
-
-    private sealed class FakeNavigationManager : NavigationManager
-    {
-        public FakeNavigationManager()
-        {
-            Initialize("http://localhost/", "http://localhost/");
-        }
-
-        protected override void NavigateToCore(string uri, bool forceLoad)
-        {
-            Uri = ToAbsoluteUri(uri).ToString();
-        }
     }
 }
