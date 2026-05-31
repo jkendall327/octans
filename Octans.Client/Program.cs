@@ -26,7 +26,12 @@ builder.Services.AddMudServices();
 builder.AddOctansObservability();
 builder.Services.AddOctansClient();
 builder.Services.AddInfrastructure();
-builder.Services.AddOctansServices();
+var registerBackgroundWorkers = builder.Configuration.GetValue("Octans:BackgroundWorkers:Enabled", true);
+builder.Services.AddOctansServices(options =>
+{
+    options.RegisterBackgroundWorkers = registerBackgroundWorkers;
+    options.RegisterDownloadBackgroundWorker = registerBackgroundWorkers;
+});
 builder.Services.AddViewmodels();
 builder.Services.AddDatabase();
 
@@ -40,7 +45,7 @@ builder.Services.AddDownloadManager(builder.Configuration.GetSection("Downloads"
 {
     options.MaxConcurrentDownloads = 5;
     options.MaxConcurrentDownloadsPerDomain = 2;
-});
+}, registerBackgroundWorkers);
 
 builder.SetupConfiguration();
 
