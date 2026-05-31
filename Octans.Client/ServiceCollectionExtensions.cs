@@ -110,6 +110,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FilesystemWriter>();
         services.AddScoped<ImportFilterService>();
         services.AddSingleton<ThumbnailCreator>();
+        services.AddOptions<DownloaderResolverOptions>();
         services.AddScoped<DownloaderFactory>();
         services.AddScoped<DownloaderService>();
 

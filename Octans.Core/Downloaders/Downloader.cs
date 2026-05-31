@@ -65,9 +65,9 @@ public sealed class Downloader : IDisposable
         string operation) =>
         new(lua, lua.GetFunction(functionName), operation);
 
-    public bool MatchesUrl(Uri url)
+    public bool MatchesUrl(Uri url, CancellationToken cancellationToken = default)
     {
-        var res = _matchUrl.Call(url.AbsoluteUri).FirstOrDefault();
+        var res = _matchUrl.Call(cancellationToken, url.AbsoluteUri).FirstOrDefault();
 
         return res is bool b
             ? b
@@ -75,9 +75,9 @@ public sealed class Downloader : IDisposable
     }
 
     // function classify_url(url) -> "Post" || "Gallery"
-    public DownloaderUrlClassification ClassifyUrl(Uri url)
+    public DownloaderUrlClassification ClassifyUrl(Uri url, CancellationToken cancellationToken = default)
     {
-        var raw = _classifyUrl.Call(url.AbsoluteUri).FirstOrDefault();
+        var raw = _classifyUrl.Call(cancellationToken, url.AbsoluteUri).FirstOrDefault();
 
         if (raw is not string s)
         {
@@ -93,33 +93,33 @@ public sealed class Downloader : IDisposable
     }
 
     // function parse_html(html_content) -> string[]
-    public List<string> ParseHtml(string htmlContent)
+    public List<string> ParseHtml(string htmlContent, CancellationToken cancellationToken = default)
     {
-        var result = _parseHtml.Call(htmlContent).FirstOrDefault();
+        var result = _parseHtml.Call(cancellationToken, htmlContent).FirstOrDefault();
 
         return ReadStringTable(result, "parse_html", MaxReturnedUrls);
     }
 
-    public string GenerateGalleryUrl(string input, int page)
+    public string GenerateGalleryUrl(string input, int page, CancellationToken cancellationToken = default)
     {
         if (_generateGalleryUrl is null)
         {
             throw new DownloaderContractException("No GUG provided for downloader.");
         }
 
-        var result = _generateGalleryUrl.Call(input, page).FirstOrDefault() as string;
+        var result = _generateGalleryUrl.Call(cancellationToken, input, page).FirstOrDefault() as string;
 
         return ValidateNonEmptyString(result, "generate_url return value");
     }
 
-    public string ProcessApiQuery(string query)
+    public string ProcessApiQuery(string query, CancellationToken cancellationToken = default)
     {
         if (_processApiQuery is null)
         {
             throw new InvalidOperationException("No API component provided for downloader");
         }
 
-        if (_processApiQuery.Call(query).FirstOrDefault() is not NLua.LuaTable result)
+        if (_processApiQuery.Call(cancellationToken, query).FirstOrDefault() is not NLua.LuaTable result)
         {
             throw new DownloaderContractException("process_query must return a table.");
         }
@@ -196,6 +196,7 @@ public sealed class Downloader : IDisposable
         NLua.LuaFunction Function,
         string Operation)
     {
-        public object[] Call(params object[] args) => Context.Call(Function, Operation, args);
+        public object[] Call(CancellationToken cancellationToken = default, params object[] args) =>
+            Context.Call(Function, Operation, cancellationToken, args);
     }
 }

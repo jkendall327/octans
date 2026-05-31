@@ -210,7 +210,7 @@ public class DownloaderFactoryTests
         clientFactory.CreateClient("DownloadClient").Returns(httpClient);
 
         var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = new DownloaderService(clientFactory, _sut, headerProvider, NullLogger<DownloaderService>.Instance);
+        var service = CreateService(clientFactory, headerProvider);
 
         var urls = await service.ResolveAsync(new("https://example.com/post/1"));
 
@@ -252,17 +252,72 @@ public class DownloaderFactoryTests
         clientFactory.CreateClient("DownloadClient").Returns(httpClient);
 
         var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = new DownloaderService(clientFactory, _sut, headerProvider, NullLogger<DownloaderService>.Instance);
+        var service = CreateService(clientFactory, headerProvider);
 
         var urls = await service.ResolveAsync(new("https://example.com/post/1"));
 
         urls.Should().Equal(new Uri("https://example.com/image.jpg"));
     }
 
+    [Fact]
+    public async Task ResolveAsync_ShouldRejectResponsesLargerThanConfiguredLimit()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", _parser);
+
+        var clientFactory = Substitute.For<IHttpClientFactory>();
+        using var httpClient = new HttpClient(new StaticHttpMessageHandler("too large"));
+        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
+
+        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
+        var service = CreateService(clientFactory, headerProvider, new() { MaxResponseBytes = 4 });
+
+        var urls = await service.ResolveAsync(new("https://example.com/post/1"));
+
+        urls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldHonorCancellationTokenDuringFetch()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", _parser);
+
+        var handler = new CancellableHttpMessageHandler();
+        var clientFactory = Substitute.For<IHttpClientFactory>();
+        using var httpClient = new HttpClient(handler);
+        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
+
+        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
+        var service = CreateService(clientFactory, headerProvider);
+        using var cts = new CancellationTokenSource();
+
+        var resolveTask = service.ResolveAsync(new("https://example.com/post/1"), cts.Token);
+        await handler.WaitUntilStarted();
+
+        await cts.CancelAsync();
+
+        var act = async () => await resolveTask;
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)
     {
         _fileSystem.AddFile(dir.FullName + $"/{filename}.lua", data);
     }
+
+    private DownloaderService CreateService(
+        IHttpClientFactory clientFactory,
+        IDownloadRequestHeaderProvider headerProvider,
+        DownloaderResolverOptions? resolverOptions = null) =>
+        new(
+            clientFactory,
+            _sut,
+            headerProvider,
+            Options.Create(resolverOptions ?? new DownloaderResolverOptions()),
+            NullLogger<DownloaderService>.Instance);
 
     private sealed class StaticHttpMessageHandler(string content) : HttpMessageHandler
     {
@@ -273,5 +328,25 @@ public class DownloaderFactoryTests
             {
                 Content = new StringContent(content)
             });
+    }
+
+    private sealed class CancellableHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task WaitUntilStarted() => _started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            _started.SetResult();
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+
+            return new()
+            {
+                Content = new StringContent("<html></html>")
+            };
+        }
     }
 }
