@@ -1,6 +1,6 @@
 @implements IAsyncDisposable
 @using Octans.Core.Importing
-@inject IImportJobService ImportJobService
+@inject IOctansClient Client
 
 <section class="import-jobs-panel">
     <div class="import-jobs-header">
@@ -89,25 +89,25 @@
 
     private async Task Refresh()
     {
-        _jobs = await ImportJobService.GetJobs(_polling.Token);
+        _jobs = await Client.GetImportJobsAsync(_polling.Token);
         StateHasChanged();
     }
 
     private async Task Pause(Guid id)
     {
-        await ImportJobService.PauseJob(id, _polling.Token);
+        await Client.PauseImportJobAsync(id, _polling.Token);
         await Refresh();
     }
 
     private async Task Resume(Guid id)
     {
-        await ImportJobService.ResumeJob(id, _polling.Token);
+        await Client.ResumeImportJobAsync(id, _polling.Token);
         await Refresh();
     }
 
     private async Task Cancel(Guid id)
     {
-        await ImportJobService.CancelJob(id, _polling.Token);
+        await Client.CancelImportJobAsync(id, _polling.Token);
         await Refresh();
     }
 

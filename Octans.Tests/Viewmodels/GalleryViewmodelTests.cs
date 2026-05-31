@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Octans.Client;
@@ -9,17 +8,15 @@ using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Scripting;
 using Octans.Data.Models;
-using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Viewmodels;
 
 public class GalleryViewmodelTests
 {
-    private readonly IQueryService _service;
+    private readonly IOctansClient _client;
     private readonly GalleryViewmodel _sut;
     private readonly IBrowserStorage _storage = Substitute.For<IBrowserStorage>();
     private readonly IClipboardService _clipboard = Substitute.For<IClipboardService>();
-    private readonly SpyChannelWriter<RepositoryChangeRequest> _repoChannel = new();
     private readonly ICustomCommandProvider _commandProvider = Substitute.For<ICustomCommandProvider>();
     private readonly IBrowserService _browserService = Substitute.For<IBrowserService>();
     private readonly StatusService _status = new();
@@ -29,16 +26,18 @@ public class GalleryViewmodelTests
         "/media/DEADBEEF", "/media/01234567"
     ];
 
+    private static readonly string[] DeadbeefHash = ["DEADBEEF"];
+    private static readonly string[] NumericHash = ["01234567"];
+
     public GalleryViewmodelTests()
     {
-        _service = Substitute.For<IQueryService>();
+        _client = Substitute.For<IOctansClient>();
 
-        _sut = new(_service,
+        _sut = new(_client,
             _storage,
             _clipboard,
             _status,
             _commandProvider,
-            _repoChannel,
             _browserService,
             NullLogger<GalleryViewmodel>.Instance);
     }
@@ -66,13 +65,13 @@ public class GalleryViewmodelTests
             }
         };
 
-        _service
-            .CountAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+        _client
+            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(hashes.Length);
 
-        _service
-            .Query(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(_ => ReturnAsync(hashes));
+        _client
+            .QueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(hashes);
 
         var args = new List<QueryParameter>();
 
@@ -88,13 +87,17 @@ public class GalleryViewmodelTests
     {
         var total = 100;
 
-        _service
-            .CountAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+        _client
+            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns(total);
 
-        _service
-            .Query(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => SlowStream(total, ci.Arg<CancellationToken>()));
+        _client
+            .QueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .Returns(async ci =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), ci.Arg<CancellationToken>());
+                return [];
+            });
 
         var args = new List<QueryParameter>();
 
@@ -113,8 +116,8 @@ public class GalleryViewmodelTests
     [Fact]
     public async Task Exception_sets_LastError_and_stops_searching()
     {
-        _service
-            .CountAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+        _client
+            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
             .Returns<Task<int>>(_ => throw new InvalidOperationException("boom"));
 
         var args = new List<QueryParameter>();
@@ -139,15 +142,16 @@ public class GalleryViewmodelTests
 
         await _sut.OnFilterComplete(result);
 
-        var items = new List<RepositoryChangeRequest>();
-
-        while (_repoChannel.Channel.Reader.TryRead(out var item))
-        {
-            items.Add(item);
-        }
-
-        Assert.Contains(items, r => r is { Hash: "DEADBEEF", Destination: RepositoryDestination.Archive });
-        Assert.Contains(items, r => r is { Hash: "01234567", Destination: RepositoryDestination.Trash });
+        await _client
+            .Received(1)
+            .TransitionRepositoryItemsAsync(
+                Arg.Is<IEnumerable<string>>(hashes => hashes.SequenceEqual(DeadbeefHash)),
+                RepositoryDestination.Archive);
+        await _client
+            .Received(1)
+            .TransitionRepositoryItemsAsync(
+                Arg.Is<IEnumerable<string>>(hashes => hashes.SequenceEqual(NumericHash)),
+                RepositoryDestination.Trash);
     }
 
     [Fact]
@@ -191,9 +195,11 @@ public class GalleryViewmodelTests
 
         Assert.DoesNotContain(Expected[0], _sut.ImageUrls);
 
-        Assert.True(_repoChannel.Channel.Reader.TryRead(out var item));
-        Assert.Equal("DEADBEEF", item.Hash);
-        Assert.Equal(RepositoryDestination.Trash, item.Destination);
+        await _client
+            .Received(1)
+            .TransitionRepositoryItemsAsync(
+                Arg.Is<IEnumerable<string>>(hashes => hashes.SequenceEqual(DeadbeefHash)),
+                RepositoryDestination.Trash);
     }
 
     [Fact]
@@ -217,37 +223,4 @@ public class GalleryViewmodelTests
         Assert.Equal("Copied 2 URL(s)", _status.GenericText);
     }
 
-    private static async IAsyncEnumerable<HashItem> ReturnAsync(IEnumerable<HashItem> items)
-    {
-        foreach (var item in items)
-        {
-            await Task.Yield();
-
-            yield return item;
-        }
-    }
-
-    private static async IAsyncEnumerable<HashItem> SlowStream(int count,
-        [EnumeratorCancellation] CancellationToken token)
-    {
-        for (var i = 0; i < count; i++)
-        {
-            token.ThrowIfCancellationRequested();
-
-            await Task.Delay(10, token);
-
-            var hash = BitConverter.GetBytes(i);
-
-            if (BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(hash);
-            }
-
-            yield return new()
-            {
-                Id = i,
-                Hash = hash
-            };
-        }
-    }
 }

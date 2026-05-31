@@ -1,16 +1,12 @@
-using System.Threading.Channels;
 using MudBlazor;
 using Octans.Core.Notes;
 using Octans.Core.Repositories;
-using Octans.Core.Tags;
 
 namespace Octans.Client.Components.Gallery;
 
 public sealed class DetailsPaneViewmodel(
-    INoteService noteService,
-    ITagService tagService,
     ISnackbar snackbar,
-    ChannelWriter<RepositoryChangeRequest> repositoryChannel) : ViewmodelBase
+    IOctansClient client) : ViewmodelBase
 {
     public string? SelectedHash { get; private set; }
     public List<NoteDto> Notes { get; private set; } = [];
@@ -33,7 +29,7 @@ public sealed class DetailsPaneViewmodel(
             return;
         }
 
-        await repositoryChannel.WriteAsync(new(SelectedHash, RepositoryDestination.Archive));
+        await client.TransitionRepositoryItemsAsync([SelectedHash], RepositoryDestination.Archive);
         snackbar.Add("Archived", Severity.Success);
     }
 
@@ -44,7 +40,7 @@ public sealed class DetailsPaneViewmodel(
             return;
         }
 
-        await repositoryChannel.WriteAsync(new(SelectedHash, RepositoryDestination.Inbox));
+        await client.TransitionRepositoryItemsAsync([SelectedHash], RepositoryDestination.Inbox);
         snackbar.Add("Moved to Inbox", Severity.Success);
     }
 
@@ -57,7 +53,7 @@ public sealed class DetailsPaneViewmodel(
 
         try
         {
-            var note = await noteService.AddNoteAsync(SelectedHash, NewNoteContent);
+            var note = await client.AddNoteAsync(SelectedHash, NewNoteContent);
             Notes.Add(note);
             NewNoteContent = string.Empty;
             snackbar.Add("Note added", Severity.Success);
@@ -73,7 +69,7 @@ public sealed class DetailsPaneViewmodel(
     {
         try
         {
-            await noteService.DeleteNoteAsync(note.Id);
+            await client.DeleteNoteAsync(note.Id);
             Notes.Remove(note);
             snackbar.Add("Note deleted", Severity.Success);
             await NotifyStateChanged();
@@ -94,8 +90,8 @@ public sealed class DetailsPaneViewmodel(
             return;
         }
 
-        Notes = await noteService.GetNotesAsync(SelectedHash);
-        var tagModels = await tagService.GetTagsForHashAsync(SelectedHash);
-        Tags = tagModels.Select(t => new TagViewer.Tag(t.Namespace, t.Subtag, 0)).ToList();
+        var details = await client.GetMediaDetailsAsync(SelectedHash);
+        Notes = details?.Notes.ToList() ?? [];
+        Tags = details?.Tags.Select(t => new TagViewer.Tag(t.Namespace, t.Subtag, 0)).ToList() ?? [];
     }
 }

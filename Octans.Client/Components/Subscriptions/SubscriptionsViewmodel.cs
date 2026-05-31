@@ -1,12 +1,10 @@
 using MudBlazor;
-using Octans.Core.Downloaders;
 using Octans.Core.Subscriptions;
 
 namespace Octans.Client.Components.Subscriptions;
 
 public class SubscriptionsViewmodel(
-    ISubscriptionService subscriptionService,
-    IDownloaderFactory downloaderFactory,
+    IOctansClient client,
     IDialogService dialogService)
 {
     public List<SubscriptionStatusDto> Subscriptions { get; private set; } = [];
@@ -18,13 +16,13 @@ public class SubscriptionsViewmodel(
 
     private async Task LoadSubscriptionsAsync()
     {
-        Subscriptions = await subscriptionService.GetAllAsync();
+        Subscriptions = (await client.GetSubscriptionsAsync()).ToList();
     }
 
     public async Task AddSubscriptionAsync()
     {
-        var downloaders = await downloaderFactory.GetDownloaders();
-        var downloaderNames = downloaders.Select(d => d.Metadata.Name).OrderBy(n => n).ToList();
+        var downloaders = await client.GetDownloadersAsync();
+        var downloaderNames = downloaders.Select(d => d.Name).OrderBy(n => n).ToList();
 
         var parameters = new DialogParameters<AddSubscriptionDialog>
         {
@@ -36,18 +34,18 @@ public class SubscriptionsViewmodel(
 
         if (result is not null && !result.Canceled && result.Data is AddSubscriptionDialog.FormModel model)
         {
-            await subscriptionService.AddAsync(
+            await client.AddSubscriptionAsync(new(
                 model.Name,
                 model.Downloader,
                 model.Query,
-                TimeSpan.FromMinutes(model.FrequencyMinutes));
+                model.FrequencyMinutes));
             await LoadSubscriptionsAsync();
         }
     }
 
     public async Task DeleteSubscriptionAsync(int id)
     {
-        await subscriptionService.DeleteAsync(id);
+        await client.DeleteSubscriptionAsync(id);
         await LoadSubscriptionsAsync();
     }
 }

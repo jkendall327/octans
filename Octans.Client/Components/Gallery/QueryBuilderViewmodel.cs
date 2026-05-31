@@ -1,9 +1,9 @@
 using Octans.Core.Querying;
-using DataTag = Octans.Data.Models.Tagging.Tag;
+using Octans.Core.Tags;
 
 namespace Octans.Client.Components.Gallery;
 
-public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder) : ViewmodelBase, IDisposable
+public sealed class QueryBuilderViewmodel(IOctansClient client) : ViewmodelBase, IDisposable
 {
     private CancellationTokenSource? _debounceCts;
     private CancellationTokenSource? _requestCts;
@@ -119,7 +119,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
 
         try
         {
-            var results = await suggestionFinder.GetAutocompleteTagIds(term, false, _requestCts.Token);
+            var results = await client.GetQuerySuggestionsAsync(term, cancellationToken: _requestCts.Token);
 
             _suggestions.Clear();
 
@@ -172,9 +172,7 @@ public sealed class QueryBuilderViewmodel(QuerySuggestionFinder suggestionFinder
         await AddCurrentAsync();
     }
 
-    private static QuerySuggestionDto MapSuggestion(DataTag tag) => new(
-        tag.Namespace.Value,
-        tag.Subtag.Value);
+    private static QuerySuggestionDto MapSuggestion(TagModel tag) => new(tag.Namespace, tag.Subtag);
 
     private async Task NotifyQueryChangedAsync()
     {

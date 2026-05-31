@@ -1,9 +1,11 @@
 using MudBlazor;
 using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Gallery;
 using Octans.Core.Notes;
 using Octans.Core.Repositories;
 using Octans.Core.Tags;
+using Octans.Data.Models;
 using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Viewmodels;
@@ -12,25 +14,21 @@ public sealed class DetailsPaneViewmodelTests
 {
     private const string Hash = "DEADBEEF";
 
-    private readonly INoteService _noteService = Substitute.For<INoteService>();
-    private readonly ITagService _tagService = Substitute.For<ITagService>();
+    private readonly IOctansClient _client = Substitute.For<IOctansClient>();
     private readonly ISnackbar _snackbar = Substitute.For<ISnackbar>();
-    private readonly SpyChannelWriter<RepositoryChangeRequest> _repositoryChannel = new();
     private readonly DetailsPaneViewmodel _sut;
 
     public DetailsPaneViewmodelTests()
     {
-        _noteService.GetNotesAsync(Arg.Any<string>()).Returns([]);
-        _tagService.GetTagsForHashAsync(Arg.Any<string>()).Returns([]);
-        _sut = new(_noteService, _tagService, _snackbar, _repositoryChannel);
+        _client.GetMediaDetailsAsync(Arg.Any<string>()).Returns(EmptyDetails(Hash));
+        _sut = new(_snackbar, _client);
     }
 
     [Fact]
     public async Task SelectHashAsync_loads_notes_and_tags()
     {
         var note = new NoteDto(1, "hello", TestClock.UtcNow, TestClock.UtcNow);
-        _noteService.GetNotesAsync(Hash).Returns([note]);
-        _tagService.GetTagsForHashAsync(Hash).Returns([new("artist", "someone")]);
+        _client.GetMediaDetailsAsync(Hash).Returns(Details(Hash, [note], [new("artist", "someone")]));
 
         await _sut.SelectHashAsync(Hash);
 
@@ -45,8 +43,10 @@ public sealed class DetailsPaneViewmodelTests
     [Fact]
     public async Task SelectHashAsync_clears_state_when_selection_is_empty()
     {
-        _noteService.GetNotesAsync(Hash).Returns([new NoteDto(1, "hello", TestClock.UtcNow, TestClock.UtcNow)]);
-        _tagService.GetTagsForHashAsync(Hash).Returns([new("artist", "someone")]);
+        _client.GetMediaDetailsAsync(Hash).Returns(Details(
+            Hash,
+            [new NoteDto(1, "hello", TestClock.UtcNow, TestClock.UtcNow)],
+            [new("artist", "someone")]));
         await _sut.SelectHashAsync(Hash);
         _sut.NewNoteContent = "draft";
 
@@ -66,16 +66,18 @@ public sealed class DetailsPaneViewmodelTests
 
         await _sut.ArchiveImage();
 
-        var item = Assert.Single(_repositoryChannel.WrittenItems);
-        Assert.Equal(Hash, item.Hash);
-        Assert.Equal(RepositoryDestination.Archive, item.Destination);
+        await _client
+            .Received(1)
+            .TransitionRepositoryItemsAsync(
+                Arg.Is<IEnumerable<string>>(hashes => hashes.SequenceEqual(new[] { Hash })),
+                RepositoryDestination.Archive);
     }
 
     [Fact]
     public async Task AddNote_appends_note_and_clears_input()
     {
         var note = new NoteDto(3, "saved", TestClock.UtcNow, TestClock.UtcNow);
-        _noteService.AddNoteAsync(Hash, "saved").Returns(note);
+        _client.AddNoteAsync(Hash, "saved").Returns(note);
         await _sut.SelectHashAsync(Hash);
         _sut.NewNoteContent = "saved";
 
@@ -89,20 +91,20 @@ public sealed class DetailsPaneViewmodelTests
     public async Task DeleteNote_removes_note()
     {
         var note = new NoteDto(3, "saved", TestClock.UtcNow, TestClock.UtcNow);
-        _noteService.GetNotesAsync(Hash).Returns([note]);
+        _client.GetMediaDetailsAsync(Hash).Returns(Details(Hash, [note], []));
         await _sut.SelectHashAsync(Hash);
 
         await _sut.DeleteNote(note);
 
         Assert.Empty(_sut.Notes);
-        await _noteService.Received(1).DeleteNoteAsync(note.Id);
+        await _client.Received(1).DeleteNoteAsync(note.Id);
     }
 
     [Fact]
     public async Task Mutations_raise_state_changed()
     {
         var note = new NoteDto(3, "saved", TestClock.UtcNow, TestClock.UtcNow);
-        _noteService.AddNoteAsync(Hash, "saved").Returns(note);
+        _client.AddNoteAsync(Hash, "saved").Returns(note);
         await _sut.SelectHashAsync(Hash);
         _sut.NewNoteContent = "saved";
         var callCount = 0;
@@ -116,4 +118,12 @@ public sealed class DetailsPaneViewmodelTests
 
         Assert.Equal(1, callCount);
     }
+
+    private static MediaDetailsDto EmptyDetails(string hash) => Details(hash, [], []);
+
+    private static MediaDetailsDto Details(
+        string hash,
+        IReadOnlyList<NoteDto> notes,
+        IReadOnlyList<TagModel> tags) =>
+        new(1, hash, ".jpg", "image/jpeg", RepositoryType.Inbox, tags, notes, $"/media/{hash}");
 }

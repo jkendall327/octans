@@ -1,55 +1,27 @@
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+using Octans.Client;
 using Octans.Client.Components.Gallery;
-using Octans.Core.Querying;
 using Octans.Core.Tags;
-using Octans.Data.Models;
-using Octans.Data.Models.Tagging;
-using Octans.Tests.Helpers;
 
 namespace Octans.Tests.Viewmodels;
 
-public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<DatabaseFixture>
+public class QueryBuilderViewmodelTests
 {
-    private readonly ServiceProvider _provider;
+    private readonly IOctansClient _client = Substitute.For<IOctansClient>();
     private readonly QueryBuilderViewmodel _sut;
-    private readonly ServerDbContext _context;
 
-    public QueryBuilderViewmodelTests(DatabaseFixture fixture)
+    public QueryBuilderViewmodelTests()
     {
-        var services = new ServiceCollection();
-        fixture.RegisterDbContext(services);
-
-        services.AddScoped<TagSplitter>();
-        services.AddScoped<QuerySuggestionFinder>();
-        services.AddScoped<QueryBuilderViewmodel>();
-
-        _provider = services.BuildServiceProvider();
-        _context = _provider.GetRequiredService<ServerDbContext>();
-        _sut = _provider.GetRequiredService<QueryBuilderViewmodel>();
-    }
-
-    public async Task InitializeAsync()
-    {
-        await DatabaseFixture.ResetAsync(_provider);
-    }
-
-    public Task DisposeAsync()
-    {
-        _sut.Dispose();
-        return Task.CompletedTask;
+        _sut = new(_client);
     }
 
     [Fact]
     public async Task OnInputAsync_ShouldPopulateSuggestions()
     {
-        // Arrange
-        var ns = new Namespace { Value = "character" };
-        var t1 = new Tag { Namespace = ns, Subtag = new Subtag { Value = "goku" } };
-
-        await _context.Namespaces.AddAsync(ns);
-        await _context.Tags.AddAsync(t1);
-        await _context.SaveChangesAsync();
+        _client
+            .GetQuerySuggestionsAsync("go", cancellationToken: Arg.Any<CancellationToken>())
+            .Returns([new TagModel("character", "goku")]);
 
         var stateChanged = false;
         _sut.StateChanged += () =>
@@ -58,34 +30,24 @@ public class QueryBuilderViewmodelTests : IAsyncLifetime, IClassFixture<Database
             return Task.CompletedTask;
         };
 
-        // Act
-        // Use a short debounce for testing
         await _sut.OnInputAsync("go", debounceMs: 10);
 
-        // Assert
         stateChanged.Should().BeTrue();
-        _sut.Suggestions.Should().Contain(s => s.Namespace == t1.Namespace.Value && s.Subtag == t1.Subtag.Value);
+        _sut.Suggestions.Should().Contain(s => s.Namespace == "character" && s.Subtag == "goku");
     }
 
     [Fact]
     public async Task OnInputAsync_ShouldClearSuggestions_WhenInputIsEmpty()
     {
-        // Arrange
-        var ns = new Namespace { Value = "character" };
-        var t1 = new Tag { Namespace = ns, Subtag = new Subtag { Value = "goku" } };
+        _client
+            .GetQuerySuggestionsAsync("go", cancellationToken: Arg.Any<CancellationToken>())
+            .Returns([new TagModel("character", "goku")]);
 
-        await _context.Namespaces.AddAsync(ns);
-        await _context.Tags.AddAsync(t1);
-        await _context.SaveChangesAsync();
-
-        // Populate first
         await _sut.OnInputAsync("go", debounceMs: 10);
         _sut.Suggestions.Should().NotBeEmpty();
 
-        // Act
         await _sut.OnInputAsync("", debounceMs: 10);
 
-        // Assert
         _sut.Suggestions.Should().BeEmpty();
     }
 }

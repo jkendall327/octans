@@ -26,7 +26,7 @@ public interface ILocalFileImportViewmodel
 public class LocalFileImportViewmodel(
     IFileSystem fileSystem,
     IWebHostEnvironment environment,
-    IImportJobService importJobService,
+    IOctansClient client,
     ILogger<LocalFileImportViewmodel> logger) : ILocalFileImportViewmodel
 {
     public IReadOnlyList<IBrowserFile> LocalFiles { get; set; } = [];
@@ -76,7 +76,7 @@ public class LocalFileImportViewmodel(
             AutoArchive = AutoArchive
         };
 
-        var created = await importJobService.Create(new()
+        var created = await client.CreateImportJobAsync(new()
         {
             ImportType = request.ImportType,
             Sources = sources,
@@ -92,7 +92,7 @@ public class LocalFileImportViewmodel(
 }
 
 public class RawUrlImportViewmodel(
-    IImportJobService importJobService,
+    IOctansClient client,
     ILogger<RawUrlImportViewmodel> logger) : IRawUrlImportViewmodel
 {
     public string RawInputs { get; set; } = string.Empty;
@@ -139,7 +139,7 @@ public class RawUrlImportViewmodel(
                 AutoArchive = AutoArchive
             };
 
-            var created = await importJobService.Create(new()
+            var created = await client.CreateImportJobAsync(new()
             {
                 ImportType = request.ImportType,
                 Sources = urls,
