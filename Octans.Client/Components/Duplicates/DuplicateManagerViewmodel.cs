@@ -1,14 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using MudBlazor;
-using Octans.Core.Duplicates;
-using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
 
 namespace Octans.Client.Components.Duplicates;
 
 public class DuplicateManagerViewmodel(
-    DuplicateService duplicateService,
-    ServerDbContext context,
+    IOctansClient octansClient,
     ISnackbar snackbar,
     ILogger<DuplicateManagerViewmodel> logger)
 {
@@ -26,22 +22,19 @@ public class DuplicateManagerViewmodel(
         IsLoading = true;
         try
         {
-            var candidates = await context.DuplicateCandidates
-                .Include(c => c.Hash1)
-                .Include(c => c.Hash2)
+            var candidates = await octansClient.GetDuplicateCandidatesAsync();
+
+            Candidates = candidates
                 .OrderByDescending(c => c.Distance)
                 .Take(50)
-                .ToListAsync();
-
-            Candidates = candidates.Select(c => new DuplicateCandidateDto
+                .Select(c => new DuplicateCandidateDto
             {
                 Id = c.Id,
                 HashId1 = c.HashId1,
                 HashId2 = c.HashId2,
                 Distance = c.Distance,
-                // Url logic might need adjustment based on how we serve images
-                Url1 = $"/api/files/{Convert.ToHexString(c.Hash1.Hash)}",
-                Url2 = $"/api/files/{Convert.ToHexString(c.Hash2.Hash)}"
+                Url1 = c.MediaUrl1,
+                Url2 = c.MediaUrl2
             }).ToList();
         }
         catch (Exception ex)
@@ -60,11 +53,7 @@ public class DuplicateManagerViewmodel(
         IsCalculating = true;
         try
         {
-            await Task.Run(async () =>
-            {
-                await duplicateService.CalculateMissingHashes();
-                await duplicateService.FindDuplicates();
-            });
+            await octansClient.ScanDuplicatesAsync();
             await LoadCandidates();
             snackbar.Add("Check complete", Severity.Success);
         }
@@ -83,23 +72,8 @@ public class DuplicateManagerViewmodel(
     {
         try
         {
-            await duplicateService.Resolve(candidateId, MapResolution(resolution), keepHashId);
-
-            // Remove from local list
-            var candidate = Candidates.FirstOrDefault(c => c.Id == candidateId);
-            if (candidate != null)
-            {
-                Candidates.Remove(candidate);
-
-                // If we deleted one, we should also remove any other candidates involving the deleted hash?
-                // The service handles data integrity, but UI might show stale data.
-                // We'll just reload or remove locally.
-                if (keepHashId.HasValue)
-                {
-                    var deletedId = candidate.HashId1 == keepHashId ? candidate.HashId2 : candidate.HashId1;
-                    Candidates.RemoveAll(c => c.HashId1 == deletedId || c.HashId2 == deletedId);
-                }
-            }
+            await octansClient.ResolveDuplicateCandidateAsync(candidateId, MapResolution(resolution), keepHashId);
+            await LoadCandidates();
         }
         catch (Exception ex)
         {

@@ -10,6 +10,7 @@ using Octans.Core.Importing;
 using Octans.Core.Stats;
 using Octans.Core.Tags;
 using Octans.Data.Models;
+using Octans.Data.Models.Duplicates;
 
 namespace Octans.Client;
 
@@ -25,6 +26,14 @@ public interface IOctansClient
     Task<IReadOnlyList<DownloaderMetadata>> GetDownloadersAsync(CancellationToken cancellationToken = default);
     Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default);
     Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default);
+    Task<DuplicateScanResultDto> ScanDuplicatesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DuplicateCandidateDto>> GetDuplicateCandidatesAsync(
+        CancellationToken cancellationToken = default);
+    Task ResolveDuplicateCandidateAsync(
+        int candidateId,
+        DuplicateResolution resolution,
+        int? keepHashId,
+        CancellationToken cancellationToken = default);
     Task ClearAllDataAsync(CancellationToken cancellationToken = default);
     string GetMediaUrl(ContentHash hash);
     string GetMediaUrl(string hexHash);
@@ -33,6 +42,7 @@ public interface IOctansClient
 public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 {
     private static readonly Uri ClearAllDataUri = new("clearAllData", UriKind.Relative);
+    private static readonly Uri DuplicateScanUri = new("duplicates/scan", UriKind.Relative);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -136,6 +146,38 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     public async Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default)
     {
         return await ReadRequiredJsonAsync<OctansVersion>("version", cancellationToken);
+    }
+
+    public async Task<DuplicateScanResultDto> ScanDuplicatesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync(DuplicateScanUri, null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadRequiredJsonAsync<DuplicateScanResultDto>(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DuplicateCandidateDto>> GetDuplicateCandidatesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<DuplicateCandidateDto>>(
+            "duplicates/candidates",
+            JsonOptions,
+            cancellationToken);
+
+        return response ?? [];
+    }
+
+    public async Task ResolveDuplicateCandidateAsync(
+        int candidateId,
+        DuplicateResolution resolution,
+        int? keepHashId,
+        CancellationToken cancellationToken = default)
+    {
+        var uri = $"duplicates/candidates/{candidateId.ToString(CultureInfo.InvariantCulture)}/resolution";
+        var request = new DuplicateResolutionRequest(resolution, keepHashId);
+
+        using var response = await httpClient.PostAsJsonAsync(uri, request, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task ClearAllDataAsync(CancellationToken cancellationToken = default)
