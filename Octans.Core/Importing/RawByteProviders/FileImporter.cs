@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Importing.RawByteProviders;
 
-public class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) : IRawByteProvider
+internal sealed class FileImporter(IFileSystem fileSystem, ILogger<FileImporter> logger) : IRawByteProvider
 {
     public async Task<byte[]> GetRawBytes(ImportItem item)
     {

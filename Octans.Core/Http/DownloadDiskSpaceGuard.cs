@@ -17,7 +17,7 @@ public interface IDownloadDiskSpaceGuard
 /// <summary>
 /// Best-effort free-space guard used before and during streamed writes.
 /// </summary>
-public sealed class DownloadDiskSpaceGuard(
+internal sealed class DownloadDiskSpaceGuard(
     IFileSystem fileSystem,
     IOptions<DownloadManagerOptions> options,
     ILogger<DownloadDiskSpaceGuard> logger) : IDownloadDiskSpaceGuard

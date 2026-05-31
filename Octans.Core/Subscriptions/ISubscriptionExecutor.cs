@@ -7,7 +7,7 @@ public interface ISubscriptionExecutor
     Task<SubscriptionExecutionResult> ExecuteAsync(Subscription subscription, CancellationToken cancellationToken);
 }
 
-public class NoOpSubscriptionExecutor : ISubscriptionExecutor
+internal sealed class NoOpSubscriptionExecutor : ISubscriptionExecutor
 {
     public Task<SubscriptionExecutionResult> ExecuteAsync(Subscription subscription,
         CancellationToken cancellationToken) =>

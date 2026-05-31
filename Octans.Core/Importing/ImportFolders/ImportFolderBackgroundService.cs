@@ -7,7 +7,7 @@ using Octans.Core.Progress;
 
 namespace Octans.Core.Importing.ImportFolders;
 
-public sealed class ImportFolderBackgroundService(
+internal sealed class ImportFolderBackgroundService(
     IOptions<ImportFolderOptions> options,
     IServiceScopeFactory scopeFactory,
     ILogger<ImportFolderBackgroundService> logger) : BackgroundService
@@ -33,7 +33,7 @@ public sealed class ImportFolderBackgroundService(
     }
 }
 
-public sealed class ImportFolderScanner(
+internal sealed class ImportFolderScanner(
     IOptions<ImportFolderOptions> options,
     IFileSystem fileSystem,
     IBackgroundProgressReporter progressReporter,

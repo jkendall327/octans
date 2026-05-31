@@ -4,7 +4,7 @@ namespace Octans.Core.Extensions;
 
 public static class ListExtensions
 {
-    public static (List<T1>, List<T2>, List<T3>) Partition<T1, T2, T3>(this IEnumerable<IPredicate> source)
+    internal static (List<T1>, List<T2>, List<T3>) Partition<T1, T2, T3>(this IEnumerable<IPredicate> source)
         where T1 : IPredicate
         where T2 : IPredicate
         where T3 : IPredicate

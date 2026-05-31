@@ -10,7 +10,7 @@ namespace Octans.Core.Http;
 /// Hosted worker that drains the durable download queue while enforcing global
 /// and per-domain concurrency limits.
 /// </summary>
-public sealed class DownloadBackgroundService(
+internal sealed class DownloadBackgroundService(
     IDownloadQueue downloadQueue,
     IDownloadStateService stateService,
     HttpDownloader processor,

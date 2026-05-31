@@ -17,7 +17,7 @@ public interface IDownloadHostCircuitRegistry
 /// In-memory registry used by the HTTP resilience pipeline and queue scheduler
 /// to avoid dispatching work to temporarily unavailable hosts.
 /// </summary>
-public sealed class DownloadHostCircuitRegistry(
+internal sealed class DownloadHostCircuitRegistry(
     TimeProvider timeProvider,
     ILogger<DownloadHostCircuitRegistry> logger,
     DownloadTelemetry telemetry) : IDownloadHostCircuitRegistry

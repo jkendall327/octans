@@ -3,7 +3,7 @@ using Octans.Data.Models;
 
 namespace Octans.Core.Stats;
 
-public class StatsService(ServerDbContext dbContext, StorageService storageService)
+public sealed class StatsService(ServerDbContext dbContext, StorageService storageService)
 {
     public async Task<HomeStats> GetHomeStats()
     {

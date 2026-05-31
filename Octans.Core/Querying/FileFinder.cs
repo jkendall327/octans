@@ -5,7 +5,7 @@ using Octans.Data.Models.Tagging;
 
 namespace Octans.Core.Querying;
 
-public class FileFinder(ImageStorage imageStorage, ServerDbContext context)
+public sealed class FileFinder(ImageStorage imageStorage, ServerDbContext context)
 {
     public async Task<List<HashItem>> GetAll()
     {

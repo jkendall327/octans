@@ -16,7 +16,7 @@ public interface IBackgroundProgressReporter
     Task ReportError(string message);
 }
 
-public class BackgroundProgressService(ILogger<BackgroundProgressService> logger, IServiceScopeFactory scopeFactory)
+internal sealed class BackgroundProgressService(ILogger<BackgroundProgressService> logger, IServiceScopeFactory scopeFactory)
     : IBackgroundProgressReporter
 {
     private readonly ConcurrentDictionary<Guid, ProgressStatus> _operations = new();

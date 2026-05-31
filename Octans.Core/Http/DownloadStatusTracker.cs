@@ -42,7 +42,7 @@ public delegate ValueTask DownloadStatusChangedHandler(DownloadStatusChanged not
 /// <summary>
 /// Database-backed download state service that raises UI-friendly change events.
 /// </summary>
-public class DownloadStatusTracker(
+internal sealed class DownloadStatusTracker(
     IDbContextFactory<ServerDbContext> contextFactory,
     TimeProvider timeProvider,
     ILogger<DownloadStatusTracker> logger) : IDownloadStateService

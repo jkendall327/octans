@@ -1,6 +1,6 @@
 namespace Octans.Core.Importing.RawByteProviders;
 
-public interface IRawByteProvider
+internal interface IRawByteProvider
 {
     Task<byte[]> GetRawBytes(ImportItem item);
 }

@@ -13,7 +13,7 @@ public interface IDownloadBandwidthGate
 /// <summary>
 /// Bandwidth gate used when byte pacing is not configured.
 /// </summary>
-public sealed class NoOpDownloadBandwidthGate : IDownloadBandwidthGate
+internal sealed class NoOpDownloadBandwidthGate : IDownloadBandwidthGate
 {
     public Task WaitForBytesAsync(string domain, long byteCount, CancellationToken cancellationToken)
     {
@@ -24,7 +24,7 @@ public sealed class NoOpDownloadBandwidthGate : IDownloadBandwidthGate
 /// <summary>
 /// Token-bucket bandwidth gate that applies both global and per-domain limits.
 /// </summary>
-public sealed class DownloadBandwidthGate(
+internal sealed class DownloadBandwidthGate(
     IOptions<BandwidthLimiterOptions> options,
     TimeProvider timeProvider) : IDownloadBandwidthGate
 {

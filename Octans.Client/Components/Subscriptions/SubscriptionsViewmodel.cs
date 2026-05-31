@@ -5,8 +5,8 @@ using Octans.Core.Subscriptions;
 namespace Octans.Client.Components.Subscriptions;
 
 public class SubscriptionsViewmodel(
-    SubscriptionService subscriptionService,
-    DownloaderFactory downloaderFactory,
+    ISubscriptionService subscriptionService,
+    IDownloaderFactory downloaderFactory,
     IDialogService dialogService)
 {
     public List<SubscriptionStatusDto> Subscriptions { get; private set; } = [];

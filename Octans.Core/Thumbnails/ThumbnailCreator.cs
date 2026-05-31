@@ -6,7 +6,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Octans.Core.Thumbnails;
 
-public class ThumbnailCreator(
+internal sealed class ThumbnailCreator(
     IFileSystem fileSystem,
     ImageStorage imageStorage,
     ILogger<ThumbnailCreator> logger)

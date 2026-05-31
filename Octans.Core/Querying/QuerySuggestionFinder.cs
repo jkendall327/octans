@@ -8,7 +8,7 @@ namespace Octans.Core.Querying;
 /// <summary>
 /// Provides suggestions on relevant tags given text, e.g. for autocomplete dropdowns.
 /// </summary>
-public class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter)
+public sealed class QuerySuggestionFinder(ServerDbContext context, TagSplitter splitter)
 {
     public async Task<HashSet<Tag>> GetAutocompleteTagIds(string search, bool exact, CancellationToken token = default)
     {

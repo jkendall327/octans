@@ -31,7 +31,7 @@ public interface IDownloadLifecycleService
 /// <summary>
 /// Owns user-visible download lifecycle commands and terminal transitions.
 /// </summary>
-public sealed class DownloadLifecycleService(
+internal sealed class DownloadLifecycleService(
     IDownloadStateService stateService,
     IActiveDownloadRegistry activeDownloads,
     IDownloadCompletionNotifier completionNotifier,

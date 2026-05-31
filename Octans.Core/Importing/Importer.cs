@@ -9,7 +9,7 @@ public interface IImporter
     Task<ImportResult> ProcessImport(ImportRequest request, Guid progressId, CancellationToken cancellationToken = default);
 }
 
-public class Importer(
+internal sealed class Importer(
     ImportItemProcessor itemProcessor,
     IBackgroundProgressReporter progress,
     ILogger<Importer> logger) : IImporter

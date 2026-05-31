@@ -4,7 +4,7 @@ using Octans.Core.Http;
 
 namespace Octans.Core.Importing.RawByteProviders;
 
-public class PostImporter(
+internal sealed class PostImporter(
     DownloaderService downloaderService,
     IDownloadService downloadService,
     IFileSystem fileSystem)

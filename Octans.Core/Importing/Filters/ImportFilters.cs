@@ -3,12 +3,12 @@ using SixLabors.ImageSharp;
 
 namespace Octans.Core.Importing.Filters;
 
-public interface IImportFilter
+internal interface IImportFilter
 {
     Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default);
 }
 
-public class ResolutionFilter : IImportFilter
+internal sealed class ResolutionFilter : IImportFilter
 {
     public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
@@ -40,7 +40,7 @@ public class ResolutionFilter : IImportFilter
     }
 }
 
-public class FiletypeFilter : IImportFilter
+internal sealed class FiletypeFilter : IImportFilter
 {
     public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {
@@ -61,7 +61,7 @@ public class FiletypeFilter : IImportFilter
     }
 }
 
-public class FilesizeFilter : IImportFilter
+internal sealed class FilesizeFilter : IImportFilter
 {
     public Task<bool> PassesFilter(ImportFilterData request, byte[] bytes, CancellationToken cancellationToken = default)
     {

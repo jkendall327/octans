@@ -23,7 +23,7 @@ public interface IDownloadCompletionWaiter
 /// Async completion waiter backed by in-process state-change notifications and
 /// a durable database polling fallback.
 /// </summary>
-public sealed class DownloadCompletionWaiter(
+internal sealed class DownloadCompletionWaiter(
     IDownloadStateService stateService,
     IDownloadJobResultService jobResults,
     TimeProvider timeProvider,

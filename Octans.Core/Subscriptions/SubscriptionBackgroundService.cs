@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Subscriptions;
 
-public class SubscriptionBackgroundService(
+internal sealed class SubscriptionBackgroundService(
     IServiceProvider serviceProvider,
     ILogger<SubscriptionBackgroundService> logger,
     TimeProvider timeProvider) : BackgroundService
@@ -12,7 +12,7 @@ public class SubscriptionBackgroundService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<SubscriptionService>();
+        var service = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
 
         try
         {

@@ -19,7 +19,7 @@ public interface IDownloadRequestHeaderProvider
 /// <summary>
 /// Applies global and per-domain HTTP request header configuration.
 /// </summary>
-public sealed class DownloadRequestHeaderProvider(IOptions<DownloadManagerOptions> options) : IDownloadRequestHeaderProvider
+internal sealed class DownloadRequestHeaderProvider(IOptions<DownloadManagerOptions> options) : IDownloadRequestHeaderProvider
 {
     private static readonly HashSet<string> SensitiveHeaderNames = new(StringComparer.OrdinalIgnoreCase)
     {

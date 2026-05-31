@@ -4,9 +4,9 @@ namespace Octans.Client.Components.Downloads;
 
 public class DownloadersViewmodel
 {
-    private readonly DownloaderFactory _factory;
+    private readonly IDownloaderFactory _factory;
 
-    public DownloadersViewmodel(DownloaderFactory factory)
+    public DownloadersViewmodel(IDownloaderFactory factory)
     {
         _factory = factory;
     }

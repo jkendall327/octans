@@ -16,7 +16,7 @@ public interface IDownloadJobResultService
 /// <summary>
 /// Entity Framework implementation of terminal download result lookup.
 /// </summary>
-public sealed class DownloadJobResultService(IDbContextFactory<ServerDbContext> contextFactory)
+internal sealed class DownloadJobResultService(IDbContextFactory<ServerDbContext> contextFactory)
     : IDownloadJobResultService
 {
     public async Task<DownloadJobResult?> GetResultAsync(Guid id, CancellationToken cancellationToken = default)

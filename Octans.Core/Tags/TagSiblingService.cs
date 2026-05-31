@@ -5,7 +5,7 @@ namespace Octans.Core.Tags;
 
 public record ResolvedTag(TagModel Tag, TagModel Display);
 
-public class TagSiblingService(ServerDbContext context)
+public sealed class TagSiblingService(ServerDbContext context)
 {
     public async Task<IReadOnlyCollection<ResolvedTag>> Resolve(IEnumerable<TagModel> tags)
     {

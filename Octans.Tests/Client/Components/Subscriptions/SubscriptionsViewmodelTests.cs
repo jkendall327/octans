@@ -19,7 +19,7 @@ namespace Octans.Tests.Client.Components.Subscriptions;
 public class SubscriptionsViewmodelTests
 {
     private readonly SubscriptionService _subscriptionService;
-    private readonly DownloaderFactory _downloaderFactory;
+    private readonly IDownloaderFactory _downloaderFactory;
     private readonly IDialogService _dialogService;
     private readonly SubscriptionsViewmodel _sut;
     private readonly ServerDbContext _dbContext;
@@ -57,10 +57,7 @@ public class SubscriptionsViewmodelTests
 
         _subscriptionService = new SubscriptionService(factory, timeProvider, reporter, executor, logger);
 
-        var fileSystem = Substitute.For<IFileSystem>();
-        var settings = Options.Create(new GlobalSettings { AppRoot = "/" });
-        var dlLogger = NullLogger<DownloaderFactory>.Instance;
-        _downloaderFactory = Substitute.For<DownloaderFactory>(fileSystem, settings, dlLogger);
+        _downloaderFactory = Substitute.For<IDownloaderFactory>();
 
         _dialogService = Substitute.For<IDialogService>();
 

@@ -17,7 +17,7 @@ public interface IActiveDownloadRegistry
 /// <summary>
 /// In-memory cancellation-token registry for active transfers.
 /// </summary>
-public sealed class ActiveDownloadRegistry(
+internal sealed class ActiveDownloadRegistry(
     ILogger<ActiveDownloadRegistry> logger) : IActiveDownloadRegistry, IDisposable, IAsyncDisposable
 {
     private readonly CancellationTokenSource _globalCancellation = new();

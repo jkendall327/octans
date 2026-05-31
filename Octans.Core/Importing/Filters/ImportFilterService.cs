@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Octans.Core.Importing.Filters;
 
-public sealed class ImportFilterService(ILogger<ImportFilterService> logger)
+internal sealed class ImportFilterService(ILogger<ImportFilterService> logger)
 {
     public async Task<ImportItemResult?> ApplyFilters(ImportRequest request, byte[] bytes)
     {

@@ -9,7 +9,7 @@ public interface IQueryService
     IAsyncEnumerable<HashItem> Query(IEnumerable<string> queries, CancellationToken cancellationToken = default);
 }
 
-public class QueryService(QueryParser parser, QueryPlanner planner, QueryTagConverter converter, HashSearcher searcher) : IQueryService
+internal sealed class QueryService(QueryParser parser, QueryPlanner planner, QueryTagConverter converter, HashSearcher searcher) : IQueryService
 {
     public async Task<int> CountAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default)
     {

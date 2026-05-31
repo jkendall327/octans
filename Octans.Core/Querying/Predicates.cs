@@ -4,9 +4,9 @@ using Octans.Data.Models;
 namespace Octans.Core.Querying;
 
 [SuppressMessage("Design", "CA1040:Avoid empty interfaces", Justification = "Required at compile-time")]
-public interface IPredicate;
+internal interface IPredicate;
 
-public class TagPredicate : IPredicate
+internal sealed class TagPredicate : IPredicate
 {
     public required string NamespacePattern { get; set; }
     public required string SubtagPattern { get; set; }
@@ -21,24 +21,24 @@ public class TagPredicate : IPredicate
     public bool IsSpecificTag() => !IsWildcard();
 }
 
-public abstract class SystemPredicate : IPredicate
+internal abstract class SystemPredicate : IPredicate
 {
 }
 
-public class FilesizePredicate : SystemPredicate
+internal sealed class FilesizePredicate : SystemPredicate
 {
 }
 
-public class EverythingPredicate : SystemPredicate
+internal sealed class EverythingPredicate : SystemPredicate
 {
 }
 
-public class RepositoryPredicate : SystemPredicate
+internal sealed class RepositoryPredicate : SystemPredicate
 {
     public required RepositoryType Repository { get; init; }
 }
 
-public class OrPredicate : IPredicate
+internal sealed class OrPredicate : IPredicate
 {
     public List<IPredicate> Predicates { get; init; } = [];
 }

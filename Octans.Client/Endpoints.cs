@@ -45,7 +45,7 @@ internal static class Endpoints
     private static void MapDownloaderEndpoints(WebApplication app)
     {
         app.MapGet("/downloaders",
-            async ([FromServices] DownloaderFactory ds) =>
+            async ([FromServices] IDownloaderFactory ds) =>
             {
                 var downloaders = await ds.GetDownloaders();
 
@@ -53,7 +53,7 @@ internal static class Endpoints
             });
 
         app.MapGet("/downloaders/{name}",
-            async (string name, [FromServices] DownloaderFactory ds) =>
+            async (string name, [FromServices] IDownloaderFactory ds) =>
             {
                 var downloaders = await ds.GetDownloaders();
 
@@ -79,14 +79,14 @@ internal static class Endpoints
 
         app
             .MapPost("/files/query",
-                ([FromBody] IEnumerable<string> queries, [FromServices] QueryService service) => service.Query(queries))
+                ([FromBody] IEnumerable<string> queries, [FromServices] IQueryService service) => service.Query(queries))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search");
 
         app
             .MapPost("/files",
                 async ([FromBody] ImportRequest request,
-                    [FromServices] ImportJobService service,
+                    [FromServices] IImportJobService service,
                     CancellationToken token) =>
                 {
                     var created = await service.Create(ImportJobCreateRequestFromImportRequest(request), token);
@@ -112,7 +112,7 @@ internal static class Endpoints
         app
             .MapPost("/import-jobs",
                 async ([FromBody] ImportJobCreateRequest request,
-                    [FromServices] ImportJobService service,
+                    [FromServices] IImportJobService service,
                     CancellationToken token) =>
                 {
                     var created = await service.Create(request, token);
@@ -124,14 +124,14 @@ internal static class Endpoints
 
         app
             .MapGet("/import-jobs",
-                async ([FromServices] ImportJobService service, CancellationToken token) =>
+                async ([FromServices] IImportJobService service, CancellationToken token) =>
                     await service.GetJobs(token))
             .WithName("GetImportJobs")
             .WithDescription("Gets recent import jobs");
 
         app
             .MapGet("/import-jobs/{id:guid}",
-                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                async (Guid id, [FromServices] IImportJobService service, CancellationToken token) =>
                 {
                     var job = await service.GetJob(id, token);
 
@@ -142,7 +142,7 @@ internal static class Endpoints
 
         app
             .MapPost("/import-jobs/{id:guid}/pause",
-                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                async (Guid id, [FromServices] IImportJobService service, CancellationToken token) =>
                 {
                     var job = await service.PauseJob(id, token);
 
@@ -152,7 +152,7 @@ internal static class Endpoints
 
         app
             .MapPost("/import-jobs/{id:guid}/resume",
-                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                async (Guid id, [FromServices] IImportJobService service, CancellationToken token) =>
                 {
                     var job = await service.ResumeJob(id, token);
 
@@ -162,7 +162,7 @@ internal static class Endpoints
 
         app
             .MapPost("/import-jobs/{id:guid}/cancel",
-                async (Guid id, [FromServices] ImportJobService service, CancellationToken token) =>
+                async (Guid id, [FromServices] IImportJobService service, CancellationToken token) =>
                 {
                     var job = await service.CancelJob(id, token);
 

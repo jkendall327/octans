@@ -5,7 +5,7 @@ using Octans.Core.Progress;
 
 namespace Octans.Core.Thumbnails;
 
-public sealed class ThumbnailCreationBackgroundService(
+internal sealed class ThumbnailCreationBackgroundService(
     ThumbnailCreator creator,
     ChannelReader<ThumbnailCreationRequest> channel,
     IBackgroundProgressReporter progressReporter,
