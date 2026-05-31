@@ -8,6 +8,7 @@ using Octans.Core.Http.Bandwidth;
 using Octans.Core.Http.Models;
 using Octans.Data.Models;
 using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace Octans.Core.Http;
 
@@ -52,15 +53,36 @@ public class HttpDownloader(
         var attempt = new DownloadAttempt(download.Domain, timeProvider.GetTimestamp());
 
         // Create a combined token for this specific download
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(globalCancellation, downloadToken);
+        using var overallTimeout = DownloadTimeoutScope.Start(timeProvider, options.Value.Timeouts.OverallTimeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            globalCancellation,
+            downloadToken,
+            overallTimeout.Token);
         var combinedToken = linkedCts.Token;
 
         try
         {
-            await ProcessCore(download, downloadId, attempt, activity, combinedToken);
+            await ProcessCore(download, downloadId, attempt, activity, overallTimeout, combinedToken);
+        }
+        catch (DownloadTimeoutException ex)
+        {
+            RecordFailure(download, attempt, DownloadFailureCategory.Timeout, DownloadTerminalOutcome.Failed, ex);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                ex.Message,
+                DownloadFailureCategory.Timeout);
+        }
+        catch (TimeoutRejectedException ex)
+        {
+            var message = $"Download timed out while waiting for the response headers after {options.Value.Timeouts.ResponseHeaderTimeout}.";
+            RecordFailure(download, attempt, DownloadFailureCategory.Timeout, DownloadTerminalOutcome.Failed, ex);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                message,
+                DownloadFailureCategory.Timeout);
         }
         catch (OperationCanceledException)
-            when (combinedToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
+            when (downloadToken.IsCancellationRequested && !globalCancellation.IsCancellationRequested)
         {
             var duration = attempt.GetElapsed(timeProvider);
             telemetry.RecordDownloadCanceled(download, duration);
@@ -70,6 +92,25 @@ public class HttpDownloader(
                 duration.TotalMilliseconds,
                 attempt.BytesTransferred);
             await lifecycle.MarkCanceledAsync(downloadId);
+        }
+        catch (OperationCanceledException ex)
+            when (overallTimeout.TimedOut && !globalCancellation.IsCancellationRequested)
+        {
+            var timeoutException = DownloadTimeoutException.Overall(options.Value.Timeouts.OverallTimeout, ex);
+            RecordFailure(download, attempt, DownloadFailureCategory.Timeout, DownloadTerminalOutcome.Failed, timeoutException);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                timeoutException.Message,
+                DownloadFailureCategory.Timeout);
+        }
+        catch (OperationCanceledException ex) when (!globalCancellation.IsCancellationRequested)
+        {
+            var timeoutException = DownloadTimeoutException.Unknown(ex);
+            RecordFailure(download, attempt, DownloadFailureCategory.Timeout, DownloadTerminalOutcome.Failed, timeoutException);
+            await lifecycle.MarkFailedAsync(
+                downloadId,
+                timeoutException.Message,
+                DownloadFailureCategory.Timeout);
         }
         catch (HttpRequestException ex) when (ex.StatusCode is { } statusCode)
         {
@@ -189,6 +230,7 @@ public class HttpDownloader(
         Guid downloadId,
         DownloadAttempt attempt,
         Activity? activity,
+        DownloadTimeoutScope overallTimeout,
         CancellationToken combinedToken)
     {
         var started = await lifecycle.MarkInProgressAsync(downloadId);
@@ -213,15 +255,12 @@ public class HttpDownloader(
             logger.LogDebug("Prepared staging path {StagingPath}", stagingPath);
 
             using var httpClient = httpClientFactory.CreateClient("DownloadClient");
-            httpClient.Timeout = TimeSpan.FromHours(2); // Long timeout for large files
+            httpClient.Timeout = Timeout.InfiniteTimeSpan;
 
             using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(download.Url));
             requestHeaderProvider.ApplyHeaders(request);
 
-            using var response = await httpClient.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                combinedToken);
+            using var response = await SendWithHeaderTimeout(httpClient, request, combinedToken);
 
             attempt.CaptureResponse(response);
 
@@ -283,6 +322,7 @@ public class HttpDownloader(
                 response,
                 attempt,
                 maxDownloadSizeBytes,
+                overallTimeout,
                 combinedToken);
             if (totalBytes >= 0 && bytesDownloaded != totalBytes)
             {
@@ -346,6 +386,7 @@ public class HttpDownloader(
         HttpResponseMessage response,
         DownloadAttempt attempt,
         long? maxDownloadSizeBytes,
+        DownloadTimeoutScope overallTimeout,
         CancellationToken combinedToken)
     {
         await using var contentStream = await response.Content.ReadAsStreamAsync(combinedToken);
@@ -360,7 +401,7 @@ public class HttpDownloader(
         var lastReportBytes = 0L;
 
         int bytesRead;
-        while ((bytesRead = await contentStream.ReadAsync(buffer, combinedToken)) > 0)
+        while ((bytesRead = await ReadWithIdleTimeout(contentStream, buffer, overallTimeout, combinedToken)) > 0)
         {
             if (maxDownloadSizeBytes is { } maxBytes && bytesDownloaded > maxBytes - bytesRead)
             {
@@ -408,6 +449,50 @@ public class HttpDownloader(
         }
 
         return (bytesDownloaded, startTime);
+    }
+
+    private async Task<HttpResponseMessage> SendWithHeaderTimeout(
+        HttpClient httpClient,
+        HttpRequestMessage request,
+        CancellationToken combinedToken)
+    {
+        using var headerTimeout = DownloadTimeoutScope.Start(timeProvider, options.Value.Timeouts.ResponseHeaderTimeout);
+        using var sendCts = CancellationTokenSource.CreateLinkedTokenSource(combinedToken, headerTimeout.Token);
+
+        try
+        {
+            return await httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                sendCts.Token);
+        }
+        catch (OperationCanceledException ex) when (headerTimeout.TimedOut && !combinedToken.IsCancellationRequested)
+        {
+            throw DownloadTimeoutException.ResponseHeaders(options.Value.Timeouts.ResponseHeaderTimeout, ex);
+        }
+    }
+
+    private async Task<int> ReadWithIdleTimeout(
+        Stream contentStream,
+        byte[] buffer,
+        DownloadTimeoutScope overallTimeout,
+        CancellationToken combinedToken)
+    {
+        using var idleTimeout = DownloadTimeoutScope.Start(timeProvider, options.Value.Timeouts.IdleTimeout);
+        using var readCts = CancellationTokenSource.CreateLinkedTokenSource(combinedToken, idleTimeout.Token);
+
+        try
+        {
+            return await contentStream.ReadAsync(buffer, readCts.Token);
+        }
+        catch (OperationCanceledException ex) when (idleTimeout.TimedOut && !combinedToken.IsCancellationRequested)
+        {
+            throw DownloadTimeoutException.Idle(options.Value.Timeouts.IdleTimeout, ex);
+        }
+        catch (OperationCanceledException ex) when (overallTimeout.TimedOut)
+        {
+            throw DownloadTimeoutException.Overall(options.Value.Timeouts.OverallTimeout, ex);
+        }
     }
 
 
@@ -616,5 +701,86 @@ public class HttpDownloader(
             HttpStatusCode = (int)response.StatusCode;
             ResponseContentType = response.Content.Headers.ContentType?.ToString();
         }
+    }
+
+    private sealed class DownloadTimeoutScope : IDisposable
+    {
+        private readonly CancellationTokenSource? _cts;
+        private readonly ITimer? _timer;
+        private int _timedOut;
+
+        private DownloadTimeoutScope(TimeProvider timeProvider, TimeSpan timeout)
+        {
+            if (!IsEnabled(timeout))
+            {
+                return;
+            }
+
+            _cts = new();
+            _timer = timeProvider.CreateTimer(
+                static state => ((DownloadTimeoutScope)state!).CancelForTimeout(),
+                this,
+                timeout,
+                Timeout.InfiniteTimeSpan);
+        }
+
+        public CancellationToken Token => _cts?.Token ?? CancellationToken.None;
+        public bool TimedOut => Volatile.Read(ref _timedOut) == 1;
+
+        public static DownloadTimeoutScope Start(TimeProvider timeProvider, TimeSpan timeout) => new(timeProvider, timeout);
+
+        public void Dispose()
+        {
+            _timer?.Dispose();
+            _cts?.Dispose();
+        }
+
+        private void CancelForTimeout()
+        {
+            if (Interlocked.Exchange(ref _timedOut, 1) == 1)
+            {
+                return;
+            }
+
+            try
+            {
+                _cts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        private static bool IsEnabled(TimeSpan timeout)
+        {
+            return timeout > TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan;
+        }
+    }
+
+    private sealed class DownloadTimeoutException : TimeoutException
+    {
+        public DownloadTimeoutException()
+        {
+        }
+
+        public DownloadTimeoutException(string message) : base(message)
+        {
+        }
+
+        public DownloadTimeoutException(string message, Exception? innerException) : base(message, innerException)
+        {
+        }
+
+        public static DownloadTimeoutException ResponseHeaders(TimeSpan timeout, Exception innerException) =>
+            new($"Download timed out while waiting for the response headers after {timeout}.", innerException);
+
+        public static DownloadTimeoutException Idle(TimeSpan timeout, Exception innerException) =>
+            new($"Download stalled: no bytes were received for {timeout}.", innerException);
+
+        public static DownloadTimeoutException Overall(TimeSpan timeout, Exception innerException) =>
+            new($"Download exceeded the overall timeout of {timeout}.", innerException);
+
+        public static DownloadTimeoutException Unknown(Exception innerException) =>
+            new("Download timed out before the HTTP transfer completed.", innerException);
     }
 }

@@ -8,5 +8,6 @@ public enum DownloadFailureCategory
     Validation,
     Filesystem,
     SizeLimit,
-    Authentication
+    Authentication,
+    Timeout
 }

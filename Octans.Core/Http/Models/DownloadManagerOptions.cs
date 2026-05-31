@@ -13,6 +13,18 @@ public class DownloadManagerOptions
     public DownloadContentTypeValidationOptions ContentTypeValidation { get; set; } = new();
     public DownloadHostCircuitBreakerOptions HostCircuitBreaker { get; set; } = new();
     public DownloadRequestHeaderOptions RequestHeaders { get; set; } = new();
+    public DownloadTimeoutOptions Timeouts { get; set; } = new();
+}
+
+/// <summary>
+/// Timeout settings for distinct phases of a durable HTTP download.
+/// </summary>
+public class DownloadTimeoutOptions
+{
+    public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan ResponseHeaderTimeout { get; set; } = TimeSpan.FromSeconds(10);
+    public TimeSpan OverallTimeout { get; set; } = TimeSpan.FromHours(2);
+    public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromMinutes(1);
 }
 
 /// <summary>
