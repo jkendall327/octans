@@ -54,6 +54,10 @@ builder.Services.AddDownloadManager(options =>
     options.SizeLimits.MaxBytes = 10L * 1024 * 1024 * 1024;
     options.ContentTypeValidation.AllowMissingContentType = true;
     options.ContentTypeValidation.AllowGenericContentType = true;
+    options.Timeouts.ConnectionTimeout = TimeSpan.FromSeconds(30);
+    options.Timeouts.ResponseHeaderTimeout = TimeSpan.FromSeconds(10);
+    options.Timeouts.OverallTimeout = TimeSpan.FromHours(2);
+    options.Timeouts.IdleTimeout = TimeSpan.FromMinutes(1);
 });
 ```
 
@@ -74,6 +78,12 @@ Downloads enforce `DownloadManagerOptions.SizeLimits.MaxBytes` before streaming
 known oversized responses and while streaming unknown or misreported response
 bodies. Domain and source-type entries can override the global cap for specific
 hosts or callers.
+
+Downloads use layered timeouts instead of one coarse `HttpClient.Timeout`.
+`ConnectionTimeout` is applied to connection establishment, `ResponseHeaderTimeout`
+covers the request through response headers, `OverallTimeout` covers the whole
+job, and `IdleTimeout` fails a body transfer only when no bytes arrive within
+the configured window.
 
 ## Components
 

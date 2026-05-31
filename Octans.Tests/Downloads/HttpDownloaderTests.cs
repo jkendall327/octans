@@ -219,9 +219,121 @@ public class HttpDownloaderTests
 
         await _lifecycle.Received(1).MarkInProgressAsync(downloadId);
         await _lifecycle.Received(1).MarkCanceledAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkFailedAsync(
+            downloadId,
+            Arg.Any<string>(),
+            DownloadFailureCategory.Timeout);
         await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
         Assert.False(_fileSystem.File.Exists(destinationPath));
         Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenResponseHeadersStall_MarksDownloadFailedWithTimeout()
+    {
+        var sut = CreateDownloader(new()
+        {
+            Timeouts = new()
+            {
+                ResponseHeaderTimeout = TimeSpan.FromSeconds(5),
+                OverallTimeout = TimeSpan.FromMinutes(5),
+                IdleTimeout = TimeSpan.FromMinutes(5)
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        _messageHandler.WaitForCancellation = true;
+
+        var downloadTask = sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await _messageHandler.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        _timeProvider.Advance(TimeSpan.FromSeconds(5));
+        await downloadTask;
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("response headers") && s.Contains("00:00:05")),
+            DownloadFailureCategory.Timeout);
+        await _lifecycle.DidNotReceive().MarkCanceledAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenBodyStalls_MarksDownloadFailedWithTimeout()
+    {
+        var sut = CreateDownloader(new()
+        {
+            Timeouts = new()
+            {
+                ResponseHeaderTimeout = TimeSpan.FromMinutes(5),
+                OverallTimeout = TimeSpan.FromMinutes(5),
+                IdleTimeout = TimeSpan.FromSeconds(5)
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var downloadTask = sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        _timeProvider.Advance(TimeSpan.FromSeconds(5));
+        await downloadTask;
+
+        await _lifecycle.Received(1).MarkFailedAsync(
+            downloadId,
+            Arg.Is<string>(s => s.Contains("stalled") && s.Contains("00:00:05")),
+            DownloadFailureCategory.Timeout);
+        await _lifecycle.DidNotReceive().MarkCanceledAsync(downloadId);
+        await _lifecycle.DidNotReceive().MarkCompletedAsync(downloadId);
+        Assert.False(_fileSystem.File.Exists(destinationPath));
+        Assert.False(_fileSystem.File.Exists(GetStagingPath(downloadId, destinationPath)));
+    }
+
+    [Fact]
+    public async Task ProcessDownloadAsync_WhenBodyKeepsProgressingWithinIdleTimeout_CompletesDownload()
+    {
+        var sut = CreateDownloader(new()
+        {
+            Timeouts = new()
+            {
+                ResponseHeaderTimeout = TimeSpan.FromMinutes(5),
+                OverallTimeout = TimeSpan.FromMinutes(5),
+                IdleTimeout = TimeSpan.FromSeconds(5)
+            }
+        });
+        var downloadId = Guid.NewGuid();
+        var destinationPath = "/downloads/test.txt";
+        var download = CreateDownload(downloadId, destinationPath);
+        var content = new PausingReadContent("hello");
+        _messageHandler.ResponseToReturn = new(HttpStatusCode.OK)
+        {
+            Content = content
+        };
+
+        var downloadTask = sut.ProcessDownloadAsync(download, _cts.Token);
+
+        await content.SecondReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        _timeProvider.Advance(TimeSpan.FromSeconds(4));
+        content.ReleaseSecondRead();
+        await downloadTask;
+
+        Assert.Equal("hello", await _fileSystem.File.ReadAllTextAsync(destinationPath));
+        await _lifecycle.Received(1).MarkCompletedAsync(
+            downloadId,
+            Arg.Is<DownloadTerminalUpdate>(update => update.Outcome == DownloadTerminalOutcome.Completed));
+        await _lifecycle.DidNotReceive().MarkFailedAsync(
+            downloadId,
+            Arg.Any<string>(),
+            DownloadFailureCategory.Timeout);
     }
 
     [Fact]

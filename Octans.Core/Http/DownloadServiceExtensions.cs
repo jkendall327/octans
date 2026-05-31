@@ -44,7 +44,17 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadQueue, DatabaseDownloadQueue>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DownloadBackgroundService>());
 
-        services.AddHttpClient("DownloadClient")
+        services.AddHttpClient("DownloadClient", client => client.Timeout = Timeout.InfiniteTimeSpan)
+            .ConfigurePrimaryHttpMessageHandler(provider =>
+            {
+                var downloadOptions = provider.GetRequiredService<IOptions<DownloadManagerOptions>>().Value;
+
+                return new SocketsHttpHandler
+                {
+                    ConnectTimeout = GetEnabledTimeout(downloadOptions.Timeouts.ConnectionTimeout) ??
+                                     Timeout.InfiniteTimeSpan
+                };
+            })
             .AddStandardResilienceHandler()
             .Configure(ConfigureDownloadResilience)
             .SelectPipelineBy(_ => request => request.RequestUri?.Host ?? "unknown-host");
@@ -58,11 +68,14 @@ public static class DownloadServiceExtensions
     {
         var downloadOptions = provider.GetRequiredService<IOptions<DownloadManagerOptions>>().Value;
         var breakerOptions = downloadOptions.HostCircuitBreaker;
+        var timeoutOptions = downloadOptions.Timeouts;
 
         resilienceOptions.Retry.MaxRetryAttempts = breakerOptions.MaxRetryAttempts;
         resilienceOptions.Retry.Delay = breakerOptions.RetryDelay;
         resilienceOptions.Retry.BackoffType = DelayBackoffType.Exponential;
         resilienceOptions.Retry.UseJitter = true;
+        resilienceOptions.TotalRequestTimeout.Timeout = timeoutOptions.OverallTimeout;
+        resilienceOptions.AttemptTimeout.Timeout = timeoutOptions.ResponseHeaderTimeout;
 
         var circuitRegistry = provider.GetRequiredService<IDownloadHostCircuitRegistry>();
         var telemetry = provider.GetRequiredService<DownloadTelemetry>();
@@ -77,7 +90,9 @@ public static class DownloadServiceExtensions
 
         resilienceOptions.CircuitBreaker.FailureRatio = breakerOptions.FailureRatio;
         resilienceOptions.CircuitBreaker.MinimumThroughput = breakerOptions.MinimumThroughput;
-        resilienceOptions.CircuitBreaker.SamplingDuration = breakerOptions.SamplingDuration;
+        resilienceOptions.CircuitBreaker.SamplingDuration = Max(
+            breakerOptions.SamplingDuration,
+            Double(timeoutOptions.ResponseHeaderTimeout));
         resilienceOptions.CircuitBreaker.BreakDuration = breakerOptions.BreakDuration;
         resilienceOptions.CircuitBreaker.OnOpened = args =>
         {
@@ -99,6 +114,25 @@ public static class DownloadServiceExtensions
 
             return default;
         };
+    }
+
+    private static TimeSpan? GetEnabledTimeout(TimeSpan timeout)
+    {
+        return timeout > TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan
+            ? timeout
+            : null;
+    }
+
+    private static TimeSpan Max(TimeSpan left, TimeSpan right)
+    {
+        return left >= right ? left : right;
+    }
+
+    private static TimeSpan Double(TimeSpan value)
+    {
+        return value >= TimeSpan.FromTicks(TimeSpan.MaxValue.Ticks / 2)
+            ? TimeSpan.MaxValue
+            : TimeSpan.FromTicks(value.Ticks * 2);
     }
 
     /// <summary>

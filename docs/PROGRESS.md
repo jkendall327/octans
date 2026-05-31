@@ -110,8 +110,9 @@ What exists now:
 - The named `DownloadClient` uses `Microsoft.Extensions.Http.Resilience` with exponential retry, jitter, and per-host circuit-breaker pipelines.
 - Host circuits feed back into queue selection so an unhealthy host does not block healthy hosts.
 - Request headers support default User-Agent, per-domain overrides, auth/cookie headers, required-header checks, wildcard domain matching, and a request fingerprint.
+- Download timeouts are layered: connection establishment, response headers, overall job duration, and idle/stall body reads are configured separately, with timeout failures distinct from user cancellation.
 - There is a real integration harness for the download manager using actual DI, queue/state/background/downloader services with the bottom HTTP edge faked.
-- Tests cover queue ordering/restoration, state transitions, pause/cancel/retry, terminal notifications, staging cleanup, HTTP failures, transient retry, host circuits, per-domain concurrency, bandwidth pacing, disk-space checks, content-type validation, size limits, hash validation, request headers, and credential failures.
+- Tests cover queue ordering/restoration, state transitions, pause/cancel/retry, terminal notifications, staging cleanup, HTTP failures, transient retry, host circuits, per-domain concurrency, bandwidth pacing, disk-space checks, content-type validation, size limits, hash validation, request headers, credential failures, response-header timeout, idle/stall timeout, and cancellation/timeout distinction.
 
 Known GitHub backlog:
 
@@ -119,7 +120,6 @@ Known GitHub backlog:
 - #183: make per-host connection pooling and concurrency limits explicit below the worker-level cap.
 - #185: support conditional re-fetching with ETag/Last-Modified and `304 Not Modified`.
 - #187: add structured metrics, not just structured logs.
-- #188: add layered timeouts, especially response-header and idle/stall timeouts.
 - #193: tracker for the hardening work; most child issues are closed, with the above still open.
 - #202: route `RawUrl` imports through the download-job subsystem instead of `SimpleImporter.GetByteArrayAsync`.
 - #203: move downloader discovery fetches behind a shared HTTP document/body-fetch abstraction.
@@ -131,7 +131,6 @@ Important current limitations:
 - The durable queue does not deduplicate identical in-flight requests yet. `RequestFingerprint` exists, but there is no coalescing model or multi-subscriber completion model.
 - Per-domain concurrency is enforced by the background worker, not by configured lower-level connection pooling or redirect-aware host accounting.
 - Conditional requests are not implemented. Response ETag/Last-Modified are persisted, but there is no first-class re-fetch request path or `NotModified` handling.
-- Timeout policy is still coarse. `HttpDownloader` sets a long overall `HttpClient.Timeout`; there are not distinct connection, header, overall, and idle/stall timeouts.
 - Redirect policy is mostly whatever the HTTP client/resilience stack does by default. There is no explicit redirect cap/loop/cross-domain policy in the download subsystem.
 - Observability is mostly logs and status rows. There is no metrics surface for per-host queue depth, active downloads, latency, bytes, retry counts, failure rates, or circuit state.
 - Feature-level continuation is still loose. A caller can poll results or provide an `IDownloadCompletionNotifier`, but there is not yet a polished bridge for workflows like "download then import this completed artifact".
