@@ -36,6 +36,7 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadDiskSpaceGuard, DownloadDiskSpaceGuard>();
         services.TryAddSingleton<IDownloadHostCircuitRegistry, DownloadHostCircuitRegistry>();
         services.TryAddSingleton<IDownloadRequestHeaderProvider, DownloadRequestHeaderProvider>();
+        services.TryAddSingleton<DownloadTelemetry>();
         services.TryAddSingleton<DownloadStagingPaths>();
         services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
         services.TryAddSingleton<HttpDownloader>();
@@ -64,6 +65,16 @@ public static class DownloadServiceExtensions
         resilienceOptions.Retry.UseJitter = true;
 
         var circuitRegistry = provider.GetRequiredService<IDownloadHostCircuitRegistry>();
+        var telemetry = provider.GetRequiredService<DownloadTelemetry>();
+
+        resilienceOptions.Retry.OnRetry = args =>
+        {
+            var domain = args.Context.GetRequestMessage()?.RequestUri?.Host;
+            telemetry.RecordRetry(domain, args.AttemptNumber, args.RetryDelay);
+
+            return default;
+        };
+
         resilienceOptions.CircuitBreaker.FailureRatio = breakerOptions.FailureRatio;
         resilienceOptions.CircuitBreaker.MinimumThroughput = breakerOptions.MinimumThroughput;
         resilienceOptions.CircuitBreaker.SamplingDuration = breakerOptions.SamplingDuration;

@@ -250,8 +250,7 @@ public class DownloadStatusTracker(
         using var scope = logger.BeginScope(new Dictionary<string, object?>
         {
             ["DownloadId"] = status.Id,
-            ["Url"] = status.Url,
-            ["Domain"] = status.Domain
+            ["OriginalHost"] = status.Domain
         });
 
         await using var db = await contextFactory.CreateDbContextAsync();

@@ -19,7 +19,8 @@ public interface IDownloadHostCircuitRegistry
 /// </summary>
 public sealed class DownloadHostCircuitRegistry(
     TimeProvider timeProvider,
-    ILogger<DownloadHostCircuitRegistry> logger) : IDownloadHostCircuitRegistry
+    ILogger<DownloadHostCircuitRegistry> logger,
+    DownloadTelemetry telemetry) : IDownloadHostCircuitRegistry
 {
     private readonly Lock _lock = new();
     private readonly Dictionary<string, DateTimeOffset> _openUntilByDomain = new(StringComparer.OrdinalIgnoreCase);
@@ -68,6 +69,7 @@ public sealed class DownloadHostCircuitRegistry(
             _openUntilByDomain[normalizedDomain] = openUntil;
         }
 
+        telemetry.RecordCircuitOpened(normalizedDomain, breakDuration);
         logger.LogWarning("Opened download host circuit for {Domain} until {OpenUntil}", normalizedDomain, openUntil);
     }
 
@@ -85,6 +87,7 @@ public sealed class DownloadHostCircuitRegistry(
             _openUntilByDomain.Remove(normalizedDomain);
         }
 
+        telemetry.RecordCircuitClosed(normalizedDomain);
         logger.LogInformation("Closed download host circuit for {Domain}", normalizedDomain);
     }
 

@@ -23,6 +23,7 @@ public class HttpDownloaderTests
     private readonly IDownloadHostCircuitRegistry _hostCircuitRegistry = Substitute.For<IDownloadHostCircuitRegistry>();
     private readonly MockFileSystem _fileSystem = new();
     private readonly FakeTimeProvider _timeProvider = new();
+    private readonly DownloadTelemetry _telemetry = new();
     private readonly HttpDownloader _sut;
     private readonly CancellationTokenSource _cts = new();
     private readonly TestHttpMessageHandler _messageHandler = new();
@@ -65,6 +66,7 @@ public class HttpDownloaderTests
             new DownloadStagingPaths(_fileSystem),
             _timeProvider,
             Options.Create(options ?? new DownloadManagerOptions()),
+            _telemetry,
             NullLogger<HttpDownloader>.Instance);
     }
 
