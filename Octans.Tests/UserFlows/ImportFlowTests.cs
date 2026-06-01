@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Channels;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
+using Octans.Core.Repositories;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
@@ -34,20 +36,126 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
     {
         await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
+        var imported = await ImportLocalImage(
+            factory,
+            client,
+            "library-spine.jpg",
+            TestingConstants.MinimalJpeg,
+            [new("series", "octans smoke test")]);
+
+        var job = await client.GetFromJsonAsync<ImportJobDto>(
+            new Uri($"/import-jobs/{imported.Created.JobId}", UriKind.Relative),
+            JsonOptions);
+        var inboxResults = await Query(client, InboxQuery);
+        var detailsResponse = await client.GetAsync(
+            new Uri($"/media/{imported.Hash.Hex}/details", UriKind.Relative));
+        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
+        var mediaResponse = await client.GetAsync(new Uri($"/media/{imported.Hash.Hex}", UriKind.Relative));
+        var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
+
+        using var _ = new AssertionScope();
+
+        imported.CreateResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        imported.CreateResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{imported.Created.JobId}");
+        imported.ProcessedJob.Should().BeTrue("the real import processor should pick up the queued API-created job");
+
+        job.Should().NotBeNull();
+        job!.Status.Should().Be("Completed");
+        job.TotalItems.Should().Be(1);
+        job.ProcessedItems.Should().Be(1);
+        job.FailedItems.Should().Be(0);
+        job.Items.Should().ContainSingle();
+        job.Items.Single().Status.Should().Be("Completed");
+        job.Items.Single().Source.Should().Be(imported.Source);
+
+        inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+
+        detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        details.Should().NotBeNull();
+        details!.Hash.Should().Be(imported.Hash.Hex);
+        details.Repository.Should().Be(RepositoryType.Inbox);
+        details.Extension.Should().Be("jpg");
+        details.ContentType.Should().Be("image/jpeg");
+        details.MediaUrl.Should().Be($"/media/{imported.Hash.Hex}");
+        details.Tags.Should().ContainSingle(tag =>
+            tag.Namespace == "series" && tag.Subtag == "octans smoke test");
+        details.Notes.Should().BeEmpty();
+
+        mediaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        mediaResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
+        mediaBytes.Should().Equal(TestingConstants.MinimalJpeg);
+    }
+
+    [Fact]
+    public async Task UserCan_MoveImportedMediaThroughInboxArchiveAndTrash_AndSearchReflectsLifecycle()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        var imported = await ImportLocalImage(
+            factory,
+            client,
+            "repository-lifecycle.jpg",
+            TestingConstants.MinimalJpeg,
+            []);
+
+        var inboxResults = await Query(client, InboxQuery);
+        var defaultResultsBeforeTrash = await Query(client, []);
+
+        await TransitionRepository(client, factory, imported.Hash.Hex, RepositoryDestination.Archive);
+
+        var inboxResultsAfterArchive = await Query(client, InboxQuery);
+        var archiveResults = await Query(client, ["system:archive"]);
+        var archivedDetails = await GetMediaDetails(client, imported.Hash.Hex);
+
+        await TransitionRepository(client, factory, imported.Hash.Hex, RepositoryDestination.Trash);
+
+        var defaultResultsAfterTrash = await Query(client, []);
+        var trashResults = await Query(client, ["system:trash"]);
+        var trashedDetails = await GetMediaDetails(client, imported.Hash.Hex);
+
+        using var _ = new AssertionScope();
+
+        imported.ProcessedJob.Should().BeTrue("the lifecycle starts from a real completed import");
+        inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        defaultResultsBeforeTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        defaultResultsBeforeTrash.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+
+        inboxResultsAfterArchive.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        inboxResultsAfterArchive.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        archiveResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        archiveResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        archivedDetails.Repository.Should().Be(RepositoryType.Archive);
+
+        defaultResultsAfterTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        defaultResultsAfterTrash.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        trashResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        trashResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        trashedDetails.Repository.Should().Be(RepositoryType.Trash);
+    }
+
+    private static async Task<ImportedImage> ImportLocalImage(
+        OctansApiFactory factory,
+        HttpClient client,
+        string fileName,
+        byte[] bytes,
+        ICollection<TagModel> tags)
+    {
         var imageStorage = factory.Services.GetRequiredService<ImageStorage>();
         imageStorage.EnsureStorage();
 
-        var source = factory.FileSystem.Path.Join(factory.AppRoot, "imports", "library-spine.jpg");
-        factory.FileSystem.AddFile(source, new(TestingConstants.MinimalJpeg));
+        var source = factory.FileSystem.Path.Join(factory.AppRoot, "imports", fileName);
+        factory.FileSystem.AddFile(source, new(bytes));
 
-        var hash = ContentHash.FromContent(TestingConstants.MinimalJpeg);
+        var hash = ContentHash.FromContent(bytes);
         var request = new ImportJobCreateRequest
         {
             ImportType = ImportType.File,
             Sources = [source],
             TagsBySource = new Dictionary<string, ICollection<TagModel>>
             {
-                [source] = [new("series", "octans smoke test")]
+                [source] = tags
             }
         };
 
@@ -62,50 +170,56 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             NullLogger<ImportProcessorService>.Instance);
         var processedJob = await processor.ProcessQueuedJob();
 
-        var job = await client.GetFromJsonAsync<ImportJobDto>(
-            new Uri($"/import-jobs/{created!.JobId}", UriKind.Relative),
-            JsonOptions);
-        var queryResponse = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            InboxQuery,
-            JsonOptions);
-        var inboxResults = await queryResponse.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions);
-        var detailsResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}/details", UriKind.Relative));
-        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
-        var mediaResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}", UriKind.Relative));
-        var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
-
-        using var _ = new AssertionScope();
-
-        createResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        createResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{created.JobId}");
-        processedJob.Should().BeTrue("the real import processor should pick up the queued API-created job");
-
-        job.Should().NotBeNull();
-        job!.Status.Should().Be("Completed");
-        job.TotalItems.Should().Be(1);
-        job.ProcessedItems.Should().Be(1);
-        job.FailedItems.Should().Be(0);
-        job.Items.Should().ContainSingle();
-        job.Items.Single().Status.Should().Be("Completed");
-        job.Items.Single().Source.Should().Be(source);
-
-        queryResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        inboxResults.Should().ContainSingle(item => item.Hash.SequenceEqual(hash.Bytes));
-
-        detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        details.Should().NotBeNull();
-        details!.Hash.Should().Be(hash.Hex);
-        details.Repository.Should().Be(RepositoryType.Inbox);
-        details.Extension.Should().Be("jpg");
-        details.ContentType.Should().Be("image/jpeg");
-        details.MediaUrl.Should().Be($"/media/{hash.Hex}");
-        details.Tags.Should().ContainSingle(tag =>
-            tag.Namespace == "series" && tag.Subtag == "octans smoke test");
-        details.Notes.Should().BeEmpty();
-
-        mediaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        mediaResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
-        mediaBytes.Should().Equal(TestingConstants.MinimalJpeg);
+        return new(source, hash, createResponse, created!, processedJob);
     }
+
+    private static async Task<QueryResult> Query(HttpClient client, string[] query)
+    {
+        var response = await client.PostAsJsonAsync(
+            new Uri("/files/query", UriKind.Relative),
+            query,
+            JsonOptions);
+
+        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions);
+
+        return new(response, items ?? []);
+    }
+
+    private static async Task<MediaDetailsDto> GetMediaDetails(HttpClient client, string hash)
+    {
+        var response = await client.GetAsync(new Uri($"/media/{hash}/details", UriKind.Relative));
+        var details = await response.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        return details!;
+    }
+
+    private static async Task TransitionRepository(
+        HttpClient client,
+        OctansApiFactory factory,
+        string hash,
+        RepositoryDestination destination)
+    {
+        var response = await client.PostAsJsonAsync(
+            new Uri("/repository/transitions", UriKind.Relative),
+            new RepositoryTransitionRequest([hash], destination),
+            JsonOptions);
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+
+        var reader = factory.Services.GetRequiredService<ChannelReader<RepositoryChangeRequest>>();
+        var request = await reader.ReadAsync();
+        var processor = factory.Services.GetRequiredService<RepositoryChangeProcessor>();
+
+        await processor.ProcessBatch([request]);
+    }
+
+    private sealed record ImportedImage(
+        string Source,
+        ContentHash Hash,
+        HttpResponseMessage CreateResponse,
+        ImportJobCreatedDto Created,
+        bool ProcessedJob);
+
+    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<HashItem> Items);
 }
