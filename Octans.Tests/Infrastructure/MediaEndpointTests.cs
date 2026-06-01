@@ -15,7 +15,7 @@ public sealed class MediaEndpointTests(ITestOutputHelper output)
     [Fact]
     public async Task GetMedia_ShouldReturnStoredBytesForHash()
     {
-        using var factory = new OctansApiFactory(output);
+        await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
 
         var stored = await AddStoredImageAsync(factory, TestingConstants.MinimalJpeg);
@@ -35,7 +35,7 @@ public sealed class MediaEndpointTests(ITestOutputHelper output)
     [Fact]
     public async Task GetMedia_ShouldReturnNotFound_WhenStoredFileIsMissing()
     {
-        using var factory = new OctansApiFactory(output);
+        await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
         var hash = ContentHash.FromContent(TestingConstants.MinimalJpeg);
 
