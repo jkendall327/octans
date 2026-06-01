@@ -15,68 +15,95 @@ namespace Octans.Tests.UserFlows;
 public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 {
     [Fact]
-    public async Task UserCan_SearchWithDocumentedCoreQuerySemantics_ThroughTheFilesQueryApi()
+    public async Task ExactTags_ReturnEveryMatchingNonTrashFile()
+    {
+        await AssertQueryReturns(
+            ["character:samus"],
+            ["samus-metroid-inbox", "samus-smash-archive"]);
+    }
+
+    [Fact]
+    public async Task MultiplePositiveTags_AreStrictAndFilters()
+    {
+        await AssertQueryReturns(
+            ["character:samus", "series:metroid"],
+            ["samus-metroid-inbox"]);
+    }
+
+    [Fact]
+    public async Task EmptySearch_UsesNormalNonTrashLibraryScope()
+    {
+        await AssertQueryReturns(
+            [],
+            ["samus-metroid-inbox", "ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task SystemEverything_UsesNormalNonTrashLibraryScope()
+    {
+        await AssertQueryReturns(
+            ["system:everything"],
+            ["samus-metroid-inbox", "ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task SystemInbox_ReturnsInboxMediaOnly()
+    {
+        await AssertQueryReturns(
+            ["system:inbox"],
+            ["samus-metroid-inbox", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task SystemArchive_ReturnsArchivedMediaOnly()
+    {
+        await AssertQueryReturns(
+            ["system:archive"],
+            ["ridley-metroid-archive", "samus-smash-archive"]);
+    }
+
+    [Fact]
+    public async Task SystemTrash_ReturnsTrashedMediaOnly()
+    {
+        await AssertQueryReturns(
+            ["system:trash"],
+            ["bowser-trash"]);
+    }
+
+    [Fact]
+    public async Task DefaultSearch_ExcludesTrashEvenWhenTrashedFileHasMatchingTag()
+    {
+        await AssertQueryReturns(
+            ["series:mario"],
+            []);
+    }
+
+    [Fact]
+    public async Task ExplicitTrashSearch_CanBeCombinedWithOrdinaryTagPredicate()
+    {
+        await AssertQueryReturns(
+            ["system:trash", "series:mario"],
+            ["bowser-trash"]);
+    }
+
+    private async Task AssertQueryReturns(string[] query, string[] expectedNames)
     {
         await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
 
         var library = await SeedLibrary(factory);
+        var queryResult = await OctansApiFactory.QueryAsync(client, query);
+        var countResult = await OctansApiFactory.CountQueryAsync(client, query);
+        var expectedHashes = expectedNames
+            .Select(name => library[name].Hash.Hex)
+            .ToArray();
 
-        var expectations = new QueryExpectation[]
-        {
-            new(
-                "Exact tags return every matching non-trash file",
-                ["character:samus"],
-                ["samus-metroid-inbox", "samus-smash-archive"]),
-            new(
-                "Multiple positive tag predicates are strict AND filters",
-                ["character:samus", "series:metroid"],
-                ["samus-metroid-inbox"]),
-            new(
-                "Empty search uses the normal non-trash library scope",
-                [],
-                ["samus-metroid-inbox", "ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]),
-            new(
-                "system:everything uses the same normal non-trash library scope",
-                ["system:everything"],
-                ["samus-metroid-inbox", "ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]),
-            new(
-                "system:inbox returns inbox media only",
-                ["system:inbox"],
-                ["samus-metroid-inbox", "mario-kart-inbox"]),
-            new(
-                "system:archive returns archived media only",
-                ["system:archive"],
-                ["ridley-metroid-archive", "samus-smash-archive"]),
-            new(
-                "system:trash returns trashed media only",
-                ["system:trash"],
-                ["bowser-trash"]),
-            new(
-                "Default search excludes trash even when a trashed file has the matching tag",
-                ["series:mario"],
-                []),
-            new(
-                "Explicit trash search can be combined with an ordinary tag predicate",
-                ["system:trash", "series:mario"],
-                ["bowser-trash"])
-        };
+        using var _ = new AssertionScope();
 
-        foreach (var expectation in expectations)
-        {
-            var queryResult = await OctansApiFactory.QueryAsync(client, expectation.Query);
-            var countResult = await OctansApiFactory.CountQueryAsync(client, expectation.Query);
-            var expectedHashes = expectation.ExpectedNames
-                .Select(name => library[name].Hash.Hex)
-                .ToArray();
-
-            using var _ = new AssertionScope(expectation.Description);
-
-            queryResult.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            countResult.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            queryResult.Hashes.Should().BeEquivalentTo(expectedHashes);
-            countResult.Count.Should().Be(expectedHashes.Length);
-        }
+        queryResult.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        countResult.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+        queryResult.Hashes.Should().BeEquivalentTo(expectedHashes);
+        countResult.Count.Should().Be(expectedHashes.Length);
     }
 
     private static async Task<IReadOnlyDictionary<string, SeededMedia>> SeedLibrary(OctansApiFactory factory)
@@ -147,11 +174,6 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 
         return new(name, hash, bytes, repository, tags);
     }
-
-    private sealed record QueryExpectation(
-        string Description,
-        string[] Query,
-        string[] ExpectedNames);
 
     private readonly record struct SeededMedia(
         string Name,
