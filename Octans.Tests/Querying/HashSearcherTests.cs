@@ -224,6 +224,20 @@ public class HashSearcherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExcludesDeletedHashes()
+    {
+        var item = CreateHashItem(1);
+        item.DeletedAt = TestClock.UtcNow;
+        _db.Hashes.Add(item);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery();
+        var results = await _sut.Search(request);
+
+        results.Should().NotContain(i => i.Id == item.Id);
+    }
+
+    [Fact]
     public async Task IncludesTrash_WhenTrashFilterSpecified()
     {
         var item = CreateHashItem(1);

@@ -41,7 +41,9 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
 
     private async Task<IQueryable<HashItem>> BuildQuery(DecomposedQuery request, CancellationToken cancellationToken)
     {
-        var query = context.Hashes.AsQueryable();
+        var query = context.Hashes
+            .Where(h => h.DeletedAt == null)
+            .AsQueryable();
 
         if (ShouldStartFromAllHashes(request))
         {
