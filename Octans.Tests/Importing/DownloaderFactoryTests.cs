@@ -199,18 +199,66 @@ public class DownloaderFactoryTests
     }
 
     [Fact]
+    public async Task ResolveAsync_ShouldResolvePostUrlWithDocumentFetcher()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "parser", new("""
+                                               function parse_html(content)
+                                                   if content == 'post html' then
+                                                       return { 'https://example.com/image.jpg' }
+                                                   end
+                                                   return {}
+                                               end
+                                               """));
+
+        var service = CreateService(CreateDocumentFetcher("post html"));
+
+        var urls = await service.ResolveAsync(new("https://example.com/post/1"));
+
+        urls.Should().Equal(new Uri("https://example.com/image.jpg"));
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldResolveGalleryUrlWithDocumentFetcher()
+    {
+        var subdir = _downloaders.CreateSubdirectory("first");
+        AddFileToSubdir(subdir, "classifier", new("""
+                                                   function match_url(url) return true end
+                                                   function classify_url(url) return 'gallery' end
+                                                   """));
+        AddFileToSubdir(subdir, "gug", new("function generate_url(url, page) return 'https://example.com/gallery?page=' .. page end"));
+        AddFileToSubdir(subdir, "parser", new("""
+                                               function parse_html(content)
+                                                   if content == 'gallery html' then
+                                                       return { 'https://example.com/gallery-image.jpg' }
+                                                   end
+                                                   return {}
+                                               end
+                                               """));
+
+        var documentFetcher = Substitute.For<IHttpDocumentFetcher>();
+        documentFetcher
+            .GetStringAsync(new Uri("https://example.com/gallery/1"), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("landing html"));
+        documentFetcher
+            .GetStringAsync(new Uri("https://example.com/gallery?page=0"), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult("gallery html"));
+        var service = CreateService(documentFetcher);
+
+        var urls = await service.ResolveAsync(new("https://example.com/gallery/1"));
+
+        urls.Should().Equal(new Uri("https://example.com/gallery-image.jpg"));
+    }
+
+    [Fact]
     public async Task ResolveAsync_ShouldSkipDownloaderWhenParserReturnsNonHttpUrls()
     {
         var subdir = _downloaders.CreateSubdirectory("first");
         AddFileToSubdir(subdir, "classifier", _classifier);
         AddFileToSubdir(subdir, "parser", new("function parse_html(content) return { 'file:///tmp/image.jpg' } end"));
 
-        var clientFactory = Substitute.For<IHttpClientFactory>();
-        using var httpClient = new HttpClient(new StaticHttpMessageHandler("<html></html>"));
-        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
-
-        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = CreateService(clientFactory, headerProvider);
+        var service = CreateService(CreateDocumentFetcher("<html></html>"));
 
         var urls = await service.ResolveAsync(new("https://example.com/post/1"));
 
@@ -247,12 +295,7 @@ public class DownloaderFactoryTests
         AddFileToSubdir(working, "classifier", _classifier);
         AddFileToSubdir(working, "parser", _parser);
 
-        var clientFactory = Substitute.For<IHttpClientFactory>();
-        using var httpClient = new HttpClient(new StaticHttpMessageHandler("<html></html>"));
-        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
-
-        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = CreateService(clientFactory, headerProvider);
+        var service = CreateService(CreateDocumentFetcher("<html></html>"));
 
         var urls = await service.ResolveAsync(new("https://example.com/post/1"));
 
@@ -260,18 +303,17 @@ public class DownloaderFactoryTests
     }
 
     [Fact]
-    public async Task ResolveAsync_ShouldRejectResponsesLargerThanConfiguredLimit()
+    public async Task ResolveAsync_ShouldSkipDownloaderWhenDocumentFetchFails()
     {
         var subdir = _downloaders.CreateSubdirectory("first");
         AddFileToSubdir(subdir, "classifier", _classifier);
         AddFileToSubdir(subdir, "parser", _parser);
 
-        var clientFactory = Substitute.For<IHttpClientFactory>();
-        using var httpClient = new HttpClient(new StaticHttpMessageHandler("too large"));
-        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
-
-        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = CreateService(clientFactory, headerProvider, new() { MaxResponseBytes = 4 });
+        var documentFetcher = Substitute.For<IHttpDocumentFetcher>();
+        documentFetcher
+            .GetStringAsync(Arg.Any<Uri>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new HttpDocumentFetchException("too large")));
+        var service = CreateService(documentFetcher);
 
         var urls = await service.ResolveAsync(new("https://example.com/post/1"));
 
@@ -285,17 +327,12 @@ public class DownloaderFactoryTests
         AddFileToSubdir(subdir, "classifier", _classifier);
         AddFileToSubdir(subdir, "parser", _parser);
 
-        var handler = new CancellableHttpMessageHandler();
-        var clientFactory = Substitute.For<IHttpClientFactory>();
-        using var httpClient = new HttpClient(handler);
-        clientFactory.CreateClient("DownloadClient").Returns(httpClient);
-
-        var headerProvider = Substitute.For<IDownloadRequestHeaderProvider>();
-        var service = CreateService(clientFactory, headerProvider);
+        var documentFetcher = new CancellableDocumentFetcher();
+        var service = CreateService(documentFetcher);
         using var cts = new CancellationTokenSource();
 
         var resolveTask = service.ResolveAsync(new("https://example.com/post/1"), cts.Token);
-        await handler.WaitUntilStarted();
+        await documentFetcher.WaitUntilStarted();
 
         await cts.CancelAsync();
 
@@ -308,15 +345,37 @@ public class DownloaderFactoryTests
         _fileSystem.AddFile(dir.FullName + $"/{filename}.lua", data);
     }
 
+    private static IHttpDocumentFetcher CreateDocumentFetcher(string content)
+    {
+        var documentFetcher = Substitute.For<IHttpDocumentFetcher>();
+        documentFetcher
+            .GetStringAsync(Arg.Any<Uri>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(content));
+
+        return documentFetcher;
+    }
+
     private DownloaderService CreateService(
-        IHttpClientFactory clientFactory,
-        IDownloadRequestHeaderProvider headerProvider,
+        IHttpDocumentFetcher? documentFetcher = null,
         DownloaderResolverOptions? resolverOptions = null) =>
         new(
-            clientFactory,
             _sut,
-            headerProvider,
+            documentFetcher ?? CreateDocumentFetcher("<html></html>"),
             Options.Create(resolverOptions ?? new DownloaderResolverOptions()),
             NullLogger<DownloaderService>.Instance);
 
+    private sealed class CancellableDocumentFetcher : IHttpDocumentFetcher
+    {
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task WaitUntilStarted() => _started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        public async Task<string> GetStringAsync(Uri uri, CancellationToken cancellationToken = default)
+        {
+            _started.SetResult();
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+
+            return "<html></html>";
+        }
+    }
 }

@@ -37,6 +37,8 @@ public static class DownloadServiceExtensions
         services.TryAddSingleton<IDownloadDiskSpaceGuard, DownloadDiskSpaceGuard>();
         services.TryAddSingleton<IDownloadHostCircuitRegistry, DownloadHostCircuitRegistry>();
         services.TryAddSingleton<IDownloadRequestHeaderProvider, DownloadRequestHeaderProvider>();
+        services.AddOptions<HttpDocumentFetcherOptions>();
+        services.TryAddSingleton<IHttpDocumentFetcher, HttpDocumentFetcher>();
         services.TryAddSingleton<DownloadTelemetry>();
         services.TryAddSingleton<DownloadStagingPaths>();
         services.TryAddSingleton<IDownloadLifecycleService, DownloadLifecycleService>();
