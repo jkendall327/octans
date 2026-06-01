@@ -11,45 +11,14 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
 {
     public async Task<int> CountAsync(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
-        IQueryable<HashItem> query;
-
-        if (ShouldStartFromAllHashes(request))
-        {
-            query = context.Hashes.AsQueryable();
-        }
-        else
-        {
-            var matchingIds = await GetMatchingTagIds(request, cancellationToken);
-            query = context.Mappings
-                .Where(m => matchingIds.Contains(m.Tag.Id))
-                .Select(m => m.Hash)
-                .Distinct();
-        }
-
-        query = ApplyRepositoryFilter(query, request);
+        var query = await BuildQuery(request, cancellationToken);
 
         return await query.CountAsync(cancellationToken);
     }
 
     public async Task<HashSet<HashItem>> Search(DecomposedQuery request, CancellationToken cancellationToken = default)
     {
-        IQueryable<HashItem> query;
-
-        if (ShouldStartFromAllHashes(request))
-        {
-            query = context.Hashes.AsQueryable();
-        }
-        else
-        {
-            var matchingIds = await GetMatchingTagIds(request, cancellationToken);
-            query = context.Mappings
-                .Where(m => matchingIds.Contains(m.Tag.Id))
-                .Include(m => m.Hash)
-                .Select(m => m.Hash)
-                .Distinct();
-        }
-
-        query = ApplyRepositoryFilter(query, request);
+        var query = await BuildQuery(request, cancellationToken);
 
         if (request.Offset > 0)
         {
@@ -68,6 +37,35 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
         var hashes = await query.ToListAsync(cancellationToken);
 
         return hashes.ToHashSet();
+    }
+
+    private async Task<IQueryable<HashItem>> BuildQuery(DecomposedQuery request, CancellationToken cancellationToken)
+    {
+        var query = context.Hashes.AsQueryable();
+
+        if (ShouldStartFromAllHashes(request))
+        {
+            return ApplyRepositoryFilter(query, request);
+        }
+
+        var requiredTagIdGroups = await GetRequiredTagIdGroups(request, cancellationToken);
+
+        if (requiredTagIdGroups.Count == 0 || requiredTagIdGroups.Any(g => g.Count == 0))
+        {
+            query = query.Where(_ => false);
+        }
+        else
+        {
+            foreach (var tagIds in requiredTagIdGroups)
+            {
+                var requiredTagIds = tagIds.ToList();
+
+                query = query.Where(hash => context.Mappings
+                    .Any(mapping => mapping.Hash.Id == hash.Id && requiredTagIds.Contains(mapping.Tag.Id)));
+            }
+        }
+
+        return ApplyRepositoryFilter(query, request);
     }
 
     private static IQueryable<HashItem> ApplyRepositoryFilter(IQueryable<HashItem> query, DecomposedQuery request)
@@ -108,59 +106,73 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
                && request.RepositoryFilters.Any();
     }
 
-    private async Task<List<int>> GetMatchingTagIds(DecomposedQuery request, CancellationToken cancellationToken)
+    private async Task<List<HashSet<int>>> GetRequiredTagIdGroups(DecomposedQuery request, CancellationToken cancellationToken)
     {
-        // 1. Get IDs of directly included tags
-        var includeIds = new HashSet<int>();
+        var includeGroups = new List<HashSet<int>>();
+
         foreach (var tag in request.TagsToInclude)
         {
             var ns = tag.Namespace ?? string.Empty;
             var sub = tag.Subtag;
 
+            var includeIds = await context.Tags
+                .Where(t => t.Namespace.Value == ns && t.Subtag.Value == sub)
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+
+            var expandedIds = includeIds.ToHashSet();
+
+            if (expandedIds.Any())
+            {
+                var descendantIds = await tagParentService.GetDescendantIdsAsync(expandedIds, cancellationToken);
+                expandedIds.UnionWith(descendantIds);
+            }
+
+            includeGroups.Add(expandedIds);
+        }
+
+        foreach (var @namespace in request.WildcardNamespacesToInclude)
+        {
+            var includeIds = await context.Tags
+                .Where(t => t.Namespace.Value == @namespace)
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+
+            includeGroups.Add(includeIds.ToHashSet());
+        }
+
+        if (request.TagsToExclude.Any())
+        {
+            var excludeIds = await GetExcludedTagIds(request, cancellationToken);
+
+            foreach (var includeIds in includeGroups)
+            {
+                includeIds.ExceptWith(excludeIds);
+            }
+        }
+
+        return includeGroups;
+    }
+
+    private async Task<HashSet<int>> GetExcludedTagIds(DecomposedQuery request, CancellationToken cancellationToken)
+    {
+        var excludeIds = new HashSet<int>();
+
+        foreach (var tag in request.TagsToExclude)
+        {
+            var ns = tag.Namespace ?? string.Empty;
+            var sub = tag.Subtag;
             var ids = await context.Tags
                 .Where(t => t.Namespace.Value == ns && t.Subtag.Value == sub)
                 .Select(t => t.Id)
                 .ToListAsync(cancellationToken);
 
-            foreach (var id in ids) includeIds.Add(id);
-        }
-
-        // 2. Handle wildcard namespaces
-        if (request.WildcardNamespacesToInclude.Any())
-        {
-            var wildcardIds = await context.Tags
-                .Where(t => request.WildcardNamespacesToInclude.Contains(t.Namespace.Value))
-                .Select(t => t.Id)
-                .ToListAsync(cancellationToken);
-
-            foreach (var id in wildcardIds) includeIds.Add(id);
-        }
-
-        // 3. Expand with descendants
-        if (includeIds.Any())
-        {
-            var descendantIds = await tagParentService.GetDescendantIdsAsync(includeIds, cancellationToken);
-            includeIds.UnionWith(descendantIds);
-        }
-
-        // 4. Handle Excludes
-        if (request.TagsToExclude.Any())
-        {
-            var excludeIds = new HashSet<int>();
-            foreach (var tag in request.TagsToExclude)
+            foreach (var id in ids)
             {
-                var ns = tag.Namespace ?? string.Empty;
-                var sub = tag.Subtag;
-                var ids = await context.Tags
-                   .Where(t => t.Namespace.Value == ns && t.Subtag.Value == sub)
-                   .Select(t => t.Id)
-                   .ToListAsync(cancellationToken);
-                foreach (var id in ids) excludeIds.Add(id);
+                excludeIds.Add(id);
             }
-
-            includeIds.ExceptWith(excludeIds);
         }
 
-        return includeIds.ToList();
+        return excludeIds;
     }
 }

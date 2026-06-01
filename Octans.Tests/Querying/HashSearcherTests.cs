@@ -104,6 +104,27 @@ public class HashSearcherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FindsHashes_WithEveryExactMatch_WhenMultipleExactTagsUsed()
+    {
+        await SeedData();
+
+        var items = await GetItems(3);
+        var expected = items[0];
+
+        await AddMappings("character", "samus", items[0], items[2]);
+        await AddMappings("series", "metroid", items[0], items[1]);
+
+        var request = new DecomposedQuery
+        {
+            TagsToInclude = [new("character", "samus"), new("series", "metroid")]
+        };
+
+        var results = await _sut.Search(request);
+
+        results.Should().BeEquivalentTo([expected], "every positive tag predicate must match");
+    }
+
+    [Fact]
     public async Task CountAsync_ReturnsCorrectCount_WhenExactTagUsed()
     {
         await SeedData();
