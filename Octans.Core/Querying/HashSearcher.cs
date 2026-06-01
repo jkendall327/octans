@@ -13,7 +13,7 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
     {
         IQueryable<HashItem> query;
 
-        if (request.IsEmpty() || request.SystemPredicates.OfType<EverythingPredicate>().Any())
+        if (ShouldStartFromAllHashes(request))
         {
             query = context.Hashes.AsQueryable();
         }
@@ -35,7 +35,7 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
     {
         IQueryable<HashItem> query;
 
-        if (request.IsEmpty() || request.SystemPredicates.OfType<EverythingPredicate>().Any())
+        if (ShouldStartFromAllHashes(request))
         {
             query = context.Hashes.AsQueryable();
         }
@@ -88,6 +88,24 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
         }
 
         return query;
+    }
+
+    private static bool ShouldStartFromAllHashes(DecomposedQuery request)
+    {
+        if (request.IsEmpty() || request.SystemPredicates.OfType<EverythingPredicate>().Any())
+        {
+            return true;
+        }
+
+        return !request.TagsToInclude.Any()
+               && !request.TagsToExclude.Any()
+               && !request.WildcardNamespacesToInclude.Any()
+               && !request.WildcardNamespacesToExclude.Any()
+               && !request.WildcardSubtagsToInclude.Any()
+               && !request.WildcardSubtagsToExclude.Any()
+               && !request.WildcardDoublesToInclude.Any()
+               && !request.WildcardDoublesToExclude.Any()
+               && request.RepositoryFilters.Any();
     }
 
     private async Task<List<int>> GetMatchingTagIds(DecomposedQuery request, CancellationToken cancellationToken)

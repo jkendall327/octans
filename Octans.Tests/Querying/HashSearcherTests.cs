@@ -241,6 +241,29 @@ public class HashSearcherTests : IAsyncLifetime
         results.Should().NotContain(i => i.Id == archiveItem.Id);
     }
 
+    [Fact]
+    public async Task OnlyIncludesInbox_WhenInboxSystemPredicateSpecified()
+    {
+        var inboxItem = CreateHashItem(1);
+        inboxItem.RepositoryId = (int)RepositoryType.Inbox;
+
+        var archiveItem = CreateHashItem(2);
+        archiveItem.RepositoryId = (int)RepositoryType.Archive;
+
+        _db.Hashes.AddRange(inboxItem, archiveItem);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery
+        {
+            SystemPredicates = [new RepositoryPredicate { Repository = RepositoryType.Inbox }],
+            RepositoryFilters = [RepositoryType.Inbox]
+        };
+        var results = await _sut.Search(request);
+
+        results.Should().Contain(i => i.Id == inboxItem.Id);
+        results.Should().NotContain(i => i.Id == archiveItem.Id);
+    }
+
     private async Task SeedData()
     {
         var all = new List<HashItem>
