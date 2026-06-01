@@ -36,22 +36,46 @@ internal sealed class SubscriptionService(
 
         foreach (var subscription in subscriptions)
         {
-            var result = await executor.ExecuteAsync(subscription, stoppingToken);
-
-            var execution = new SubscriptionExecution
+            try
             {
-                SubscriptionId = subscription.Id,
-                ExecutedAt = now,
-                ItemsFound = result.ItemsFound
-            };
-            db.SubscriptionExecutions.Add(execution);
+                var result = await executor.ExecuteAsync(subscription, stoppingToken);
+
+                var execution = new SubscriptionExecution
+                {
+                    SubscriptionId = subscription.Id,
+                    ExecutedAt = now,
+                    Status = SubscriptionExecutionStatus.Succeeded,
+                    ItemsFound = result.ItemsFound
+                };
+                db.SubscriptionExecutions.Add(execution);
+
+                logger.LogInformation("Executed subscription {Name}", subscription.Name);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var execution = new SubscriptionExecution
+                {
+                    SubscriptionId = subscription.Id,
+                    ExecutedAt = now,
+                    Status = SubscriptionExecutionStatus.Failed,
+                    ErrorMessage = ex.Message
+                };
+                db.SubscriptionExecutions.Add(execution);
+
+                logger.LogError(
+                    ex,
+                    "Subscription {SubscriptionId} ({Name}) failed while executing",
+                    subscription.Id,
+                    subscription.Name);
+            }
 
             subscription.NextCheck = now.Add(subscription.CheckPeriod);
-
-            logger.LogInformation("Executed subscription {Name}", subscription.Name);
+            await db.SaveChangesAsync(stoppingToken);
         }
-
-        await db.SaveChangesAsync(stoppingToken);
     }
 
     public async Task<List<SubscriptionStatusDto>> GetAllAsync()
@@ -74,7 +98,9 @@ internal sealed class SubscriptionService(
                 s.Query,
                 s.CheckPeriod,
                 lastExecution?.ExecutedAt,
+                lastExecution?.Status,
                 lastExecution?.ItemsFound,
+                lastExecution?.ErrorMessage,
                 s.NextCheck
             );
         }).ToList();

@@ -95,11 +95,80 @@ public class SubscriptionServiceTests
             var executions = await context.SubscriptionExecutions.ToListAsync();
             Assert.Single(executions);
             var execution = executions.First();
+            Assert.Equal(SubscriptionExecutionStatus.Succeeded, execution.Status);
             Assert.Equal(42, execution.ItemsFound);
             Assert.Equal(now, execution.ExecutedAt);
 
             var subscription = await context.Subscriptions.FirstAsync();
             Assert.Equal(now.AddHours(1), subscription.NextCheck);
+        }
+    }
+
+    [Fact]
+    public async Task CheckAndExecute_RecordsFailureAndContinuesRunningDueSubscriptions()
+    {
+        // Arrange
+        var now = new DateTimeOffset(2023, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        _timeProvider.SetUtcNow(now);
+
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var provider = new Provider { Name = "TestProvider" };
+            context.Providers.Add(provider);
+            await context.SaveChangesAsync();
+
+            context.Subscriptions.AddRange(
+                new Subscription
+                {
+                    Name = "Flaky Subscription",
+                    CheckPeriod = TimeSpan.FromHours(1),
+                    Query = "flaky query",
+                    ProviderId = provider.Id,
+                    NextCheck = now.AddMinutes(-1)
+                },
+                new Subscription
+                {
+                    Name = "Healthy Subscription",
+                    CheckPeriod = TimeSpan.FromHours(2),
+                    Query = "healthy query",
+                    ProviderId = provider.Id,
+                    NextCheck = now.AddMinutes(-1)
+                });
+            await context.SaveChangesAsync();
+        }
+
+        _executor.ExecuteAsync(Arg.Is<Subscription>(s => s.Name == "Flaky Subscription"), Arg.Any<CancellationToken>())
+            .Returns<SubscriptionExecutionResult>(_ => throw new InvalidOperationException("Subscription source failed."));
+        _executor.ExecuteAsync(Arg.Is<Subscription>(s => s.Name == "Healthy Subscription"), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SubscriptionExecutionResult(12)));
+
+        // Act
+        await _sut.CheckAndExecute();
+
+        // Assert
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var executions = await context.SubscriptionExecutions
+                .Include(e => e.Subscription)
+                .OrderBy(e => e.Subscription.Name)
+                .ToListAsync();
+
+            Assert.Equal(2, executions.Count);
+
+            var flakyExecution = executions[0];
+            Assert.Equal("Flaky Subscription", flakyExecution.Subscription.Name);
+            Assert.Equal(SubscriptionExecutionStatus.Failed, flakyExecution.Status);
+            Assert.Null(flakyExecution.ItemsFound);
+            Assert.Equal("Subscription source failed.", flakyExecution.ErrorMessage);
+
+            var healthyExecution = executions[1];
+            Assert.Equal("Healthy Subscription", healthyExecution.Subscription.Name);
+            Assert.Equal(SubscriptionExecutionStatus.Succeeded, healthyExecution.Status);
+            Assert.Equal(12, healthyExecution.ItemsFound);
+
+            var subscriptions = await context.Subscriptions.OrderBy(s => s.Name).ToListAsync();
+            Assert.Equal(now.AddHours(1), subscriptions[0].NextCheck);
+            Assert.Equal(now.AddHours(2), subscriptions[1].NextCheck);
         }
     }
 }

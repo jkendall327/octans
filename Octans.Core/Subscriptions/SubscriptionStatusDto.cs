@@ -1,3 +1,5 @@
+using Octans.Data.Models.Subscriptions;
+
 namespace Octans.Core.Subscriptions;
 
 public record SubscriptionStatusDto(
@@ -7,5 +9,7 @@ public record SubscriptionStatusDto(
     string Query,
     TimeSpan Frequency,
     DateTimeOffset? LastRun,
+    SubscriptionExecutionStatus? LastExecutionStatus,
     int? ItemsFound,
+    string? LastError,
     DateTimeOffset NextCheck);

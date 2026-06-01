@@ -90,5 +90,7 @@ public class SubscriptionsViewmodelTests
             TimeSpan.FromMinutes(60),
             null,
             null,
+            null,
+            null,
             TestClock.UtcNow);
 }

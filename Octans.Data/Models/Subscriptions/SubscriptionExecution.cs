@@ -15,5 +15,16 @@ public class SubscriptionExecution
 
     public DateTimeOffset ExecutedAt { get; init; }
 
-    public int ItemsFound { get; init; }
+    public SubscriptionExecutionStatus Status { get; init; }
+
+    public int? ItemsFound { get; init; }
+
+    [MaxLength(2000)]
+    public string? ErrorMessage { get; init; }
+}
+
+public enum SubscriptionExecutionStatus
+{
+    Succeeded,
+    Failed
 }
