@@ -90,6 +90,22 @@ for candidates.
   - This keeps the long-lived subscription as configuration/state, while each run
     records a concrete attempt.
 
+## Decisions So Far
+
+- Subscription runs should enqueue durable work rather than synchronously owning
+  every downstream operation to completion.
+  - Worker processing remains a separate responsibility.
+  - Tests that need end-to-end imported media should explicitly drain the relevant
+    workers instead of expecting subscription execution to do that implicitly.
+- V1 already-seen tracking can key source history on subscription plus normalized
+  discovered URL.
+  - Downloader-specific stable source IDs, request fingerprints, or richer source
+    identity can refine this later.
+- Download/import provenance naming remains open.
+  - In particular, it is not yet decided whether queued downstream work should
+    describe its source type as subscription-owned, gallery-shaped, or through
+    separate ownership and acquisition-kind fields.
+
 ## Subscription Configuration
 
 - A subscription probably needs at least:
