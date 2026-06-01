@@ -14,4 +14,24 @@ internal sealed class NoOpSubscriptionExecutor : ISubscriptionExecutor
         Task.FromResult(new SubscriptionExecutionResult(0));
 }
 
-public record SubscriptionExecutionResult(int ItemsFound);
+public sealed record SubscriptionExecutionResult
+{
+    public SubscriptionExecutionResult(int itemsFound)
+    {
+        ItemsFound = itemsFound;
+        DiscoveredItems = [];
+    }
+
+    public SubscriptionExecutionResult(IReadOnlyList<SubscriptionDiscoveredItem> discoveredItems)
+    {
+        ItemsFound = discoveredItems.Count;
+        DiscoveredItems = discoveredItems;
+    }
+
+    public int ItemsFound { get; }
+    public IReadOnlyList<SubscriptionDiscoveredItem> DiscoveredItems { get; }
+}
+
+public sealed record SubscriptionDiscoveredItem(
+    string SourceId,
+    Uri RemoteUrl);

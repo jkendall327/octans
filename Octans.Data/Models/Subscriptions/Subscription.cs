@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Octans.Data.Models;
 
 namespace Octans.Data.Models.Subscriptions;
 
@@ -14,6 +15,10 @@ public class Subscription
 
     [MaxLength(500)]
     public required string Query { get; init; }
+    public int RepositoryId { get; init; } = (int)RepositoryType.Inbox;
+    public bool AllowReimportDeleted { get; init; }
+    public bool AutoArchive { get; init; }
+    public string? SerializedTags { get; init; }
     public int ProviderId { get; init; }
     [ForeignKey(nameof(ProviderId))]
     public Provider Provider { get; init; } = null!;

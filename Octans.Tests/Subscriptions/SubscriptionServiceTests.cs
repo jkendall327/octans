@@ -1,9 +1,11 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Octans.Core.Progress;
 using Octans.Core.Subscriptions;
+using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Subscriptions;
 
@@ -83,8 +85,13 @@ public class SubscriptionServiceTests
             await context.SaveChangesAsync();
         }
 
+        var discoveredItems = new List<SubscriptionDiscoveredItem>
+        {
+            new("source-1", new Uri("https://subscriptions.test/source-1.jpg")),
+            new("source-2", new Uri("https://subscriptions.test/source-2.jpg"))
+        };
         _executor.ExecuteAsync(Arg.Any<Subscription>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new SubscriptionExecutionResult(42)));
+            .Returns(Task.FromResult(new SubscriptionExecutionResult(discoveredItems)));
 
         // Act
         await _sut.CheckAndExecute();
@@ -96,12 +103,42 @@ public class SubscriptionServiceTests
             Assert.Single(executions);
             var execution = executions.First();
             Assert.Equal(SubscriptionExecutionStatus.Succeeded, execution.Status);
-            Assert.Equal(42, execution.ItemsFound);
+            Assert.Equal(2, execution.ItemsFound);
             Assert.Equal(now, execution.ExecutedAt);
 
             var subscription = await context.Subscriptions.FirstAsync();
             Assert.Equal(now.AddHours(1), subscription.NextCheck);
         }
+    }
+
+    [Fact]
+    public async Task AddAsync_PersistsImportSettingsAndTags()
+    {
+        // Arrange
+        var tags = new List<TagModel>
+        {
+            new("series", "octans subscription"),
+            new("source", "fake-gallery-downloader")
+        };
+
+        // Act
+        await _sut.AddAsync(
+            "Runnable subscription",
+            "TestProvider",
+            "artist:octans",
+            TimeSpan.FromMinutes(30),
+            new(RepositoryType.Archive, AllowReimportDeleted: true, AutoArchive: true),
+            tags);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        var subscription = await context.Subscriptions.SingleAsync();
+        var persistedTags = JsonSerializer.Deserialize<List<TagModel>>(subscription.SerializedTags!);
+
+        Assert.Equal((int)RepositoryType.Archive, subscription.RepositoryId);
+        Assert.True(subscription.AllowReimportDeleted);
+        Assert.True(subscription.AutoArchive);
+        Assert.Equal(tags, persistedTags);
     }
 
     [Fact]

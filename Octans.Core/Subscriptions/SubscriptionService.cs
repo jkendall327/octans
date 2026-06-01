@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Progress;
+using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Subscriptions;
 
@@ -10,7 +12,13 @@ public interface ISubscriptionService
 {
     Task CheckAndExecute(CancellationToken stoppingToken = default);
     Task<List<SubscriptionStatusDto>> GetAllAsync();
-    Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency);
+    Task AddAsync(
+        string name,
+        string downloaderName,
+        string query,
+        TimeSpan frequency,
+        SubscriptionImportSettings? importSettings = null,
+        IReadOnlyList<TagModel>? tags = null);
     Task DeleteAsync(int id);
 }
 
@@ -106,9 +114,17 @@ internal sealed class SubscriptionService(
         }).ToList();
     }
 
-    public async Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency)
+    public async Task AddAsync(
+        string name,
+        string downloaderName,
+        string query,
+        TimeSpan frequency,
+        SubscriptionImportSettings? importSettings = null,
+        IReadOnlyList<TagModel>? tags = null)
     {
         await using var db = await factory.CreateDbContextAsync();
+
+        var settings = importSettings ?? SubscriptionImportSettings.Default;
 
         var provider = await db.Providers.FirstOrDefaultAsync(p => p.Name == downloaderName);
         if (provider is null)
@@ -123,7 +139,11 @@ internal sealed class SubscriptionService(
             Provider = provider,
             Query = query,
             CheckPeriod = frequency,
-            NextCheck = timeProvider.GetUtcNow()
+            NextCheck = timeProvider.GetUtcNow(),
+            RepositoryId = (int)settings.Repository,
+            AllowReimportDeleted = settings.AllowReimportDeleted,
+            AutoArchive = settings.AutoArchive,
+            SerializedTags = SerializeTags(tags)
         };
 
         db.Subscriptions.Add(subscription);
@@ -140,4 +160,15 @@ internal sealed class SubscriptionService(
         db.Subscriptions.Remove(subscription);
         await db.SaveChangesAsync();
     }
+
+    private static string? SerializeTags(IReadOnlyList<TagModel>? tags) =>
+        tags is { Count: > 0 } ? JsonSerializer.Serialize(tags) : null;
+}
+
+public sealed record SubscriptionImportSettings(
+    RepositoryType Repository,
+    bool AllowReimportDeleted,
+    bool AutoArchive)
+{
+    public static SubscriptionImportSettings Default { get; } = new(RepositoryType.Inbox, false, false);
 }
