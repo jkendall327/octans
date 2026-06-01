@@ -82,7 +82,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         {
             detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
             details.Should().NotBeNull();
-            details!.Hash.Should().Be(imported.Hash.Hex);
+            details.Hash.Should().Be(imported.Hash.Hex);
             details.Repository.Should().Be(RepositoryType.Inbox);
             details.Extension.Should().Be("jpg");
             details.ContentType.Should().Be("image/jpeg");
@@ -155,6 +155,57 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task UserCan_ImportMediaWithTags_EditTags_AndSearchSeesCurrentTagState()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        var initialTag = new TagModel("series", "metroid");
+        var addedTag = new TagModel("character", "samus");
+        var imported = await ImportLocalImage(
+            factory,
+            client,
+            "tag-edit-flow.jpg",
+            TestingConstants.MinimalJpeg,
+            [initialTag]);
+
+        var details = await GetMediaDetails(client, imported.Hash.Hex);
+
+        var tagUpdateResponse = await UpdateTags(
+            client,
+            details.Id,
+            [addedTag],
+            [initialTag]);
+
+        var updatedDetails = await GetMediaDetails(client, imported.Hash.Hex);
+        var addedTagResults = await Query(client, [$"{addedTag.Namespace}:{addedTag.Subtag}"]);
+        var removedTagResults = await Query(client, [$"{initialTag.Namespace}:{initialTag.Subtag}"]);
+
+        using (new AssertionScope("The imported media exposes its initial tags through details"))
+        {
+            imported.ProcessedJob.Should().BeTrue("tag editing starts from a real completed import");
+            details.Tags.Should().ContainSingle(tag =>
+                tag.Namespace == initialTag.Namespace && tag.Subtag == initialTag.Subtag);
+        }
+
+        using (new AssertionScope("The tag update endpoint applies additions and removals"))
+        {
+            tagUpdateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            updatedDetails.Tags.Should().ContainSingle(tag =>
+                tag.Namespace == addedTag.Namespace && tag.Subtag == addedTag.Subtag);
+            updatedDetails.Tags.Should().NotContain(tag =>
+                tag.Namespace == initialTag.Namespace && tag.Subtag == initialTag.Subtag);
+        }
+
+        using (new AssertionScope("Search uses the current tag state"))
+        {
+            addedTagResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            addedTagResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            removedTagResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            removedTagResults.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        }
+    }
+
     private static async Task<ImportedImage> ImportLocalImage(
         OctansApiFactory factory,
         HttpClient client,
@@ -213,6 +264,17 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return details!;
+    }
+
+    private static Task<HttpResponseMessage> UpdateTags(
+        HttpClient client,
+        int hashId,
+        IEnumerable<TagModel> tagsToAdd,
+        IEnumerable<TagModel> tagsToRemove)
+    {
+        var request = new UpdateTagsRequest(hashId, tagsToAdd, tagsToRemove);
+
+        return client.PostAsJsonAsync(new Uri("/tags", UriKind.Relative), request, JsonOptions);
     }
 
     private static async Task TransitionRepository(
