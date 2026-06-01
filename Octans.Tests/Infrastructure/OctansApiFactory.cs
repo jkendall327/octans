@@ -21,11 +21,15 @@ namespace Octans.Tests.Infrastructure;
 public sealed class OctansApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _keepAliveConnection;
+    private readonly Action<IServiceCollection>? _configureTestServices;
     private readonly ITestOutputHelper? _output;
 
-    public OctansApiFactory(ITestOutputHelper? output = null)
+    public OctansApiFactory(
+        ITestOutputHelper? output = null,
+        Action<IServiceCollection>? configureTestServices = null)
     {
         _output = output;
+        _configureTestServices = configureTestServices;
         AppRoot = $"/octans-api-{Guid.NewGuid():N}";
         FileSystem = new();
         TimeProvider = new(TestClock.UtcNow);
@@ -78,6 +82,8 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
             {
                 services.AddLogging(logging => logging.AddProvider(new XUnitLoggerProvider(_output)));
             }
+
+            _configureTestServices?.Invoke(services);
         });
     }
 
