@@ -38,7 +38,7 @@ internal sealed class QueryPlanner(IMemoryCache memoryCache)
             return QueryPlan.NoResults;
         }
 
-        (var system, var tags, var ors) = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
+        var (system, tags, ors) = predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
 
         if (system.OfType<EverythingPredicate>().Any())
         {

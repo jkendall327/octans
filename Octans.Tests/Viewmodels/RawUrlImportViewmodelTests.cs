@@ -15,7 +15,7 @@ public class RawUrlImportViewmodelTests
     {
         _client = Substitute.For<IOctansClient>();
 
-        var created = new ImportJobClientResult(Guid.NewGuid(), "/import-jobs/test");
+        var created = new ImportJobClientResult(Guid.NewGuid(), "/api/import-jobs/test");
 
         _client
             .CreateImportJobAsync(Arg.Any<ImportJobCreateRequest>())

@@ -128,23 +128,27 @@ public sealed class DuplicateService(
                 .ToListAsync(cancellationToken);
 
             context.DuplicateCandidates.RemoveRange(affectedCandidates);
+            context.DuplicateDecisions.Add(CreateDecision(candidate, resolution));
             await context.SaveChangesAsync(cancellationToken);
             return;
         }
 
+        context.DuplicateDecisions.Add(CreateDecision(candidate, resolution));
+        context.DuplicateCandidates.Remove(candidate);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private DuplicateDecision CreateDecision(DuplicateCandidate candidate, DuplicateResolution resolution)
+    {
         var pair = HashPair.Create(candidate.HashId1, candidate.HashId2);
-        var decision = new DuplicateDecision
+
+        return new()
         {
             HashId1 = pair.HashId1,
             HashId2 = pair.HashId2,
             Resolution = resolution,
             DecidedAt = timeProvider.GetUtcNow()
         };
-        context.DuplicateDecisions.Add(decision);
-
-        // Remove candidate
-        context.DuplicateCandidates.Remove(candidate);
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<HashSet<HashPair>> GetIgnoredPairs(CancellationToken cancellationToken)

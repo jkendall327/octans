@@ -226,7 +226,10 @@ public class DuplicateServiceTests : IAsyncLifetime, IClassFixture<DatabaseFixtu
 
         // Assert
         _dbContext.DuplicateCandidates.Should().BeEmpty();
-        _dbContext.DuplicateDecisions.Should().BeEmpty();
+        _dbContext.DuplicateDecisions.Should().ContainSingle(decision =>
+            decision.HashId1 == item1.Id
+            && decision.HashId2 == item2.Id
+            && decision.Resolution == DuplicateResolution.Distinct);
 
         var deletedItem2 = await _dbContext.Hashes.FindAsync(item2.Id);
         deletedItem2!.DeletedAt.Should().NotBeNull();

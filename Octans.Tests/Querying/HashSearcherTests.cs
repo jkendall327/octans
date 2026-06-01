@@ -104,6 +104,27 @@ public class HashSearcherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FindsHashes_WithEveryExactMatch_WhenMultipleExactTagsUsed()
+    {
+        await SeedData();
+
+        var items = await GetItems(3);
+        var expected = items[0];
+
+        await AddMappings("character", "samus", items[0], items[2]);
+        await AddMappings("series", "metroid", items[0], items[1]);
+
+        var request = new DecomposedQuery
+        {
+            TagsToInclude = [new("character", "samus"), new("series", "metroid")]
+        };
+
+        var results = await _sut.Search(request);
+
+        results.Should().BeEquivalentTo([expected], "every positive tag predicate must match");
+    }
+
+    [Fact]
     public async Task CountAsync_ReturnsCorrectCount_WhenExactTagUsed()
     {
         await SeedData();
@@ -203,6 +224,20 @@ public class HashSearcherTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExcludesDeletedHashes()
+    {
+        var item = CreateHashItem(1);
+        item.DeletedAt = TestClock.UtcNow;
+        _db.Hashes.Add(item);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery();
+        var results = await _sut.Search(request);
+
+        results.Should().NotContain(i => i.Id == item.Id);
+    }
+
+    [Fact]
     public async Task IncludesTrash_WhenTrashFilterSpecified()
     {
         var item = CreateHashItem(1);
@@ -233,6 +268,29 @@ public class HashSearcherTests : IAsyncLifetime
 
         var request = new DecomposedQuery
         {
+            RepositoryFilters = [RepositoryType.Inbox]
+        };
+        var results = await _sut.Search(request);
+
+        results.Should().Contain(i => i.Id == inboxItem.Id);
+        results.Should().NotContain(i => i.Id == archiveItem.Id);
+    }
+
+    [Fact]
+    public async Task OnlyIncludesInbox_WhenInboxSystemPredicateSpecified()
+    {
+        var inboxItem = CreateHashItem(1);
+        inboxItem.RepositoryId = (int)RepositoryType.Inbox;
+
+        var archiveItem = CreateHashItem(2);
+        archiveItem.RepositoryId = (int)RepositoryType.Archive;
+
+        _db.Hashes.AddRange(inboxItem, archiveItem);
+        await _db.SaveChangesAsync();
+
+        var request = new DecomposedQuery
+        {
+            SystemPredicates = [new RepositoryPredicate { Repository = RepositoryType.Inbox }],
             RepositoryFilters = [RepositoryType.Inbox]
         };
         var results = await _sut.Search(request);

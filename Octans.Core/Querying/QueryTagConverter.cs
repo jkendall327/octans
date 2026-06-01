@@ -11,7 +11,7 @@ internal sealed class QueryTagConverter
 {
     public DecomposedQuery Reduce(QueryPlan plan)
     {
-        (var system, var tags, var ors) = plan.Predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
+        var (system, tags, ors) = plan.Predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
 
         var include = new HashSet<TagModel>();
         var exclude = new HashSet<TagModel>();

@@ -72,8 +72,8 @@ public interface IOctansClient
 
 public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 {
-    private static readonly Uri ClearAllDataUri = new("clearAllData", UriKind.Relative);
-    private static readonly Uri DuplicateScanUri = new("duplicates/scan", UriKind.Relative);
+    private static readonly Uri ClearAllDataUri = Api("clearAllData");
+    private static readonly Uri DuplicateScanUri = Api("duplicates/scan");
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -85,14 +85,14 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task<IReadOnlyList<HashItem>> GetFilesAsync(CancellationToken cancellationToken = default)
     {
-        var response = await httpClient.GetFromJsonAsync<List<HashItem>>("files", JsonOptions, cancellationToken);
+        var response = await httpClient.GetFromJsonAsync<List<HashItem>>(Api("files"), JsonOptions, cancellationToken);
 
         return response ?? [];
     }
 
     public async Task<string?> GetFileAsync(int id, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"files/{id.ToString(CultureInfo.InvariantCulture)}", UriKind.Relative);
+        var uri = Api($"files/{id.ToString(CultureInfo.InvariantCulture)}");
 
         using var response = await httpClient.GetAsync(uri, cancellationToken);
 
@@ -110,7 +110,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         IEnumerable<string> queries,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("files/query", queries, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("files/query"), queries, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var files = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions, cancellationToken);
@@ -122,7 +122,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         IEnumerable<string> queries,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("files/query/count", queries, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("files/query/count"), queries, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var count = await ReadRequiredJsonAsync<FileQueryCountDto>(response, cancellationToken);
@@ -134,7 +134,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         string hash,
         CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"media/{hash}/details", UriKind.Relative);
+        var uri = Api($"media/{hash}/details");
         using var response = await httpClient.GetAsync(uri, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.NotFound)
@@ -153,7 +153,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         CancellationToken cancellationToken = default)
     {
         using var response = await httpClient.PostAsJsonAsync(
-            $"media/{hash}/notes",
+            Api($"media/{hash}/notes"),
             new NoteCreateRequest(content),
             JsonOptions,
             cancellationToken);
@@ -168,7 +168,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         CancellationToken cancellationToken = default)
     {
         using var response = await httpClient.PutAsJsonAsync(
-            $"notes/{id.ToString(CultureInfo.InvariantCulture)}",
+            Api($"notes/{id.ToString(CultureInfo.InvariantCulture)}"),
             new NoteUpdateRequest(content),
             JsonOptions,
             cancellationToken);
@@ -177,7 +177,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task DeleteNoteAsync(int id, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"notes/{id.ToString(CultureInfo.InvariantCulture)}", UriKind.Relative);
+        var uri = Api($"notes/{id.ToString(CultureInfo.InvariantCulture)}");
         using var response = await httpClient.DeleteAsync(uri, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
@@ -189,7 +189,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     {
         var request = new RepositoryTransitionRequest(hashes.ToList(), destination);
         using var response = await httpClient.PostAsJsonAsync(
-            "repository/transitions",
+            Api("repository/transitions"),
             request,
             JsonOptions,
             cancellationToken);
@@ -201,7 +201,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         bool exact = false,
         CancellationToken cancellationToken = default)
     {
-        var uri = $"tags/suggestions?search={Uri.EscapeDataString(search)}&exact={exact.ToString().ToLowerInvariant()}";
+        var uri = Api($"tags/suggestions?search={Uri.EscapeDataString(search)}&exact={exact.ToString().ToLowerInvariant()}");
         var response = await httpClient.GetFromJsonAsync<QuerySuggestionsDto>(uri, JsonOptions, cancellationToken);
 
         return response?.Tags ?? [];
@@ -211,30 +211,30 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         ImportRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("files", request, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("files"), request, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var created = await ReadRequiredJsonAsync<ImportJobCreatedDto>(response, cancellationToken);
 
-        return new(created.JobId, $"/import-jobs/{created.JobId}");
+        return new(created.JobId, $"/api/import-jobs/{created.JobId}");
     }
 
     public async Task<ImportJobClientResult> CreateImportJobAsync(
         ImportJobCreateRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("import-jobs", request, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("import-jobs"), request, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var created = await ReadRequiredJsonAsync<ImportJobCreatedDto>(response, cancellationToken);
 
-        return new(created.JobId, $"/import-jobs/{created.JobId}");
+        return new(created.JobId, $"/api/import-jobs/{created.JobId}");
     }
 
     public async Task<IReadOnlyList<ImportJobDto>> GetImportJobsAsync(CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetFromJsonAsync<List<ImportJobDto>>(
-            "import-jobs",
+            Api("import-jobs"),
             JsonOptions,
             cancellationToken);
 
@@ -243,7 +243,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task<ImportJobDto?> GetImportJobAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"import-jobs/{id}", UriKind.Relative);
+        var uri = Api($"import-jobs/{id}");
         using var response = await httpClient.GetAsync(uri, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.NotFound)
@@ -267,7 +267,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task<bool> UpdateTagsAsync(UpdateTagsRequest request, CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("tags", request, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("tags"), request, JsonOptions, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.BadRequest)
         {
@@ -288,7 +288,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         DeleteRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("files/deletion", request, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("files/deletion"), request, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         return await ReadRequiredJsonAsync<DeleteResponse>(response, cancellationToken);
@@ -297,7 +297,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     public async Task<IReadOnlyList<DownloaderMetadata>> GetDownloadersAsync(CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetFromJsonAsync<List<DownloaderMetadata>>(
-            "downloaders",
+            Api("downloaders"),
             JsonOptions,
             cancellationToken);
 
@@ -306,12 +306,12 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task<DownloadersOverviewDto> GetDownloadersOverviewAsync(CancellationToken cancellationToken = default)
     {
-        return await ReadRequiredJsonAsync<DownloadersOverviewDto>("downloaders/overview", cancellationToken);
+        return await ReadRequiredJsonAsync<DownloadersOverviewDto>(Api("downloaders/overview"), cancellationToken);
     }
 
     public async Task<DownloadersOverviewDto> RescanDownloadersAsync(CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsync(new Uri("downloaders/rescan", UriKind.Relative), null, cancellationToken);
+        using var response = await httpClient.PostAsync(Api("downloaders/rescan"), null, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         return await ReadRequiredJsonAsync<DownloadersOverviewDto>(response, cancellationToken);
@@ -320,7 +320,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     public async Task<IReadOnlyList<SubscriptionStatusDto>> GetSubscriptionsAsync(CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetFromJsonAsync<List<SubscriptionStatusDto>>(
-            "subscriptions",
+            Api("subscriptions"),
             JsonOptions,
             cancellationToken);
 
@@ -331,13 +331,13 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         SubscriptionCreateRequest request,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync("subscriptions", request, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(Api("subscriptions"), request, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task DeleteSubscriptionAsync(int id, CancellationToken cancellationToken = default)
     {
-        var uri = new Uri($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}", UriKind.Relative);
+        var uri = Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}");
         using var response = await httpClient.DeleteAsync(uri, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
@@ -345,7 +345,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
     public async Task<IReadOnlyList<DownloadStatusDto>> GetDownloadsAsync(CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetFromJsonAsync<List<DownloadStatusDto>>(
-            "downloads",
+            Api("downloads"),
             JsonOptions,
             cancellationToken);
 
@@ -354,12 +354,12 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
     public async Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default)
     {
-        return await ReadRequiredJsonAsync<HomeStats>("stats", cancellationToken);
+        return await ReadRequiredJsonAsync<HomeStats>(Api("stats"), cancellationToken);
     }
 
     public async Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default)
     {
-        return await ReadRequiredJsonAsync<OctansVersion>("version", cancellationToken);
+        return await ReadRequiredJsonAsync<OctansVersion>(Api("version"), cancellationToken);
     }
 
     public async Task<DuplicateScanResultDto> ScanDuplicatesAsync(CancellationToken cancellationToken = default)
@@ -374,7 +374,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         CancellationToken cancellationToken = default)
     {
         var response = await httpClient.GetFromJsonAsync<List<DuplicateCandidateDto>>(
-            "duplicates/candidates",
+            Api("duplicates/candidates"),
             JsonOptions,
             cancellationToken);
 
@@ -387,7 +387,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         int? keepHashId,
         CancellationToken cancellationToken = default)
     {
-        var uri = $"duplicates/candidates/{candidateId.ToString(CultureInfo.InvariantCulture)}/resolution";
+        var uri = Api($"duplicates/candidates/{candidateId.ToString(CultureInfo.InvariantCulture)}/resolution");
         var request = new DuplicateResolutionRequest(resolution, keepHashId);
 
         using var response = await httpClient.PostAsJsonAsync(uri, request, JsonOptions, cancellationToken);
@@ -427,7 +427,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
             response.StatusCode);
     }
 
-    private async Task<T> ReadRequiredJsonAsync<T>(string requestUri, CancellationToken cancellationToken)
+    private async Task<T> ReadRequiredJsonAsync<T>(Uri requestUri, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetFromJsonAsync<T>(requestUri, JsonOptions, cancellationToken);
 
@@ -448,7 +448,7 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         string transition,
         CancellationToken cancellationToken)
     {
-        var uri = new Uri($"import-jobs/{id}/{transition}", UriKind.Relative);
+        var uri = Api($"import-jobs/{id}/{transition}");
         using var response = await httpClient.PostAsync(uri, null, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.NotFound)
@@ -460,6 +460,8 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
 
         return await ReadRequiredJsonAsync<ImportJobDto>(response, cancellationToken);
     }
+
+    private static Uri Api(string path) => new($"api/{path}", UriKind.Relative);
 }
 
 public sealed record OctansVersion(string Version);

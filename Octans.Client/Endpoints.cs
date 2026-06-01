@@ -25,28 +25,30 @@ internal static class Endpoints
 {
     public static void AddEndpoints(this WebApplication app)
     {
-        MapFileEndpoints(app);
+        var api = app.MapGroup("/api");
 
-        MapMediaMetadataEndpoints(app);
+        MapFileEndpoints(api);
 
-        MapNoteEndpoints(app);
+        MapMediaMetadataEndpoints(api);
 
-        MapTagEndpoints(app);
+        MapNoteEndpoints(api);
 
-        MapRepositoryEndpoints(app);
+        MapTagEndpoints(api);
 
-        MapDuplicateEndpoints(app);
+        MapRepositoryEndpoints(api);
 
-        MapDownloadEndpoints(app);
+        MapDuplicateEndpoints(api);
 
-        MapDownloaderEndpoints(app);
+        MapDownloadEndpoints(api);
 
-        MapImportJobEndpoints(app);
+        MapDownloaderEndpoints(api);
 
-        MapInfrastructureEndpoints(app);
+        MapImportJobEndpoints(api);
+
+        MapInfrastructureEndpoints(api);
     }
 
-    private static void MapTagEndpoints(WebApplication app)
+    private static void MapTagEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapGet("/media/{hash}/tags",
@@ -93,7 +95,7 @@ internal static class Endpoints
             .WithDescription("Add and remove tags for a specific image");
     }
 
-    private static void MapDownloaderEndpoints(WebApplication app)
+    private static void MapDownloaderEndpoints(IEndpointRouteBuilder app)
     {
         app.MapGet("/downloaders/overview",
             async ([FromServices] IDownloaderFactory ds) =>
@@ -136,7 +138,7 @@ internal static class Endpoints
             .WithName("RescanDownloaders");
     }
 
-    private static void MapFileEndpoints(WebApplication app)
+    private static void MapFileEndpoints(IEndpointRouteBuilder app)
     {
         app.MapGet("/files", async ([FromServices] FileFinder service) => await service.GetAll());
 
@@ -181,7 +183,7 @@ internal static class Endpoints
                 {
                     var created = await service.Create(ImportJobCreateRequestFromImportRequest(request), token);
 
-                    return Results.Accepted($"/import-jobs/{created.JobId}", created);
+                    return Results.Accepted($"/api/import-jobs/{created.JobId}", created);
                 })
             .WithName("Import")
             .WithDescription("Creates an import job");
@@ -197,7 +199,7 @@ internal static class Endpoints
             .WithDescription("Delete one or more files and their associated data");
     }
 
-    private static void MapMediaMetadataEndpoints(WebApplication app)
+    private static void MapMediaMetadataEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapGet("/media/{hash}/details",
@@ -239,7 +241,7 @@ internal static class Endpoints
             .WithDescription("Gets metadata, repository, tags, notes, and media URL for a media hash");
     }
 
-    private static void MapNoteEndpoints(WebApplication app)
+    private static void MapNoteEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapGet("/media/{hash}/notes",
@@ -272,7 +274,7 @@ internal static class Endpoints
                     {
                         var note = await noteService.AddNoteAsync(normalized, request.Content);
 
-                        return Results.Created($"/notes/{note.Id}", note);
+                        return Results.Created($"/api/notes/{note.Id}", note);
                     }
                     catch (ArgumentException ex)
                     {
@@ -314,7 +316,7 @@ internal static class Endpoints
             .WithName("DeleteMediaNote");
     }
 
-    private static void MapRepositoryEndpoints(WebApplication app)
+    private static void MapRepositoryEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapPost("/repository/transitions",
@@ -349,7 +351,7 @@ internal static class Endpoints
             .WithDescription("Moves one or more media hashes to inbox, archive, or trash");
     }
 
-    private static void MapDuplicateEndpoints(WebApplication app)
+    private static void MapDuplicateEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapPost("/duplicates/scan",
@@ -412,7 +414,7 @@ internal static class Endpoints
             .WithName("ResolveDuplicateCandidate");
     }
 
-    private static void MapDownloadEndpoints(WebApplication app)
+    private static void MapDownloadEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapPost("/downloads",
@@ -446,8 +448,8 @@ internal static class Endpoints
                     var handle = await downloads.QueueDownloadJobAsync(downloadRequest);
 
                     return Results.Accepted(
-                        $"/downloads/{handle.Id}",
-                        new DownloadQueuedDto(handle.Id, $"/downloads/{handle.Id}", $"/downloads/{handle.Id}/result"));
+                        $"/api/downloads/{handle.Id}",
+                        new DownloadQueuedDto(handle.Id, $"/api/downloads/{handle.Id}", $"/api/downloads/{handle.Id}/result"));
                 })
             .WithName("QueueDownload");
 
@@ -529,7 +531,7 @@ internal static class Endpoints
             .WithName("RetryDownload");
     }
 
-    private static void MapImportJobEndpoints(WebApplication app)
+    private static void MapImportJobEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapPost("/import-jobs",
@@ -539,7 +541,7 @@ internal static class Endpoints
                 {
                     var created = await service.Create(request, token);
 
-                    return Results.Accepted($"/import-jobs/{created.JobId}", created);
+                    return Results.Accepted($"/api/import-jobs/{created.JobId}", created);
                 })
             .WithName("CreateImportJob")
             .WithDescription("Creates a durable import job");
@@ -613,7 +615,7 @@ internal static class Endpoints
             .ToDictionary(item => item.Source, item => item.Tags!)
     };
 
-    private static void MapInfrastructureEndpoints(WebApplication app)
+    private static void MapInfrastructureEndpoints(IEndpointRouteBuilder app)
     {
         app
             .MapGet("/subscriptions",
@@ -653,7 +655,7 @@ internal static class Endpoints
                         request.Query,
                         TimeSpan.FromMinutes(request.FrequencyMinutes));
 
-                    return Results.Accepted("/subscriptions");
+                    return Results.Accepted("/api/subscriptions");
                 })
             .WithName("SubmitSubscription")
             .WithDescription("Submits a subscription request for automated queries");

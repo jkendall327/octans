@@ -1,9 +1,9 @@
 ### Submit Subscription (Not Implemented)
-POST {{host}}/subscriptions
+POST {{host}}/api/subscriptions
 Content-Type: application/json
 
 ### Clear All Data
-POST {{host}}/clearAllData
+POST {{host}}/api/clearAllData
 Accept: application/json
 
 ### Health Check
