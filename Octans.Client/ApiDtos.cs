@@ -48,7 +48,14 @@ public sealed record SubscriptionCreateRequest(
     string Name,
     string DownloaderName,
     string Query,
-    int FrequencyMinutes);
+    int FrequencyMinutes,
+    SubscriptionImportOptionsDto? ImportOptions = null,
+    IReadOnlyList<TagModel>? Tags = null);
+
+public sealed record SubscriptionImportOptionsDto(
+    RepositoryType Repository,
+    bool AllowReimportDeleted,
+    bool AutoArchive);
 
 public sealed record DuplicateScanResultDto(
     int PerceptualHashesCalculated,

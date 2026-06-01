@@ -65,6 +65,10 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
             .HasForeignKey(d => d.HashId2)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Subscription>()
+            .Property(s => s.RepositoryId)
+            .HasDefaultValue((int)RepositoryType.Inbox);
+
         modelBuilder.Entity<HashRating>()
             .HasOne(r => r.Hash)
             .WithMany(h => h.Ratings);

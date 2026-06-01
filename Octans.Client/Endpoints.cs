@@ -662,7 +662,9 @@ internal static class Endpoints
                         request.Name,
                         request.DownloaderName,
                         request.Query,
-                        TimeSpan.FromMinutes(request.FrequencyMinutes));
+                        TimeSpan.FromMinutes(request.FrequencyMinutes),
+                        MapSubscriptionImportSettings(request.ImportOptions),
+                        request.Tags);
 
                     return Results.Accepted("/api/subscriptions");
                 })
@@ -719,6 +721,15 @@ internal static class Endpoints
             .WithName("GetVersion")
             .WithDescription("Returns the current API version");
     }
+
+    private static SubscriptionImportSettings MapSubscriptionImportSettings(
+        SubscriptionImportOptionsDto? importOptions) =>
+        importOptions is null
+            ? SubscriptionImportSettings.Default
+            : new(
+                importOptions.Repository,
+                importOptions.AllowReimportDeleted,
+                importOptions.AutoArchive);
 
     public static void MapImageEndpoints(this WebApplication app)
     {

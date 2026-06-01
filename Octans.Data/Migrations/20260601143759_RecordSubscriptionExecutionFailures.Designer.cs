@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Octans.Data.Models;
 
@@ -10,9 +11,11 @@ using Octans.Data.Models;
 namespace Octans.Server.Migrations
 {
     [DbContext(typeof(ServerDbContext))]
-    partial class ServerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260601143759_RecordSubscriptionExecutionFailures")]
+    partial class RecordSubscriptionExecutionFailures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
@@ -519,12 +522,6 @@ namespace Octans.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("AllowReimportDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("AutoArchive")
-                        .HasColumnType("INTEGER");
-
                     b.Property<TimeSpan>("CheckPeriod")
                         .HasColumnType("TEXT");
 
@@ -543,14 +540,6 @@ namespace Octans.Server.Migrations
                     b.Property<string>("Query")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RepositoryId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(1);
-
-                    b.Property<string>("SerializedTags")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

@@ -17,6 +17,7 @@
             <MudTh>Query</MudTh>
             <MudTh>Frequency</MudTh>
             <MudTh>Last Run</MudTh>
+            <MudTh>Status</MudTh>
             <MudTh>Items Found</MudTh>
             <MudTh>Next Check</MudTh>
             <MudTh>Actions</MudTh>
@@ -27,6 +28,7 @@
             <MudTd DataLabel="Query">@context.Query</MudTd>
             <MudTd DataLabel="Frequency">@context.Frequency</MudTd>
             <MudTd DataLabel="Last Run">@(context.LastRun is { } lastRun ? Formatting.FormatLocalTime(lastRun) : "Never")</MudTd>
+            <MudTd DataLabel="Status">@(context.LastExecutionStatus?.ToString() ?? "-")</MudTd>
             <MudTd DataLabel="Items Found">@(context.ItemsFound?.ToString() ?? "-")</MudTd>
             <MudTd DataLabel="Next Check">@Formatting.FormatLocalTime(context.NextCheck)</MudTd>
             <MudTd DataLabel="Actions">

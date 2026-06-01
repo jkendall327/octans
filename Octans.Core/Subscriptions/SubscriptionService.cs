@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Octans.Core.Progress;
+using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Subscriptions;
 
@@ -10,7 +12,13 @@ public interface ISubscriptionService
 {
     Task CheckAndExecute(CancellationToken stoppingToken = default);
     Task<List<SubscriptionStatusDto>> GetAllAsync();
-    Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency);
+    Task AddAsync(
+        string name,
+        string downloaderName,
+        string query,
+        TimeSpan frequency,
+        SubscriptionImportSettings? importSettings = null,
+        IReadOnlyList<TagModel>? tags = null);
     Task DeleteAsync(int id);
 }
 
@@ -36,22 +44,46 @@ internal sealed class SubscriptionService(
 
         foreach (var subscription in subscriptions)
         {
-            var result = await executor.ExecuteAsync(subscription, stoppingToken);
-
-            var execution = new SubscriptionExecution
+            try
             {
-                SubscriptionId = subscription.Id,
-                ExecutedAt = now,
-                ItemsFound = result.ItemsFound
-            };
-            db.SubscriptionExecutions.Add(execution);
+                var result = await executor.ExecuteAsync(subscription, stoppingToken);
+
+                var execution = new SubscriptionExecution
+                {
+                    SubscriptionId = subscription.Id,
+                    ExecutedAt = now,
+                    Status = SubscriptionExecutionStatus.Succeeded,
+                    ItemsFound = result.ItemsFound
+                };
+                db.SubscriptionExecutions.Add(execution);
+
+                logger.LogInformation("Executed subscription {Name}", subscription.Name);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var execution = new SubscriptionExecution
+                {
+                    SubscriptionId = subscription.Id,
+                    ExecutedAt = now,
+                    Status = SubscriptionExecutionStatus.Failed,
+                    ErrorMessage = ex.Message
+                };
+                db.SubscriptionExecutions.Add(execution);
+
+                logger.LogError(
+                    ex,
+                    "Subscription {SubscriptionId} ({Name}) failed while executing",
+                    subscription.Id,
+                    subscription.Name);
+            }
 
             subscription.NextCheck = now.Add(subscription.CheckPeriod);
-
-            logger.LogInformation("Executed subscription {Name}", subscription.Name);
+            await db.SaveChangesAsync(stoppingToken);
         }
-
-        await db.SaveChangesAsync(stoppingToken);
     }
 
     public async Task<List<SubscriptionStatusDto>> GetAllAsync()
@@ -74,15 +106,25 @@ internal sealed class SubscriptionService(
                 s.Query,
                 s.CheckPeriod,
                 lastExecution?.ExecutedAt,
+                lastExecution?.Status,
                 lastExecution?.ItemsFound,
+                lastExecution?.ErrorMessage,
                 s.NextCheck
             );
         }).ToList();
     }
 
-    public async Task AddAsync(string name, string downloaderName, string query, TimeSpan frequency)
+    public async Task AddAsync(
+        string name,
+        string downloaderName,
+        string query,
+        TimeSpan frequency,
+        SubscriptionImportSettings? importSettings = null,
+        IReadOnlyList<TagModel>? tags = null)
     {
         await using var db = await factory.CreateDbContextAsync();
+
+        var settings = importSettings ?? SubscriptionImportSettings.Default;
 
         var provider = await db.Providers.FirstOrDefaultAsync(p => p.Name == downloaderName);
         if (provider is null)
@@ -97,7 +139,11 @@ internal sealed class SubscriptionService(
             Provider = provider,
             Query = query,
             CheckPeriod = frequency,
-            NextCheck = timeProvider.GetUtcNow()
+            NextCheck = timeProvider.GetUtcNow(),
+            RepositoryId = (int)settings.Repository,
+            AllowReimportDeleted = settings.AllowReimportDeleted,
+            AutoArchive = settings.AutoArchive,
+            SerializedTags = SerializeTags(tags)
         };
 
         db.Subscriptions.Add(subscription);
@@ -114,4 +160,15 @@ internal sealed class SubscriptionService(
         db.Subscriptions.Remove(subscription);
         await db.SaveChangesAsync();
     }
+
+    private static string? SerializeTags(IReadOnlyList<TagModel>? tags) =>
+        tags is { Count: > 0 } ? JsonSerializer.Serialize(tags) : null;
+}
+
+public sealed record SubscriptionImportSettings(
+    RepositoryType Repository,
+    bool AllowReimportDeleted,
+    bool AutoArchive)
+{
+    public static SubscriptionImportSettings Default { get; } = new(RepositoryType.Inbox, false, false);
 }

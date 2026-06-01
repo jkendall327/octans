@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using FluentAssertions.Execution;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Client;
 using Octans.Core;
@@ -19,6 +20,45 @@ namespace Octans.Tests.UserFlows;
 
 public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 {
+    [Fact]
+    public async Task UserCan_CreateRunnableSubscriptionWithImportSettingsAndTags()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+
+        var tags = new List<TagModel>
+        {
+            new("series", "octans subscription"),
+            new("source", "fake-gallery-downloader")
+        };
+
+        var response = await client.PostAsJsonAsync(
+            new Uri("/api/subscriptions", UriKind.Relative),
+            new SubscriptionCreateRequest(
+                "Octans flow subscription",
+                "fake-gallery-downloader",
+                "artist:octans",
+                30,
+                new(RepositoryType.Archive, AllowReimportDeleted: true, AutoArchive: true),
+                tags),
+            OctansApiFactory.JsonOptions);
+
+        await using var scope = factory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        var subscription = await db.Subscriptions.Include(s => s.Provider).SingleAsync();
+        var persistedTags = JsonSerializer.Deserialize<List<TagModel>>(subscription.SerializedTags!);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        subscription.Name.Should().Be("Octans flow subscription");
+        subscription.Provider.Name.Should().Be("fake-gallery-downloader");
+        subscription.Query.Should().Be("artist:octans");
+        subscription.CheckPeriod.Should().Be(TimeSpan.FromMinutes(30));
+        subscription.RepositoryId.Should().Be((int)RepositoryType.Archive);
+        subscription.AllowReimportDeleted.Should().BeTrue();
+        subscription.AutoArchive.Should().BeTrue();
+        persistedTags.Should().BeEquivalentTo(tags);
+    }
+
     [Fact(Skip = "Subscriptions haven't been fully implemented yet. This is a north-star test.")]
     public async Task UserCan_RunSubscriptionImportDiscoveredItemsAvoidAlreadySeenItemsAndInspectHistory()
     {
@@ -332,7 +372,13 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
                 throw new InvalidOperationException("The fake subscription source failed.");
             }
 
-            return Task.FromResult(new SubscriptionExecutionResult(discoveredItems.Count));
+            var discoveredSources = discoveredItems
+                .Select(item => new Octans.Core.Subscriptions.SubscriptionDiscoveredItem(
+                    item.RemoteUrl.AbsoluteUri,
+                    item.RemoteUrl))
+                .ToList();
+
+            return Task.FromResult(new SubscriptionExecutionResult(discoveredSources));
         }
     }
 
