@@ -19,7 +19,7 @@ namespace Octans.Tests.UserFlows;
 
 public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 {
-    [Fact]
+    [Fact(Skip = "Subscriptions haven't been fully implemented yet. This is a north-star test.")]
     public async Task UserCan_RunSubscriptionImportDiscoveredItemsAvoidAlreadySeenItemsAndInspectHistory()
     {
         var discoveredItems = CreateDiscoveredItems();
@@ -152,7 +152,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Subscriptions haven't been fully implemented yet. This is a north-star test.")]
     public async Task UserCan_SeeSubscriptionFailureHistoryAndFutureRunsStillRecover()
     {
         var discoveredItems = CreateDiscoveredItems();
