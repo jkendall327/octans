@@ -53,38 +53,51 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         var mediaResponse = await client.GetAsync(new Uri($"/media/{imported.Hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
 
-        using var _ = new AssertionScope();
+        using (new AssertionScope("The import job is accepted and processed"))
+        {
+            imported.CreateResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+            imported.CreateResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{imported.Created.JobId}");
+            imported.ProcessedJob.Should().BeTrue("the real import processor should pick up the queued API-created job");
+        }
 
-        imported.CreateResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        imported.CreateResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{imported.Created.JobId}");
-        imported.ProcessedJob.Should().BeTrue("the real import processor should pick up the queued API-created job");
+        using (new AssertionScope("The import job records a completed item"))
+        {
+            job.Should().NotBeNull();
+            job.Status.Should().Be("Completed");
+            job.TotalItems.Should().Be(1);
+            job.ProcessedItems.Should().Be(1);
+            job.FailedItems.Should().Be(0);
+            job.Items.Should().ContainSingle();
+            job.Items.Single().Status.Should().Be("Completed");
+            job.Items.Single().Source.Should().Be(imported.Source);
+        }
 
-        job.Should().NotBeNull();
-        job!.Status.Should().Be("Completed");
-        job.TotalItems.Should().Be(1);
-        job.ProcessedItems.Should().Be(1);
-        job.FailedItems.Should().Be(0);
-        job.Items.Should().ContainSingle();
-        job.Items.Single().Status.Should().Be("Completed");
-        job.Items.Single().Source.Should().Be(imported.Source);
+        using (new AssertionScope("The imported media appears in inbox search"))
+        {
+            inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        }
 
-        inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        using (new AssertionScope("The media details expose the imported metadata"))
+        {
+            detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            details.Should().NotBeNull();
+            details!.Hash.Should().Be(imported.Hash.Hex);
+            details.Repository.Should().Be(RepositoryType.Inbox);
+            details.Extension.Should().Be("jpg");
+            details.ContentType.Should().Be("image/jpeg");
+            details.MediaUrl.Should().Be($"/media/{imported.Hash.Hex}");
+            details.Tags.Should().ContainSingle(tag =>
+                tag.Namespace == "series" && tag.Subtag == "octans smoke test");
+            details.Notes.Should().BeEmpty();
+        }
 
-        detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        details.Should().NotBeNull();
-        details!.Hash.Should().Be(imported.Hash.Hex);
-        details.Repository.Should().Be(RepositoryType.Inbox);
-        details.Extension.Should().Be("jpg");
-        details.ContentType.Should().Be("image/jpeg");
-        details.MediaUrl.Should().Be($"/media/{imported.Hash.Hex}");
-        details.Tags.Should().ContainSingle(tag =>
-            tag.Namespace == "series" && tag.Subtag == "octans smoke test");
-        details.Notes.Should().BeEmpty();
-
-        mediaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        mediaResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
-        mediaBytes.Should().Equal(TestingConstants.MinimalJpeg);
+        using (new AssertionScope("The media endpoint serves the imported bytes"))
+        {
+            mediaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            mediaResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
+            mediaBytes.Should().Equal(TestingConstants.MinimalJpeg);
+        }
     }
 
     [Fact]
@@ -114,25 +127,32 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         var trashResults = await Query(client, ["system:trash"]);
         var trashedDetails = await GetMediaDetails(client, imported.Hash.Hex);
 
-        using var _ = new AssertionScope();
+        using (new AssertionScope("The imported media starts in the visible library"))
+        {
+            imported.ProcessedJob.Should().BeTrue("the lifecycle starts from a real completed import");
+            inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            defaultResultsBeforeTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            defaultResultsBeforeTrash.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        }
 
-        imported.ProcessedJob.Should().BeTrue("the lifecycle starts from a real completed import");
-        inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
-        defaultResultsBeforeTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        defaultResultsBeforeTrash.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        using (new AssertionScope("The archived media leaves inbox and appears in archive"))
+        {
+            inboxResultsAfterArchive.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            inboxResultsAfterArchive.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            archiveResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            archiveResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            archivedDetails.Repository.Should().Be(RepositoryType.Archive);
+        }
 
-        inboxResultsAfterArchive.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        inboxResultsAfterArchive.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
-        archiveResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        archiveResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
-        archivedDetails.Repository.Should().Be(RepositoryType.Archive);
-
-        defaultResultsAfterTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        defaultResultsAfterTrash.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
-        trashResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-        trashResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
-        trashedDetails.Repository.Should().Be(RepositoryType.Trash);
+        using (new AssertionScope("The trashed media leaves default search and appears in trash"))
+        {
+            defaultResultsAfterTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            defaultResultsAfterTrash.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            trashResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
+            trashResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            trashedDetails.Repository.Should().Be(RepositoryType.Trash);
+        }
     }
 
     private static async Task<ImportedImage> ImportLocalImage(
