@@ -7,7 +7,7 @@ GET {{host}}/files/1
 Accept: application/json
 
 ### Search by Query
-POST {{host}}/files/query
+POST {{host}}/api/files/query
 Content-Type: application/json
 Accept: application/json
 
@@ -17,7 +17,7 @@ Accept: application/json
 ]
 
 ### Import Files
-POST {{host}}/files
+POST {{host}}/api/files
 Content-Type: application/json
 Accept: application/json
 
@@ -42,7 +42,7 @@ Accept: application/json
 }
 
 ### Delete Files
-POST {{host}}/files/deletion
+POST {{host}}/api/files/deletion
 Content-Type: application/json
 Accept: application/json
 

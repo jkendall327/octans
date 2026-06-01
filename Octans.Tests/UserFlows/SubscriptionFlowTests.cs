@@ -30,7 +30,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
             services => services.ReplaceExistingRegistrationsWith<ISubscriptionExecutor>(executor));
         var client = factory.CreateClient();
         var createResponse = await client.PostAsJsonAsync(
-            new Uri("/subscriptions", UriKind.Relative),
+            new Uri("/api/subscriptions", UriKind.Relative),
             new
             {
                 Name = "Octans flow subscription",
@@ -167,7 +167,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         var client = factory.CreateClient();
 
         var createResponse = await client.PostAsJsonAsync(
-            new Uri("/subscriptions", UriKind.Relative),
+            new Uri("/api/subscriptions", UriKind.Relative),
             new SubscriptionCreateRequest(
                 "Flaky subscription",
                 "fake-gallery-downloader",
@@ -235,7 +235,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 
     private static async Task<SubscriptionResult> GetSubscriptions(HttpClient client)
     {
-        var response = await client.GetAsync(new Uri("/subscriptions", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/subscriptions", UriKind.Relative));
         var subscriptions = response.StatusCode is HttpStatusCode.OK
             ? await TryReadJsonList<SubscriptionStatusDto>(response)
             : [];
@@ -245,7 +245,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 
     private static async Task<DownloadResult> GetDownloads(HttpClient client)
     {
-        var response = await client.GetAsync(new Uri("/downloads", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/downloads", UriKind.Relative));
         var downloads = response.StatusCode is HttpStatusCode.OK
             ? await TryReadJsonList<DownloadStatusDto>(response)
             : [];
@@ -255,7 +255,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 
     private static async Task<ImportJobResult> GetImportJobs(HttpClient client)
     {
-        var response = await client.GetAsync(new Uri("/import-jobs", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/import-jobs", UriKind.Relative));
         var jobs = response.StatusCode is HttpStatusCode.OK
             ? await TryReadJsonList<ImportJobDto>(response)
             : [];
@@ -283,7 +283,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 
         foreach (var item in items)
         {
-            var detailsResponse = await client.GetAsync(new Uri($"/media/{item.Hash.Hex}/details", UriKind.Relative));
+            var detailsResponse = await client.GetAsync(new Uri($"/api/media/{item.Hash.Hex}/details", UriKind.Relative));
             var details = detailsResponse.StatusCode is HttpStatusCode.OK
                 ? await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions)
                 : null;

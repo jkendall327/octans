@@ -21,7 +21,7 @@ public class LocalFileImportViewmodelTests
         _client = Substitute.For<IOctansClient>();
         _client
             .CreateImportJobAsync(Arg.Any<ImportJobCreateRequest>())
-            .Returns(Task.FromResult(new ImportJobClientResult(Guid.NewGuid(), "/import-jobs/test")));
+            .Returns(Task.FromResult(new ImportJobClientResult(Guid.NewGuid(), "/api/import-jobs/test")));
 
         // This has to be a root path to avoid the URI ctor breaking.
         env.WebRootPath.Returns("/wwwroot");

@@ -111,7 +111,7 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
     public static async Task<FileQueryResult> QueryAsync(HttpClient client, IReadOnlyList<string> query)
     {
         var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
+            new Uri("/api/files/query", UriKind.Relative),
             query,
             JsonOptions);
 
@@ -123,7 +123,7 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
     public static async Task<FileQueryCountResult> CountQueryAsync(HttpClient client, IReadOnlyList<string> query)
     {
         var response = await client.PostAsJsonAsync(
-            new Uri("/files/query/count", UriKind.Relative),
+            new Uri("/api/files/query/count", UriKind.Relative),
             query,
             JsonOptions);
         var count = await response.Content.ReadFromJsonAsync<FileQueryCountDto>(JsonOptions);

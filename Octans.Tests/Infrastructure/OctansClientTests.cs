@@ -18,7 +18,7 @@ public class OctansClientTests
             request
                 .RequestUri
                 .Should()
-                .Be(new Uri("https://octans.test/version"));
+                .Be(new Uri("https://octans.test/api/version"));
 
             return StubHttpResponses.Json("""{"version":"1.2.3"}""");
         });
@@ -73,7 +73,7 @@ public class OctansClientTests
         observedRequest
             .RequestUri
             .Should()
-            .Be(new Uri("https://octans.test/files/query"));
+            .Be(new Uri("https://octans.test/api/files/query"));
 
         var body = await observedRequest.Content!.ReadAsStringAsync();
 
@@ -143,11 +143,11 @@ public class OctansClientTests
         observedRequest
             .RequestUri
             .Should()
-            .Be(new Uri("https://octans.test/files"));
+            .Be(new Uri("https://octans.test/api/files"));
 
         result
             .Should()
-            .Be(new ImportJobClientResult(jobId, $"/import-jobs/{jobId}"));
+            .Be(new ImportJobClientResult(jobId, $"/api/import-jobs/{jobId}"));
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class OctansClientTests
         observedRequest
             .RequestUri
             .Should()
-            .Be(new Uri("https://octans.test/duplicates/scan"));
+            .Be(new Uri("https://octans.test/api/duplicates/scan"));
 
         result
             .Should()
@@ -224,7 +224,7 @@ public class OctansClientTests
         observedRequest
             .RequestUri
             .Should()
-            .Be(new Uri("https://octans.test/duplicates/candidates"));
+            .Be(new Uri("https://octans.test/api/duplicates/candidates"));
 
         candidates
             .Should()
@@ -266,7 +266,7 @@ public class OctansClientTests
         observedRequest
             .RequestUri
             .Should()
-            .Be(new Uri("https://octans.test/duplicates/candidates/5/resolution"));
+            .Be(new Uri("https://octans.test/api/duplicates/candidates/5/resolution"));
 
         var body = await observedRequest.Content!.ReadAsStringAsync();
 

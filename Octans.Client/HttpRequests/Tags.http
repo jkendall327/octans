@@ -1,5 +1,5 @@
 ### Update Tags
-POST {{host}}/tags
+POST {{host}}/api/tags
 Content-Type: application/json
 Accept: application/json
 

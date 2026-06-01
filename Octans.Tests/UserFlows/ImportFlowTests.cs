@@ -33,11 +33,11 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             [new("series", "octans smoke test")]);
 
         var job = await client.GetFromJsonAsync<ImportJobDto>(
-            new Uri($"/import-jobs/{imported.Created.JobId}", UriKind.Relative),
+            new Uri($"/api/import-jobs/{imported.Created.JobId}", UriKind.Relative),
             OctansApiFactory.JsonOptions);
         var inboxResults = await OctansApiFactory.QueryAsync(client, InboxQuery);
         var detailsResponse = await client.GetAsync(
-            new Uri($"/media/{imported.Hash.Hex}/details", UriKind.Relative));
+            new Uri($"/api/media/{imported.Hash.Hex}/details", UriKind.Relative));
         var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
         var mediaResponse = await client.GetAsync(new Uri($"/media/{imported.Hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
@@ -45,7 +45,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The import job is accepted and processed"))
         {
             imported.CreateResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-            imported.CreateResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{imported.Created.JobId}");
+            imported.CreateResponse.Headers.Location?.OriginalString.Should().Be($"/api/import-jobs/{imported.Created.JobId}");
             imported.ProcessedJob.Should().BeTrue("the real import processor should pick up the queued API-created job");
         }
 
@@ -212,19 +212,19 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             []);
 
         var createResponse = await client.PostAsJsonAsync(
-            new Uri($"/media/{imported.Hash.Hex}/notes", UriKind.Relative),
+            new Uri($"/api/media/{imported.Hash.Hex}/notes", UriKind.Relative),
             new NoteCreateRequest("Initial field note"),
             OctansApiFactory.JsonOptions);
         var createdNote = await createResponse.Content.ReadFromJsonAsync<NoteDto>(OctansApiFactory.JsonOptions);
         var detailsAfterCreate = await GetMediaDetails(client, imported.Hash.Hex);
 
         var updateResponse = await client.PutAsJsonAsync(
-            new Uri($"/notes/{createdNote!.Id}", UriKind.Relative),
+            new Uri($"/api/notes/{createdNote!.Id}", UriKind.Relative),
             new NoteUpdateRequest("Updated field note"),
             OctansApiFactory.JsonOptions);
         var detailsAfterUpdate = await GetMediaDetails(client, imported.Hash.Hex);
 
-        var deleteResponse = await client.DeleteAsync(new Uri($"/notes/{createdNote.Id}", UriKind.Relative));
+        var deleteResponse = await client.DeleteAsync(new Uri($"/api/notes/{createdNote.Id}", UriKind.Relative));
         var detailsAfterDelete = await GetMediaDetails(client, imported.Hash.Hex);
 
         using (new AssertionScope("The test starts from real imported media"))
@@ -237,7 +237,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         using (new AssertionScope("Adding a note makes it visible on media details"))
         {
             createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-            createResponse.Headers.Location?.OriginalString.Should().Be($"/notes/{createdNote.Id}");
+            createResponse.Headers.Location?.OriginalString.Should().Be($"/api/notes/{createdNote.Id}");
             createdNote.Content.Should().Be("Initial field note");
             detailsAfterCreate.Notes.Should().ContainSingle(note =>
                 note.Id == createdNote.Id && note.Content == "Initial field note");
@@ -283,7 +283,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         };
 
         var createResponse = await client.PostAsJsonAsync(
-            new Uri("/import-jobs", UriKind.Relative),
+            new Uri("/api/import-jobs", UriKind.Relative),
             request,
             OctansApiFactory.JsonOptions);
         var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(OctansApiFactory.JsonOptions);
@@ -295,7 +295,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
 
     private static async Task<MediaDetailsDto> GetMediaDetails(HttpClient client, string hash)
     {
-        var response = await client.GetAsync(new Uri($"/media/{hash}/details", UriKind.Relative));
+        var response = await client.GetAsync(new Uri($"/api/media/{hash}/details", UriKind.Relative));
         var details = await response.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -311,7 +311,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
     {
         var request = new UpdateTagsRequest(hashId, tagsToAdd, tagsToRemove);
 
-        return client.PostAsJsonAsync(new Uri("/tags", UriKind.Relative), request, OctansApiFactory.JsonOptions);
+        return client.PostAsJsonAsync(new Uri("/api/tags", UriKind.Relative), request, OctansApiFactory.JsonOptions);
     }
 
     private static async Task TransitionRepository(
@@ -321,7 +321,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         RepositoryDestination destination)
     {
         var response = await client.PostAsJsonAsync(
-            new Uri("/repository/transitions", UriKind.Relative),
+            new Uri("/api/repository/transitions", UriKind.Relative),
             new RepositoryTransitionRequest([hash], destination),
             OctansApiFactory.JsonOptions);
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);

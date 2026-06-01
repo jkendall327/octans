@@ -16,7 +16,7 @@ public sealed class OctansApiFactoryTests(ITestOutputHelper output)
         await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync(new Uri("/health", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/health", UriKind.Relative));
 
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync();
@@ -29,7 +29,7 @@ public sealed class OctansApiFactoryTests(ITestOutputHelper output)
         await using var factory = new OctansApiFactory(output);
         var client = factory.CreateClient();
 
-        var version = await client.GetFromJsonAsync<OctansVersion>(new Uri("/version", UriKind.Relative));
+        var version = await client.GetFromJsonAsync<OctansVersion>(new Uri("/api/version", UriKind.Relative));
 
         version.Should().Be(new OctansVersion("1.0.0"));
     }

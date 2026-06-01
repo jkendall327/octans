@@ -46,7 +46,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         };
 
         var createResponse = await client.PostAsJsonAsync(
-            new Uri("/import-jobs", UriKind.Relative),
+            new Uri("/api/import-jobs", UriKind.Relative),
             request,
             OctansApiFactory.JsonOptions);
         var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(OctansApiFactory.JsonOptions);
@@ -57,10 +57,10 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
             .WaitAsync(TimeSpan.FromSeconds(15));
 
         var job = await client.GetFromJsonAsync<ImportJobDto>(
-            new Uri($"/import-jobs/{created!.JobId}", UriKind.Relative),
+            new Uri($"/api/import-jobs/{created!.JobId}", UriKind.Relative),
             OctansApiFactory.JsonOptions);
         var inboxResults = await OctansApiFactory.QueryAsync(client, InboxQuery);
-        var detailsResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}/details", UriKind.Relative));
+        var detailsResponse = await client.GetAsync(new Uri($"/api/media/{hash.Hex}/details", UriKind.Relative));
         var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
         var mediaResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
@@ -70,7 +70,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The RawUrl import job is accepted and processed"))
         {
             createResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
-            createResponse.Headers.Location?.OriginalString.Should().Be($"/import-jobs/{created.JobId}");
+            createResponse.Headers.Location?.OriginalString.Should().Be($"/api/import-jobs/{created.JobId}");
             processedJob.Should().BeTrue("the real import processor should pick up the queued API-created RawUrl job");
         }
 

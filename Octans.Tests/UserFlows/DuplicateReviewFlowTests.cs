@@ -29,7 +29,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         var library = await SeedDuplicateReviewLibrary(factory);
         hashProvider.SetHash(library["calculated-duplicate-a"].Hash, library["seeded-duplicate-a"].PerceptualHash!.Value);
 
-        var scanResponse = await client.PostAsync(new Uri("/duplicates/scan", UriKind.Relative), null);
+        var scanResponse = await client.PostAsync(new Uri("/api/duplicates/scan", UriKind.Relative), null);
         var scanResult = await scanResponse.Content.ReadFromJsonAsync<DuplicateScanResultDto>(OctansApiFactory.JsonOptions);
         var candidates = await GetDuplicateCandidates(client);
 
@@ -45,7 +45,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
             notDuplicateCandidate.Id,
             DuplicateResolution.Distinct,
             keepHashId: null);
-        var rescanAfterNotDuplicateResponse = await client.PostAsync(new Uri("/duplicates/scan", UriKind.Relative), null);
+        var rescanAfterNotDuplicateResponse = await client.PostAsync(new Uri("/api/duplicates/scan", UriKind.Relative), null);
         var rescanAfterNotDuplicate = await rescanAfterNotDuplicateResponse
             .Content
             .ReadFromJsonAsync<DuplicateScanResultDto>(OctansApiFactory.JsonOptions);
@@ -180,7 +180,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
 
     private static async Task<IReadOnlyList<DuplicateCandidateResult>> GetDuplicateCandidates(HttpClient client)
     {
-        var response = await client.GetAsync(new Uri("/duplicates/candidates", UriKind.Relative));
+        var response = await client.GetAsync(new Uri("/api/duplicates/candidates", UriKind.Relative));
         var candidates = await response.Content.ReadFromJsonAsync<List<DuplicateCandidateDto>>(OctansApiFactory.JsonOptions) ?? [];
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -197,7 +197,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         int? keepHashId)
     {
         return await client.PostAsJsonAsync(
-            new Uri($"/duplicates/candidates/{candidateId}/resolution", UriKind.Relative),
+            new Uri($"/api/duplicates/candidates/{candidateId}/resolution", UriKind.Relative),
             new DuplicateResolutionRequest(resolution, keepHashId),
             OctansApiFactory.JsonOptions);
     }
