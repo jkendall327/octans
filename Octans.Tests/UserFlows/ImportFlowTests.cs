@@ -67,7 +67,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The imported media appears in inbox search"))
         {
             inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            inboxResults.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
         }
 
         using (new AssertionScope("The media details expose the imported metadata"))
@@ -124,26 +124,26 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         {
             imported.ProcessedJob.Should().BeTrue("the lifecycle starts from a real completed import");
             inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            inboxResults.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
             defaultResultsBeforeTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            defaultResultsBeforeTrash.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            defaultResultsBeforeTrash.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
         }
 
         using (new AssertionScope("The archived media leaves inbox and appears in archive"))
         {
             inboxResultsAfterArchive.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            inboxResultsAfterArchive.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            inboxResultsAfterArchive.Items.Should().NotContain(item => item.Hash == imported.Hash.Hex);
             archiveResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            archiveResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            archiveResults.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
             archivedDetails.Repository.Should().Be(RepositoryType.Archive);
         }
 
         using (new AssertionScope("The trashed media leaves default search and appears in trash"))
         {
             defaultResultsAfterTrash.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            defaultResultsAfterTrash.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            defaultResultsAfterTrash.Items.Should().NotContain(item => item.Hash == imported.Hash.Hex);
             trashResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            trashResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            trashResults.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
             trashedDetails.Repository.Should().Be(RepositoryType.Trash);
         }
     }
@@ -193,9 +193,9 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         using (new AssertionScope("Search uses the current tag state"))
         {
             addedTagResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            addedTagResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            addedTagResults.Items.Should().ContainSingle(item => item.Hash == imported.Hash.Hex);
             removedTagResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            removedTagResults.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+            removedTagResults.Items.Should().NotContain(item => item.Hash == imported.Hash.Hex);
         }
     }
 

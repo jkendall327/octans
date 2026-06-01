@@ -13,16 +13,15 @@ using Octans.Core.Repositories;
 using Octans.Core.Stats;
 using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
-using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
 
 namespace Octans.Client;
 
 public interface IOctansClient
 {
-    Task<IReadOnlyList<HashItem>> GetFilesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FileDto>> GetFilesAsync(CancellationToken cancellationToken = default);
     Task<string?> GetFileAsync(int id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<HashItem>> QueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FileDto>> QueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
     Task<int> CountQueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
     Task<MediaDetailsDto?> GetMediaDetailsAsync(string hash, CancellationToken cancellationToken = default);
     Task<NoteDto> AddNoteAsync(string hash, string content, CancellationToken cancellationToken = default);
@@ -83,9 +82,9 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         }
     };
 
-    public async Task<IReadOnlyList<HashItem>> GetFilesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<FileDto>> GetFilesAsync(CancellationToken cancellationToken = default)
     {
-        var response = await httpClient.GetFromJsonAsync<List<HashItem>>(Api("files"), JsonOptions, cancellationToken);
+        var response = await httpClient.GetFromJsonAsync<List<FileDto>>(Api("files"), JsonOptions, cancellationToken);
 
         return response ?? [];
     }
@@ -106,14 +105,14 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         return await response.Content.ReadFromJsonAsync<string>(JsonOptions, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<HashItem>> QueryFilesAsync(
+    public async Task<IReadOnlyList<FileDto>> QueryFilesAsync(
         IEnumerable<string> queries,
         CancellationToken cancellationToken = default)
     {
         using var response = await httpClient.PostAsJsonAsync(Api("files/query"), queries, JsonOptions, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
-        var files = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions, cancellationToken);
+        var files = await response.Content.ReadFromJsonAsync<List<FileDto>>(JsonOptions, cancellationToken);
 
         return files ?? [];
     }

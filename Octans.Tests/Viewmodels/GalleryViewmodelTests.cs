@@ -47,22 +47,8 @@ public class GalleryViewmodelTests
     {
         var hashes = new[]
         {
-            new HashItem
-            {
-                Id = 1,
-                Hash =
-                [
-                    0xDE, 0xAD, 0xBE, 0xEF
-                ]
-            },
-            new HashItem
-            {
-                Id = 2,
-                Hash =
-                [
-                    0x01, 0x23, 0x45, 0x67
-                ]
-            }
+            new FileDto(1, "DEADBEEF", null, null, RepositoryType.Inbox, "/media/DEADBEEF"),
+            new FileDto(2, "01234567", null, null, RepositoryType.Inbox, "/media/01234567")
         };
 
         _client

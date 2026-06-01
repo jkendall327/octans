@@ -115,7 +115,7 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
             query,
             JsonOptions);
 
-        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions) ?? [];
+        var items = await response.Content.ReadFromJsonAsync<List<FileDto>>(JsonOptions) ?? [];
 
         return new(response, items);
     }
@@ -206,10 +206,10 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
     }
 }
 
-public sealed record FileQueryResult(HttpResponseMessage Response, IReadOnlyList<HashItem> Items)
+public sealed record FileQueryResult(HttpResponseMessage Response, IReadOnlyList<FileDto> Items)
 {
     public IReadOnlyList<string> Hashes { get; } = Items
-        .Select(item => ContentHash.FromHashBytes(item.Hash).Hex)
+        .Select(item => item.Hash)
         .ToArray();
 }
 

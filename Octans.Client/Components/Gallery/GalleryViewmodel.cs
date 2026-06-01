@@ -203,14 +203,7 @@ public sealed class GalleryViewmodel(
 
             foreach (var result in await client.QueryFilesAsync(raw, _cts.Token))
             {
-                // Build a stable, lower-case hex string for the route
-                var hex = Convert
-                    .ToHexString(result.Hash)
-                    .ToUpperInvariant();
-
-                var url = $"/media/{hex}";
-
-                ImageUrls.Add(url);
+                ImageUrls.Add(result.MediaUrl);
 
                 _processed++;
 

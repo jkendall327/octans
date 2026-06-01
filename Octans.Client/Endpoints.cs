@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -140,7 +141,13 @@ internal static class Endpoints
 
     private static void MapFileEndpoints(IEndpointRouteBuilder app)
     {
-        app.MapGet("/files", async ([FromServices] FileFinder service) => await service.GetAll());
+        app.MapGet("/files",
+            async ([FromServices] FileFinder service) =>
+            {
+                var files = await service.GetAll();
+
+                return files.Select(MapFile).ToList();
+            });
 
         app
             .MapGet("/files/{id:int}",
@@ -154,7 +161,9 @@ internal static class Endpoints
 
         app
             .MapPost("/files/query",
-                ([FromBody] IEnumerable<string> queries, [FromServices] IQueryService service) => service.Query(queries))
+                ([FromBody] IEnumerable<string> queries,
+                    [FromServices] IQueryService service,
+                    CancellationToken token) => QueryFileDtos(queries, service, token))
             .WithName("Search by Query")
             .WithDescription("Retrieve files found by a tag query search");
 
@@ -790,6 +799,30 @@ internal static class Endpoints
             error = "Hash must be hex.";
             return false;
         }
+    }
+
+    private static async IAsyncEnumerable<FileDto> QueryFileDtos(
+        IEnumerable<string> queries,
+        IQueryService service,
+        [EnumeratorCancellation] CancellationToken token)
+    {
+        await foreach (var item in service.Query(queries, token).WithCancellation(token))
+        {
+            yield return MapFile(item);
+        }
+    }
+
+    private static FileDto MapFile(HashItem item)
+    {
+        var hash = ContentHash.FromHashBytes(item.Hash).Hex;
+
+        return new(
+            item.Id,
+            hash,
+            item.Extension,
+            item.ContentType,
+            (RepositoryType)item.RepositoryId,
+            $"/media/{hash}");
     }
 
     private static DownloadStatusDto MapDownloadStatus(DownloadStatus status) => new(

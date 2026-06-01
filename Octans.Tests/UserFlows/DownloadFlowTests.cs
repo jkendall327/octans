@@ -107,7 +107,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The imported image is usable through normal library APIs"))
         {
             inboxResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
-            inboxResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(hash.Bytes));
+            inboxResults.Items.Should().ContainSingle(item => item.Hash == hash.Hex);
 
             detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
             details.Should().NotBeNull();

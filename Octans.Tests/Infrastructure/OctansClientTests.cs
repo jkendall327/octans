@@ -49,7 +49,9 @@ public class OctansClientTests
         {
             observedRequest = request;
 
-            return StubHttpResponses.Json("""[{"id":7,"hash":"AQID"}]""");
+            return StubHttpResponses.Json("""
+                [{"id":7,"hash":"010203","extension":".jpg","contentType":"image/jpeg","repository":"Inbox","mediaUrl":"/media/010203"}]
+                """);
         });
 
         var httpClient = new HttpClient(handler)
@@ -86,11 +88,7 @@ public class OctansClientTests
             .ContainSingle()
             .Which
             .Should()
-            .BeEquivalentTo(new HashItem
-            {
-                Id = 7,
-                Hash = [1, 2, 3]
-            });
+            .Be(new FileDto(7, "010203", ".jpg", "image/jpeg", RepositoryType.Inbox, "/media/010203"));
     }
 
     [Fact]

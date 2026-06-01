@@ -20,6 +20,14 @@ public sealed record MediaDetailsDto(
     IReadOnlyList<NoteDto> Notes,
     string MediaUrl);
 
+public sealed record FileDto(
+    int Id,
+    string Hash,
+    string? Extension,
+    string? ContentType,
+    RepositoryType Repository,
+    string MediaUrl);
+
 public sealed record NoteCreateRequest(string Content);
 
 public sealed record NoteUpdateRequest(string Content);
