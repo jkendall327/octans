@@ -11,6 +11,7 @@ using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
+using Octans.Core.Notes;
 using Octans.Core.Repositories;
 using Octans.Core.Tags;
 using Octans.Data.Models;
@@ -207,6 +208,65 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             addedTagResults.Items.Should().ContainSingle(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
             removedTagResults.Response.StatusCode.Should().Be(HttpStatusCode.OK);
             removedTagResults.Items.Should().NotContain(item => item.Hash.SequenceEqual(imported.Hash.Bytes));
+        }
+    }
+
+    [Fact]
+    public async Task UserCan_AddEditViewAndDeleteNotesAttachedToImportedMedia()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        var imported = await ImportLocalImage(
+            factory,
+            client,
+            "notes-round-trip.jpg",
+            TestingConstants.MinimalJpeg,
+            []);
+
+        var createResponse = await client.PostAsJsonAsync(
+            new Uri($"/media/{imported.Hash.Hex}/notes", UriKind.Relative),
+            new NoteCreateRequest("Initial field note"),
+            JsonOptions);
+        var createdNote = await createResponse.Content.ReadFromJsonAsync<NoteDto>(JsonOptions);
+        var detailsAfterCreate = await GetMediaDetails(client, imported.Hash.Hex);
+
+        var updateResponse = await client.PutAsJsonAsync(
+            new Uri($"/notes/{createdNote!.Id}", UriKind.Relative),
+            new NoteUpdateRequest("Updated field note"),
+            JsonOptions);
+        var detailsAfterUpdate = await GetMediaDetails(client, imported.Hash.Hex);
+
+        var deleteResponse = await client.DeleteAsync(new Uri($"/notes/{createdNote.Id}", UriKind.Relative));
+        var detailsAfterDelete = await GetMediaDetails(client, imported.Hash.Hex);
+
+        using (new AssertionScope("The test starts from real imported media"))
+        {
+            imported.ProcessedJob.Should().BeTrue("notes attach to media that exists through the normal import pipeline");
+            detailsAfterCreate.Hash.Should().Be(imported.Hash.Hex);
+            detailsAfterCreate.MediaUrl.Should().Be($"/media/{imported.Hash.Hex}");
+        }
+
+        using (new AssertionScope("Adding a note makes it visible on media details"))
+        {
+            createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+            createResponse.Headers.Location?.OriginalString.Should().Be($"/notes/{createdNote.Id}");
+            createdNote.Content.Should().Be("Initial field note");
+            detailsAfterCreate.Notes.Should().ContainSingle(note =>
+                note.Id == createdNote.Id && note.Content == "Initial field note");
+        }
+
+        using (new AssertionScope("Updating the note changes the user-visible media details"))
+        {
+            updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            detailsAfterUpdate.Notes.Should().ContainSingle(note =>
+                note.Id == createdNote.Id && note.Content == "Updated field note");
+        }
+
+        using (new AssertionScope("Deleting the note removes it from media details"))
+        {
+            deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            detailsAfterDelete.Notes.Should().NotContain(note => note.Id == createdNote.Id);
+            detailsAfterDelete.Notes.Should().BeEmpty();
         }
     }
 
