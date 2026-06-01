@@ -63,13 +63,16 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The import job records a completed item"))
         {
             job.Should().NotBeNull();
-            job.Status.Should().Be("Completed");
-            job.TotalItems.Should().Be(1);
-            job.ProcessedItems.Should().Be(1);
-            job.FailedItems.Should().Be(0);
-            job.Items.Should().ContainSingle();
-            job.Items.Single().Status.Should().Be("Completed");
-            job.Items.Single().Source.Should().Be(imported.Source);
+            job.Should().Match<ImportJobDto>(j =>
+                j.Status == "Completed"
+                && j.TotalItems == 1
+                && j.ProcessedItems == 1
+                && j.FailedItems == 0);
+
+            var item = job.Items.Should().ContainSingle().Which;
+            item.Should().Match<ImportJobItemDto>(i =>
+                i.Status == "Completed"
+                && i.Source == imported.Source);
         }
 
         using (new AssertionScope("The imported media appears in inbox search"))
@@ -82,11 +85,12 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         {
             detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
             details.Should().NotBeNull();
-            details.Hash.Should().Be(imported.Hash.Hex);
-            details.Repository.Should().Be(RepositoryType.Inbox);
-            details.Extension.Should().Be("jpg");
-            details.ContentType.Should().Be("image/jpeg");
-            details.MediaUrl.Should().Be($"/media/{imported.Hash.Hex}");
+            details.Should().Match<MediaDetailsDto>(d =>
+                d.Hash == imported.Hash.Hex
+                && d.Repository == RepositoryType.Inbox
+                && d.Extension == "jpg"
+                && d.ContentType == "image/jpeg"
+                && d.MediaUrl == $"/media/{imported.Hash.Hex}");
             details.Tags.Should().ContainSingle(tag =>
                 tag.Namespace == "series" && tag.Subtag == "octans smoke test");
             details.Notes.Should().BeEmpty();

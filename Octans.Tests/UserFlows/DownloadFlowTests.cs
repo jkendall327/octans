@@ -1,4 +1,3 @@
-using System.IO.Abstractions.TestingHelpers;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Octans.Client;
 using Octans.Core;
-using Octans.Core.Filesystem;
 using Octans.Core.Http;
 using Octans.Core.Importing;
 using Octans.Data.Models;
@@ -80,6 +78,7 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         var mediaResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
         var download = await GetRawUrlDownload(factory, remoteUrl);
+        var source = remoteUrl.ToString();
 
         using (new AssertionScope("The RawUrl import job is accepted and processed"))
         {
@@ -91,27 +90,31 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         using (new AssertionScope("The import job records durable item status"))
         {
             job.Should().NotBeNull();
-            job.Status.Should().Be("Completed");
-            job.TotalItems.Should().Be(1);
-            job.ProcessedItems.Should().Be(1);
-            job.FailedItems.Should().Be(0);
-            job.Items.Should().ContainSingle();
-            job.Items.Single().ImportType.Should().Be(nameof(ImportType.RawUrl));
-            job.Items.Single().Status.Should().Be("Completed");
-            job.Items.Single().Source.Should().Be(remoteUrl.ToString());
+            job.Should().Match<ImportJobDto>(j =>
+                j.Status == "Completed"
+                && j.TotalItems == 1
+                && j.ProcessedItems == 1
+                && j.FailedItems == 0);
+
+            var item = job.Items.Should().ContainSingle().Which;
+            item.Should().Match<ImportJobItemDto>(i =>
+                i.ImportType == nameof(ImportType.RawUrl)
+                && i.Status == "Completed"
+                && i.Source == source);
         }
 
         using (new AssertionScope("The remote bytes crossed the durable download boundary"))
         {
             remoteHttp.Requests.Should().ContainSingle(requestMessage => requestMessage.RequestUri == remoteUrl);
-            download.State.Should().Be(DownloadState.Completed);
-            download.TerminalOutcome.Should().Be(DownloadTerminalOutcome.Completed);
-            download.HttpStatusCode.Should().Be((int)HttpStatusCode.OK);
-            download.ResponseContentType.Should().Be("image/jpeg");
-            download.BytesDownloaded.Should().Be(TestingConstants.MinimalJpeg.Length);
-            download.SourceType.Should().Be(nameof(ImportType.RawUrl));
-            download.SourceId.Should().Be(remoteUrl.ToString());
-            download.CompletedAt.Should().NotBeNull();
+            download.Should().Match<DownloadStatus>(d =>
+                d.State == DownloadState.Completed
+                && d.TerminalOutcome == DownloadTerminalOutcome.Completed
+                && d.HttpStatusCode == (int)HttpStatusCode.OK
+                && d.ResponseContentType == "image/jpeg"
+                && d.BytesDownloaded == TestingConstants.MinimalJpeg.Length
+                && d.SourceType == nameof(ImportType.RawUrl)
+                && d.SourceId == source
+                && d.CompletedAt != null);
         }
 
         using (new AssertionScope("The imported image is usable through normal library APIs"))
@@ -121,10 +124,11 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
 
             detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
             details.Should().NotBeNull();
-            details.Hash.Should().Be(hash.Hex);
-            details.Repository.Should().Be(RepositoryType.Inbox);
-            details.ContentType.Should().Be("image/jpeg");
-            details.MediaUrl.Should().Be($"/media/{hash.Hex}");
+            details.Should().Match<MediaDetailsDto>(d =>
+                d.Hash == hash.Hex
+                && d.Repository == RepositoryType.Inbox
+                && d.ContentType == "image/jpeg"
+                && d.MediaUrl == $"/media/{hash.Hex}");
 
             mediaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
             mediaResponse.Content.Headers.ContentType?.MediaType.Should().Be("image/jpeg");
