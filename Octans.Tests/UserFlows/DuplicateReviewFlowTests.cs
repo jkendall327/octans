@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Octans.Client;
 using Octans.Core;
 using Octans.Core.Duplicates;
-using Octans.Core.Filesystem;
 using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
 using Octans.Tests.Helpers;
@@ -19,14 +17,6 @@ namespace Octans.Tests.UserFlows;
 
 public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
-
     [Fact]
     public async Task UserCan_DiscoverReviewAndSafelyResolveDuplicateCandidates()
     {
@@ -40,7 +30,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         hashProvider.SetHash(library["calculated-duplicate-a"].Hash, library["seeded-duplicate-a"].PerceptualHash!.Value);
 
         var scanResponse = await client.PostAsync(new Uri("/duplicates/scan", UriKind.Relative), null);
-        var scanResult = await scanResponse.Content.ReadFromJsonAsync<DuplicateScanResultDto>(JsonOptions);
+        var scanResult = await scanResponse.Content.ReadFromJsonAsync<DuplicateScanResultDto>(OctansApiFactory.JsonOptions);
         var candidates = await GetDuplicateCandidates(client);
 
         var notDuplicateCandidate = candidates.Single(candidate =>
@@ -58,7 +48,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         var rescanAfterNotDuplicateResponse = await client.PostAsync(new Uri("/duplicates/scan", UriKind.Relative), null);
         var rescanAfterNotDuplicate = await rescanAfterNotDuplicateResponse
             .Content
-            .ReadFromJsonAsync<DuplicateScanResultDto>(JsonOptions);
+            .ReadFromJsonAsync<DuplicateScanResultDto>(OctansApiFactory.JsonOptions);
         var candidatesAfterNotDuplicate = await GetDuplicateCandidates(client);
 
         var deleteResponse = await ResolveCandidate(
@@ -67,7 +57,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
             DuplicateResolution.Distinct,
             library["delete-review-keep"].Id);
         var candidatesAfterDelete = await GetDuplicateCandidates(client);
-        var normalSearchAfterDelete = await Query(client, []);
+        var normalSearchAfterDelete = await OctansApiFactory.QueryAsync(client, []);
         var keptMediaResponse = await client.GetAsync(
             new Uri(library["delete-review-keep"].MediaUrl, UriKind.Relative));
         var removedMediaResponse = await client.GetAsync(
@@ -145,8 +135,6 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
     {
         await using var scope = factory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        var imageStorage = scope.ServiceProvider.GetRequiredService<ImageStorage>();
-        imageStorage.EnsureStorage();
 
         var media = new[]
         {
@@ -159,21 +147,11 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
 
         foreach (var item in media)
         {
-            var metadata = new ImageMetadata("jpg", "image/jpeg");
-            var destination = imageStorage.GetOriginalDestination(item.Hash, metadata);
-            await factory.FileSystem.File.WriteAllBytesAsync(destination, item.Bytes);
-
-            var hash = new HashItem
-            {
-                Hash = item.Hash.Bytes,
-                Extension = metadata.Extension,
-                ContentType = metadata.ContentType,
-                RepositoryId = (int)RepositoryType.Inbox,
-                PerceptualHash = item.PerceptualHash
-            };
-
-            db.Hashes.Add(hash);
-            item.Id = hash.Id;
+            await factory.AddStoredImageAsync(
+                db,
+                item.Bytes,
+                perceptualHash: item.PerceptualHash,
+                metadata: new("jpg", "image/jpeg"));
         }
 
         await db.SaveChangesAsync();
@@ -203,7 +181,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
     private static async Task<IReadOnlyList<DuplicateCandidateResult>> GetDuplicateCandidates(HttpClient client)
     {
         var response = await client.GetAsync(new Uri("/duplicates/candidates", UriKind.Relative));
-        var candidates = await response.Content.ReadFromJsonAsync<List<DuplicateCandidateDto>>(JsonOptions) ?? [];
+        var candidates = await response.Content.ReadFromJsonAsync<List<DuplicateCandidateDto>>(OctansApiFactory.JsonOptions) ?? [];
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -221,7 +199,7 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         return await client.PostAsJsonAsync(
             new Uri($"/duplicates/candidates/{candidateId}/resolution", UriKind.Relative),
             new DuplicateResolutionRequest(resolution, keepHashId),
-            JsonOptions);
+            OctansApiFactory.JsonOptions);
     }
 
     private static async Task<IReadOnlyList<HttpResponseMessage>> ResolveCandidateMediaUrls(
@@ -237,21 +215,6 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
         }
 
         return responses;
-    }
-
-    private static async Task<QueryResult> Query(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            query,
-            JsonOptions);
-
-        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions) ?? [];
-        var hashes = items
-            .Select(item => ContentHash.FromHashBytes(item.Hash).Hex)
-            .ToArray();
-
-        return new(response, hashes);
     }
 
     private static async Task<IReadOnlyList<DuplicateDecision>> GetDurableDecisions(OctansApiFactory factory)
@@ -314,8 +277,6 @@ public sealed class DuplicateReviewFlowTests(ITestOutputHelper output)
                 || Hash1 == secondHash && Hash2 == firstHash;
         }
     }
-
-    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<string> Hashes);
 
     private sealed class SeededMedia(
         string name,

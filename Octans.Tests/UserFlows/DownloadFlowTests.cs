@@ -1,14 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
 using Octans.Client;
 using Octans.Core;
 using Octans.Core.Http;
@@ -22,14 +19,6 @@ namespace Octans.Tests.UserFlows;
 public sealed class DownloadFlowTests(ITestOutputHelper output)
 {
     private static readonly string[] InboxQuery = ["system:inbox"];
-
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
 
     [Fact]
     public async Task UserCan_ImportRawUrlThroughDurableDownloadJob_AndThen_UseItFromLibrary()
@@ -59,22 +48,20 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         var createResponse = await client.PostAsJsonAsync(
             new Uri("/import-jobs", UriKind.Relative),
             request,
-            JsonOptions);
-        var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(JsonOptions);
+            OctansApiFactory.JsonOptions);
+        var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(OctansApiFactory.JsonOptions);
 
-        var processor = new ImportProcessorService(
-            factory.Services,
-            NullLogger<ImportProcessorService>.Instance);
-        var processedJob = await processor
-            .ProcessQueuedJob(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token)
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var processedJob = await factory
+            .ProcessQueuedImportJobAsync(cancellation.Token)
             .WaitAsync(TimeSpan.FromSeconds(15));
 
         var job = await client.GetFromJsonAsync<ImportJobDto>(
             new Uri($"/import-jobs/{created!.JobId}", UriKind.Relative),
-            JsonOptions);
-        var inboxResults = await Query(client, InboxQuery);
+            OctansApiFactory.JsonOptions);
+        var inboxResults = await OctansApiFactory.QueryAsync(client, InboxQuery);
         var detailsResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}/details", UriKind.Relative));
-        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
+        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
         var mediaResponse = await client.GetAsync(new Uri($"/media/{hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
         var download = await GetRawUrlDownload(factory, remoteUrl);
@@ -155,18 +142,6 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
         return response;
     }
 
-    private static async Task<QueryResult> Query(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            query,
-            JsonOptions);
-
-        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions);
-
-        return new(response, items ?? []);
-    }
-
     private static async Task<DownloadStatus> GetRawUrlDownload(OctansApiFactory factory, Uri remoteUrl)
     {
         await using var scope = factory.CreateAsyncScope();
@@ -174,6 +149,4 @@ public sealed class DownloadFlowTests(ITestOutputHelper output)
 
         return await db.DownloadStatuses.SingleAsync(download => download.Url == remoteUrl.ToString());
     }
-
-    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<HashItem> Items);
 }

@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,14 +19,6 @@ namespace Octans.Tests.UserFlows;
 
 public sealed class SubscriptionFlowTests(ITestOutputHelper output)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
-
     [Fact]
     public async Task UserCan_RunSubscriptionImportDiscoveredItemsAvoidAlreadySeenItemsAndInspectHistory()
     {
@@ -58,7 +49,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
                     new TagModel("source", "fake-gallery-downloader")
                 }
             },
-            JsonOptions);
+            OctansApiFactory.JsonOptions);
         var subscriptionsAfterCreate = await GetSubscriptions(client);
 
         await RunDueSubscriptions(factory);
@@ -67,7 +58,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         var subscriptionsAfterFirstRun = await GetSubscriptions(client);
         var downloadsAfterFirstRun = await GetDownloads(client);
         var importJobsAfterFirstRun = await GetImportJobs(client);
-        var subscriptionTagResults = await Query(client, ["series:octans subscription"]);
+        var subscriptionTagResults = await OctansApiFactory.QueryAsync(client, ["series:octans subscription"]);
         var mediaAfterFirstRun = await ProbeMedia(client, discoveredItems);
 
         factory.TimeProvider.Advance(TimeSpan.FromMinutes(30));
@@ -182,7 +173,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
                 "fake-gallery-downloader",
                 "gallery:flaky",
                 5),
-            JsonOptions);
+            OctansApiFactory.JsonOptions);
 
         var firstRunException = await Record.ExceptionAsync(() => RunDueSubscriptions(factory));
         var subscriptionsAfterFailure = await GetSubscriptions(client);
@@ -272,25 +263,11 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         return new(response, jobs);
     }
 
-    private static async Task<QueryResult> Query(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            query,
-            JsonOptions);
-        var items = response.StatusCode is HttpStatusCode.OK
-            ? await TryReadJsonList<HashItem>(response)
-            : [];
-        var hashes = items.Select(item => ContentHash.FromHashBytes(item.Hash).Hex).ToArray();
-
-        return new(response, hashes);
-    }
-
     private static async Task<IReadOnlyList<T>> TryReadJsonList<T>(HttpResponseMessage response)
     {
         try
         {
-            return await response.Content.ReadFromJsonAsync<List<T>>(JsonOptions) ?? [];
+            return await response.Content.ReadFromJsonAsync<List<T>>(OctansApiFactory.JsonOptions) ?? [];
         }
         catch (JsonException)
         {
@@ -308,7 +285,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         {
             var detailsResponse = await client.GetAsync(new Uri($"/media/{item.Hash.Hex}/details", UriKind.Relative));
             var details = detailsResponse.StatusCode is HttpStatusCode.OK
-                ? await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions)
+                ? await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions)
                 : null;
             var mediaResponse = await client.GetAsync(new Uri($"/media/{item.Hash.Hex}", UriKind.Relative));
             var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
@@ -373,8 +350,6 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
     private sealed record DownloadResult(HttpResponseMessage Response, IReadOnlyList<DownloadStatusDto> Items);
 
     private sealed record ImportJobResult(HttpResponseMessage Response, IReadOnlyList<ImportJobDto> Items);
-
-    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<string> Hashes);
 
     private sealed record MediaProbe(
         SubscriptionDiscoveredItem Item,

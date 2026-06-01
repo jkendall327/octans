@@ -1,13 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.DependencyInjection;
-using Octans.Client;
 using Octans.Core;
-using Octans.Core.Filesystem;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
@@ -18,14 +14,6 @@ namespace Octans.Tests.UserFlows;
 
 public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
-
     [Fact]
     public async Task UserCan_SearchWithDocumentedCoreQuerySemantics_ThroughTheFilesQueryApi()
     {
@@ -76,8 +64,8 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 
         foreach (var expectation in expectations)
         {
-            var queryResult = await Query(client, expectation.Query);
-            var countResult = await Count(client, expectation.Query);
+            var queryResult = await OctansApiFactory.QueryAsync(client, expectation.Query);
+            var countResult = await OctansApiFactory.CountQueryAsync(client, expectation.Query);
             var expectedHashes = expectation.ExpectedNames
                 .Select(name => library[name].Hash.Hex)
                 .ToArray();
@@ -95,8 +83,6 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
     {
         await using var scope = factory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        var imageStorage = scope.ServiceProvider.GetRequiredService<ImageStorage>();
-        imageStorage.EnsureStorage();
 
         var media = new[]
         {
@@ -124,18 +110,11 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 
         foreach (var item in media)
         {
-            var metadata = new ImageMetadata("jpg", "image/jpeg");
-            var destination = imageStorage.GetOriginalDestination(item.Hash, metadata);
-            await factory.FileSystem.File.WriteAllBytesAsync(destination, item.Bytes);
-
-            var hash = new HashItem
-            {
-                Hash = item.Hash.Bytes,
-                Extension = metadata.Extension,
-                ContentType = metadata.ContentType,
-                RepositoryId = (int)item.Repository
-            };
-            db.Hashes.Add(hash);
+            var stored = await factory.AddStoredImageAsync(
+                db,
+                item.Bytes,
+                item.Repository,
+                metadata: new("jpg", "image/jpeg"));
 
             foreach (var tagModel in item.Tags)
             {
@@ -147,7 +126,7 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 
                 db.Mappings.Add(new Mapping
                 {
-                    Hash = hash,
+                    Hash = stored.Entity,
                     Tag = tag
                 });
             }
@@ -169,32 +148,6 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
         return new(name, hash, bytes, repository, tags);
     }
 
-    private static async Task<QueryResult> Query(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            query,
-            JsonOptions);
-
-        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions) ?? [];
-        var hashes = items
-            .Select(item => ContentHash.FromHashBytes(item.Hash).Hex)
-            .ToArray();
-
-        return new(response, hashes);
-    }
-
-    private static async Task<CountResult> Count(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query/count", UriKind.Relative),
-            query,
-            JsonOptions);
-        var count = await response.Content.ReadFromJsonAsync<FileQueryCountDto>(JsonOptions);
-
-        return new(response, count?.Count ?? 0);
-    }
-
     private sealed record QueryExpectation(
         string Description,
         string[] Query,
@@ -207,7 +160,4 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
         RepositoryType Repository,
         IReadOnlyList<TagModel> Tags);
 
-    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<string> Hashes);
-
-    private sealed record CountResult(HttpResponseMessage Response, int Count);
 }

@@ -1,12 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Channels;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
@@ -24,14 +20,6 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
 {
     private static readonly string[] InboxQuery = ["system:inbox"];
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters =
-        {
-            new JsonStringEnumConverter()
-        }
-    };
-
     [Fact]
     public async Task UserCan_ImportMediaFromLocalFilesystem_AndThen_SeeItInTheirInbox()
     {
@@ -46,11 +34,11 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
 
         var job = await client.GetFromJsonAsync<ImportJobDto>(
             new Uri($"/import-jobs/{imported.Created.JobId}", UriKind.Relative),
-            JsonOptions);
-        var inboxResults = await Query(client, InboxQuery);
+            OctansApiFactory.JsonOptions);
+        var inboxResults = await OctansApiFactory.QueryAsync(client, InboxQuery);
         var detailsResponse = await client.GetAsync(
             new Uri($"/media/{imported.Hash.Hex}/details", UriKind.Relative));
-        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
+        var details = await detailsResponse.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
         var mediaResponse = await client.GetAsync(new Uri($"/media/{imported.Hash.Hex}", UriKind.Relative));
         var mediaBytes = await mediaResponse.Content.ReadAsByteArrayAsync();
 
@@ -117,19 +105,19 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             TestingConstants.MinimalJpeg,
             []);
 
-        var inboxResults = await Query(client, InboxQuery);
-        var defaultResultsBeforeTrash = await Query(client, []);
+        var inboxResults = await OctansApiFactory.QueryAsync(client, InboxQuery);
+        var defaultResultsBeforeTrash = await OctansApiFactory.QueryAsync(client, []);
 
         await TransitionRepository(client, factory, imported.Hash.Hex, RepositoryDestination.Archive);
 
-        var inboxResultsAfterArchive = await Query(client, InboxQuery);
-        var archiveResults = await Query(client, ["system:archive"]);
+        var inboxResultsAfterArchive = await OctansApiFactory.QueryAsync(client, InboxQuery);
+        var archiveResults = await OctansApiFactory.QueryAsync(client, ["system:archive"]);
         var archivedDetails = await GetMediaDetails(client, imported.Hash.Hex);
 
         await TransitionRepository(client, factory, imported.Hash.Hex, RepositoryDestination.Trash);
 
-        var defaultResultsAfterTrash = await Query(client, []);
-        var trashResults = await Query(client, ["system:trash"]);
+        var defaultResultsAfterTrash = await OctansApiFactory.QueryAsync(client, []);
+        var trashResults = await OctansApiFactory.QueryAsync(client, ["system:trash"]);
         var trashedDetails = await GetMediaDetails(client, imported.Hash.Hex);
 
         using (new AssertionScope("The imported media starts in the visible library"))
@@ -183,8 +171,8 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
             [initialTag]);
 
         var updatedDetails = await GetMediaDetails(client, imported.Hash.Hex);
-        var addedTagResults = await Query(client, [$"{addedTag.Namespace}:{addedTag.Subtag}"]);
-        var removedTagResults = await Query(client, [$"{initialTag.Namespace}:{initialTag.Subtag}"]);
+        var addedTagResults = await OctansApiFactory.QueryAsync(client, [$"{addedTag.Namespace}:{addedTag.Subtag}"]);
+        var removedTagResults = await OctansApiFactory.QueryAsync(client, [$"{initialTag.Namespace}:{initialTag.Subtag}"]);
 
         using (new AssertionScope("The imported media exposes its initial tags through details"))
         {
@@ -226,14 +214,14 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         var createResponse = await client.PostAsJsonAsync(
             new Uri($"/media/{imported.Hash.Hex}/notes", UriKind.Relative),
             new NoteCreateRequest("Initial field note"),
-            JsonOptions);
-        var createdNote = await createResponse.Content.ReadFromJsonAsync<NoteDto>(JsonOptions);
+            OctansApiFactory.JsonOptions);
+        var createdNote = await createResponse.Content.ReadFromJsonAsync<NoteDto>(OctansApiFactory.JsonOptions);
         var detailsAfterCreate = await GetMediaDetails(client, imported.Hash.Hex);
 
         var updateResponse = await client.PutAsJsonAsync(
             new Uri($"/notes/{createdNote!.Id}", UriKind.Relative),
             new NoteUpdateRequest("Updated field note"),
-            JsonOptions);
+            OctansApiFactory.JsonOptions);
         var detailsAfterUpdate = await GetMediaDetails(client, imported.Hash.Hex);
 
         var deleteResponse = await client.DeleteAsync(new Uri($"/notes/{createdNote.Id}", UriKind.Relative));
@@ -297,33 +285,18 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         var createResponse = await client.PostAsJsonAsync(
             new Uri("/import-jobs", UriKind.Relative),
             request,
-            JsonOptions);
-        var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(JsonOptions);
+            OctansApiFactory.JsonOptions);
+        var created = await createResponse.Content.ReadFromJsonAsync<ImportJobCreatedDto>(OctansApiFactory.JsonOptions);
 
-        var processor = new ImportProcessorService(
-            factory.Services,
-            NullLogger<ImportProcessorService>.Instance);
-        var processedJob = await processor.ProcessQueuedJob();
+        var processedJob = await factory.ProcessQueuedImportJobAsync();
 
         return new(source, hash, createResponse, created!, processedJob);
-    }
-
-    private static async Task<QueryResult> Query(HttpClient client, string[] query)
-    {
-        var response = await client.PostAsJsonAsync(
-            new Uri("/files/query", UriKind.Relative),
-            query,
-            JsonOptions);
-
-        var items = await response.Content.ReadFromJsonAsync<List<HashItem>>(JsonOptions);
-
-        return new(response, items ?? []);
     }
 
     private static async Task<MediaDetailsDto> GetMediaDetails(HttpClient client, string hash)
     {
         var response = await client.GetAsync(new Uri($"/media/{hash}/details", UriKind.Relative));
-        var details = await response.Content.ReadFromJsonAsync<MediaDetailsDto>(JsonOptions);
+        var details = await response.Content.ReadFromJsonAsync<MediaDetailsDto>(OctansApiFactory.JsonOptions);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -338,7 +311,7 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
     {
         var request = new UpdateTagsRequest(hashId, tagsToAdd, tagsToRemove);
 
-        return client.PostAsJsonAsync(new Uri("/tags", UriKind.Relative), request, JsonOptions);
+        return client.PostAsJsonAsync(new Uri("/tags", UriKind.Relative), request, OctansApiFactory.JsonOptions);
     }
 
     private static async Task TransitionRepository(
@@ -350,14 +323,10 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         var response = await client.PostAsJsonAsync(
             new Uri("/repository/transitions", UriKind.Relative),
             new RepositoryTransitionRequest([hash], destination),
-            JsonOptions);
+            OctansApiFactory.JsonOptions);
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
-        var reader = factory.Services.GetRequiredService<ChannelReader<RepositoryChangeRequest>>();
-        var request = await reader.ReadAsync();
-        var processor = factory.Services.GetRequiredService<RepositoryChangeProcessor>();
-
-        await processor.ProcessBatch([request]);
+        await factory.ProcessNextRepositoryChangeAsync();
     }
 
     private sealed record ImportedImage(
@@ -366,6 +335,4 @@ public sealed class ImportFlowTests(ITestOutputHelper output)
         HttpResponseMessage CreateResponse,
         ImportJobCreatedDto Created,
         bool ProcessedJob);
-
-    private sealed record QueryResult(HttpResponseMessage Response, IReadOnlyList<HashItem> Items);
 }
