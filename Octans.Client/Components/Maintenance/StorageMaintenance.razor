@@ -1,0 +1,225 @@
+@page "/maintenance/storage"
+@using Octans.Client.Services
+@using Octans.Core.Maintenance
+@using Octans.Data.Models.Maintenance
+@inject StorageMaintenanceViewmodel Viewmodel
+@inject IDialogService DialogService
+@implements IAsyncDisposable
+@rendermode InteractiveServer
+
+<PageTitle>Octans - Storage Maintenance</PageTitle>
+
+<MudStack Spacing="3" Class="storage-maintenance">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <div>
+            <MudText Typo="Typo.h4">Storage health</MudText>
+            <MudText Color="Color.Secondary">Durable integrity scans and conservative repair of the content store.</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@Viewmodel.IsBusy" OnClick="QueueScan">
+            Scan storage
+        </MudButton>
+    </MudStack>
+
+    @if (Viewmodel.Error is not null)
+    {
+        <MudAlert Severity="Severity.Error">@Viewmodel.Error</MudAlert>
+    }
+
+    @if (ActiveJob is not null)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <div>
+                    <MudText Typo="Typo.h6">@ActiveJob.Type in progress</MudText>
+                    <MudText Typo="Typo.body2">@ActiveJob.ProcessedItems / @ActiveJob.TotalItems items · @Formatting.FormatBytes(ActiveJob.ScannedBytes)</MudText>
+                    <MudText Typo="Typo.caption">@(ActiveJob.CurrentItem ?? "Waiting for application idle time…")</MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@(() => Viewmodel.CancelAsync(ActiveJob.Id))">Cancel</MudButton>
+            </MudStack>
+            <MudProgressLinear Class="mt-3" Value="@Progress(ActiveJob)" Indeterminate="@(ActiveJob.TotalItems == 0)" />
+        </MudPaper>
+    }
+
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" GutterBottom="true">Scan history</MudText>
+                @if (ScanJobs.Count == 0)
+                {
+                    <MudText>No scans have run yet. Automatic scans begin when Octans is idle.</MudText>
+                }
+                else
+                {
+                    <MudList T="StorageMaintenanceJobDto" Dense="true">
+                        @foreach (var job in ScanJobs)
+                        {
+                            <MudListItem T="StorageMaintenanceJobDto"
+                                         Value="job"
+                                         OnClick="@(() => Viewmodel.SelectScanAsync(job.Id))"
+                                         Class="@(Viewmodel.SelectedScan?.Id == job.Id ? "selected-scan" : null)">
+                                <MudText Typo="Typo.body2">@job.CreatedAt.LocalDateTime.ToString("g") · @job.Trigger</MudText>
+                                <MudText Typo="Typo.caption">@job.Status · @job.FindingsCount findings · @Formatting.FormatBytes(job.ScannedBytes)</MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <div>
+                        <MudText Typo="Typo.h6">Findings</MudText>
+                        <MudText Typo="Typo.caption">@FindingSummary</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Disabled="@(!CanRepair)"
+                               OnClick="ConfirmRepair">
+                        Repair safely
+                    </MudButton>
+                </MudStack>
+
+                @if (Viewmodel.SelectedScan is null)
+                {
+                    <MudText Class="mt-4">Select or run a scan to inspect storage.</MudText>
+                }
+                else if (Viewmodel.Findings.Count == 0)
+                {
+                    <MudAlert Class="mt-4" Severity="Severity.Success">No storage inconsistencies were found.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Class="mt-3" Items="@Viewmodel.Findings" Dense="true" Hover="true" FixedHeader="true" Height="520px">
+                        <HeaderContent>
+                            <MudTh>Severity</MudTh>
+                            <MudTh>Finding</MudTh>
+                            <MudTh>File</MudTh>
+                            <MudTh>Resolution</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Severity"><MudChip T="string" Size="Size.Small" Color="@SeverityColor(context.Severity)">@context.Severity</MudChip></MudTd>
+                            <MudTd DataLabel="Finding">
+                                <MudText Typo="Typo.body2">@context.Type</MudText>
+                                <MudText Typo="Typo.caption">@context.Message</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="File">
+                                <MudText Typo="Typo.caption" Class="finding-path">@(context.Path ?? context.ExpectedPath ?? context.Hash ?? "—")</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Resolution">
+                                <MudText Typo="Typo.body2">@context.Resolution</MudText>
+                                @if (context.ResolutionMessage is not null)
+                                {
+                                    <MudText Typo="Typo.caption">@context.ResolutionMessage</MudText>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    @if (Viewmodel.TotalFindings > Viewmodel.Findings.Count)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-2">Showing the first @Viewmodel.Findings.Count of @Viewmodel.TotalFindings findings.</MudText>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" GutterBottom="true">Maintenance jobs</MudText>
+        <MudTable Items="@Viewmodel.Jobs" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Created</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Trigger</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Progress</MudTh>
+                <MudTh>Result</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                <MudTd>@context.Type</MudTd>
+                <MudTd>@context.Trigger</MudTd>
+                <MudTd>@context.Status</MudTd>
+                <MudTd>@context.ProcessedItems / @context.TotalItems</MudTd>
+                <MudTd>@(context.FailureReason ?? $"{context.RepairedItems} repaired, {context.FailedItems} failed")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private readonly CancellationTokenSource _polling = new();
+
+    private IReadOnlyList<StorageMaintenanceJobDto> ScanJobs =>
+        Viewmodel.Jobs.Where(j => j.Type is StorageMaintenanceJobType.Scan).ToList();
+
+    private StorageMaintenanceJobDto? ActiveJob => Viewmodel.Jobs.FirstOrDefault(j =>
+        j.Status is StorageMaintenanceJobStatus.Queued or
+            StorageMaintenanceJobStatus.Running or
+            StorageMaintenanceJobStatus.CancelRequested);
+
+    private bool CanRepair => Viewmodel.SelectedScan?.Status is StorageMaintenanceJobStatus.Completed &&
+                              Viewmodel.Findings.Any(f => f.Resolution is StorageFindingResolution.Open);
+
+    private string FindingSummary => Viewmodel.SelectedScan is null
+        ? "No scan selected"
+        : $"{Viewmodel.TotalFindings} total · {Viewmodel.Findings.Count(f => f.Resolution is StorageFindingResolution.Open)} open";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Viewmodel.StateChanged += Refresh;
+        await Viewmodel.InitializeAsync(_polling.Token);
+        _ = Poll();
+    }
+
+    private async Task Poll()
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            while (await timer.WaitForNextTickAsync(_polling.Token))
+            {
+                await InvokeAsync(() => Viewmodel.RefreshAsync(_polling.Token));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private Task QueueScan() => Viewmodel.QueueScanAsync(_polling.Token);
+
+    private async Task ConfirmRepair()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Repair storage findings",
+            "Octans will regenerate missing thumbnails, repair detected metadata and placement, and move unsafe orphaned or corrupt files into quarantine. It will not delete original bytes. Continue?",
+            yesText: "Queue repair",
+            cancelText: "Cancel");
+        if (confirmed is true)
+        {
+            await Viewmodel.QueueRepairAsync(StorageRepairActions.AllSafe, _polling.Token);
+        }
+    }
+
+    private static double Progress(StorageMaintenanceJobDto job) =>
+        job.TotalItems == 0 ? 0 : (double)job.ProcessedItems / job.TotalItems * 100;
+
+    private static Color SeverityColor(StorageFindingSeverity severity) => severity switch
+    {
+        StorageFindingSeverity.Error => Color.Error,
+        StorageFindingSeverity.Warning => Color.Warning,
+        _ => Color.Info
+    };
+
+    private Task Refresh() => InvokeAsync(StateHasChanged);
+
+    public ValueTask DisposeAsync()
+    {
+        Viewmodel.StateChanged -= Refresh;
+        _polling.Cancel();
+        _polling.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

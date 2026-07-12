@@ -68,6 +68,11 @@ public class MainToolbarViewmodel(NavigationManager nav)
                     {
                         Name = "duplicates",
                         Page = Page.Duplicates
+                    },
+                    new()
+                    {
+                        Name = "storage health",
+                        Page = Page.StorageMaintenance
                     }
                 ]
             },
@@ -109,6 +114,7 @@ public class MainToolbarViewmodel(NavigationManager nav)
             Page.Settings => "/settings",
             Page.Downloads => "/downloads",
             Page.Duplicates => "/duplicates",
+            Page.StorageMaintenance => "/maintenance/storage",
             _ => throw new ArgumentOutOfRangeException(nameof(page), page, null)
         };
 
@@ -128,7 +134,8 @@ public enum Page
     Settings,
     Downloads,
     Downloaders,
-    Duplicates
+    Duplicates,
+    StorageMaintenance
 }
 
 public class MenuItem

@@ -11,6 +11,7 @@ using Octans.Core.Filesystem;
 using Octans.Core.Http;
 using Octans.Core.Http.Models;
 using Octans.Core.Importing;
+using Octans.Core.Maintenance;
 using Octans.Core.Notes;
 using Octans.Core.Querying;
 using Octans.Core.Repositories;
@@ -19,6 +20,7 @@ using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
+using Octans.Data.Models.Maintenance;
 
 namespace Octans.Client;
 
@@ -45,6 +47,8 @@ internal static class Endpoints
         MapDownloaderEndpoints(api);
 
         MapImportJobEndpoints(api);
+
+        MapStorageMaintenanceEndpoints(api);
 
         MapInfrastructureEndpoints(api);
     }
@@ -602,6 +606,90 @@ internal static class Endpoints
                     return job is null ? Results.NotFound() : Results.Ok(job);
                 })
             .WithName("CancelImportJob");
+    }
+
+    private static void MapStorageMaintenanceEndpoints(IEndpointRouteBuilder app)
+    {
+        var maintenance = app.MapGroup("/maintenance/storage");
+
+        maintenance
+            .MapPost("/scans",
+                async ([FromServices] IStorageMaintenanceService service, CancellationToken token) =>
+                {
+                    var created = await service.QueueScanAsync(StorageMaintenanceTrigger.Manual, token);
+                    return Results.Accepted($"/api/maintenance/storage/jobs/{created.JobId}", created);
+                })
+            .WithName("QueueStorageMaintenanceScan")
+            .WithDescription("Queues a durable content-store health scan");
+
+        maintenance
+            .MapPost("/scans/{scanJobId:guid}/repairs",
+                async (Guid scanJobId,
+                    [FromBody] StorageRepairRequest request,
+                    [FromServices] IStorageMaintenanceService service,
+                    CancellationToken token) =>
+                {
+                    try
+                    {
+                        var created = await service.QueueRepairAsync(scanJobId, request.Actions, token);
+                        return Results.Accepted($"/api/maintenance/storage/jobs/{created.JobId}", created);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(ex.Message);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        return Results.Conflict(ex.Message);
+                    }
+                })
+            .WithName("QueueStorageMaintenanceRepair")
+            .WithDescription("Queues safe repairs for the open findings from a completed scan");
+
+        maintenance
+            .MapGet("/jobs",
+                async ([FromServices] IStorageMaintenanceService service, CancellationToken token) =>
+                    await service.GetJobsAsync(token))
+            .WithName("GetStorageMaintenanceJobs");
+
+        maintenance
+            .MapGet("/jobs/{id:guid}",
+                async (Guid id, [FromServices] IStorageMaintenanceService service, CancellationToken token) =>
+                {
+                    var job = await service.GetJobAsync(id, token);
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("GetStorageMaintenanceJob");
+
+        maintenance
+            .MapGet("/scans/{scanJobId:guid}/findings",
+                async (Guid scanJobId,
+                    StorageFindingResolution? resolution,
+                    StorageFindingType? type,
+                    int? skip,
+                    int? take,
+                    [FromServices] IStorageMaintenanceService service,
+                    CancellationToken token) =>
+                {
+                    var page = await service.GetFindingsAsync(
+                        scanJobId,
+                        resolution,
+                        type,
+                        skip ?? 0,
+                        take ?? 200,
+                        token);
+                    return page is null ? Results.NotFound() : Results.Ok(page);
+                })
+            .WithName("GetStorageMaintenanceFindings");
+
+        maintenance
+            .MapPost("/jobs/{id:guid}/cancel",
+                async (Guid id, [FromServices] IStorageMaintenanceService service, CancellationToken token) =>
+                {
+                    var job = await service.CancelAsync(id, token);
+                    return job is null ? Results.NotFound() : Results.Ok(job);
+                })
+            .WithName("CancelStorageMaintenanceJob");
     }
 
     private static ImportJobCreateRequest ImportJobCreateRequestFromImportRequest(ImportRequest request) => new()

@@ -40,11 +40,14 @@ What exists now:
 - Repository movement is DB-backed: Inbox/Archive/Trash are represented by `RepositoryId`, and the repository change background service applies queued changes by hash.
 - `StorageService` can compute rough app-root disk usage for the home stats surface.
 - Tests cover hash behavior, deterministic original lookup, fallback lookup by hash in a bucket, deletion from disk plus DB soft delete, storage size formatting, import metadata persistence, thumbnail queueing, and reimport restoration.
+- Durable storage-maintenance jobs scan the database and content buckets in the background while imports and downloads are idle. Findings and repair outcomes survive restarts and are exposed through the API and storage-health dashboard.
+- Storage scans detect missing, orphaned, malformed, misplaced, duplicate, and hash-mismatched files as well as missing thumbnails and inconsistent media metadata.
+- Confirmed repair jobs regenerate thumbnails, correct metadata and deterministic placement, and quarantine unsafe files without silently deleting original bytes.
 
 Important current limitations:
 
 - File writes and database writes are not atomic as one operation. `ImportItemProcessor` writes bytes first and then saves the DB row, so a failed DB save can leave orphaned files; the reverse class of DB/file mismatch is also possible after crashes.
-- There is no startup reconciliation for missing originals, missing thumbnails, orphaned files, duplicate files, stale thumbnails, or DB rows whose physical bytes are gone.
+- Reconciliation is periodic rather than a blocking startup gate. A newly started app can therefore serve requests before its first automatic scan has completed.
 - `HashItem.Hash` is not protected by a database unique index in the current model snapshot, so duplicate rows for the same content hash are still possible under concurrent imports.
 - `ImageStorage.FindOriginal` can fall back to scanning a bucket when extension metadata is missing. That helps old rows, but it keeps a slower legacy path alive and can hide metadata gaps.
 - The system still calls this `ImageStorage`, even though the product language says media and the importer may eventually support videos, archives, and other file types.
@@ -60,7 +63,7 @@ Before this can be hooked up to everything else:
 - Decide the durable media abstraction: whether this remains image-specific or becomes a `MediaStorage`/`ContentStorage` boundary with originals, thumbnails/previews, and future derivatives.
 - Make the import write path crash-tolerant. Use deterministic staging beside the final destination, validate bytes/metadata, then move into place and persist DB state in a deliberate order with cleanup for failed attempts.
 - Add DB constraints/indexes for storage invariants, especially unique content hashes and repository FK assumptions.
-- Define a reconciliation service that can detect and report missing originals, missing thumbnails, orphaned original files, orphaned thumbnail files, and metadata rows that need repair.
+- Extend reconciliation policy for non-image derivatives and any future storage layout versions.
 - Replace or clearly scope the broad `/approot` file-serving route. The normal frontend should use `/media/{hash}` or explicit safe endpoints, not arbitrary app-root paths.
 - Define stable media DTOs and endpoints: get media metadata by hash/id, get original URL, get thumbnail/preview URL, list derivatives, and expose repository/deleted state without leaking EF row shapes.
 - Decide the recoverability semantics for Trash. If deletion from disk is intentional, make the UI/API honest; if recovery is desired, trash needs to keep bytes or move them through a separate lifecycle.
@@ -69,15 +72,14 @@ Before this can be hooked up to everything else:
 For day-to-day usability:
 
 - Show useful media metadata: content type, extension, byte size, dimensions for images, import date, repository, deletion state, and whether the original/thumbnail exists on disk.
-- Add a storage health/check page or command that can scan for missing files, orphaned files, stale thumbnails, and inconsistent metadata before the library grows large.
-- Add thumbnail regeneration controls for one file, all missing thumbnails, and all thumbnails.
+- Add one-file and force-regenerate-all thumbnail controls alongside the existing missing-thumbnail repair.
 - Make storage usage actionable: break down originals, thumbnails, database, download staging, and other app-root data.
 - Provide clear messages when `/media/{hash}` cannot serve a file because the hash is invalid, the DB row is missing, or the physical file is missing.
 - Keep import/reimport messages precise. An already-present file, a deleted-and-restored file, and a missing-original-restored file should not all look like the same outcome.
 
 For long-term robustness:
 
-- Add content-store reconciliation and repair as a first-class maintenance workflow, not just developer diagnostics.
+- Add retention and review tools for quarantined content after users have had an opportunity to inspect it.
 - Consider recording original byte size, dimensions, detected content type, extension, created/imported timestamps, and maybe a storage version on `HashItem` or a related media metadata table.
 - Make derivative generation extensible: thumbnails for images, poster frames for video, icons/previews for other media, and explicit failure records for media that cannot produce derivatives.
 - Add large-library tests or benchmarks for bucket lookup, `/media/{hash}` serving, thumbnail regeneration, deletion batches, and reconciliation across many files.

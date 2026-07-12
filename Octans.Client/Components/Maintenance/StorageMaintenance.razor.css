@@ -1,0 +1,13 @@
+.storage-maintenance {
+    padding: 1.5rem;
+}
+
+.selected-scan {
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+}
+
+.finding-path {
+    display: block;
+    max-width: 24rem;
+    overflow-wrap: anywhere;
+}

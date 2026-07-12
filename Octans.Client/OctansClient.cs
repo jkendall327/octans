@@ -8,12 +8,14 @@ using Octans.Core.Downloaders;
 using Octans.Core.Filesystem;
 using Octans.Core.Http.Models;
 using Octans.Core.Importing;
+using Octans.Core.Maintenance;
 using Octans.Core.Notes;
 using Octans.Core.Repositories;
 using Octans.Core.Stats;
 using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
 using Octans.Data.Models.Duplicates;
+using Octans.Data.Models.Maintenance;
 
 namespace Octans.Client;
 
@@ -54,6 +56,26 @@ public interface IOctansClient
     Task AddSubscriptionAsync(SubscriptionCreateRequest request, CancellationToken cancellationToken = default);
     Task DeleteSubscriptionAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DownloadStatusDto>> GetDownloadsAsync(CancellationToken cancellationToken = default);
+    Task<StorageMaintenanceJobCreated> QueueStorageScanAsync(CancellationToken cancellationToken = default);
+    Task<StorageMaintenanceJobCreated> QueueStorageRepairAsync(
+        Guid scanJobId,
+        StorageRepairActions actions,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StorageMaintenanceJobDto>> GetStorageMaintenanceJobsAsync(
+        CancellationToken cancellationToken = default);
+    Task<StorageMaintenanceJobDto?> GetStorageMaintenanceJobAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+    Task<StorageMaintenanceFindingsPage?> GetStorageMaintenanceFindingsAsync(
+        Guid scanJobId,
+        StorageFindingResolution? resolution = null,
+        StorageFindingType? type = null,
+        int skip = 0,
+        int take = 200,
+        CancellationToken cancellationToken = default);
+    Task<StorageMaintenanceJobDto?> CancelStorageMaintenanceJobAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
     Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default);
     Task<OctansVersion> GetVersionAsync(CancellationToken cancellationToken = default);
     Task<DuplicateScanResultDto> ScanDuplicatesAsync(CancellationToken cancellationToken = default);
@@ -349,6 +371,103 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
             cancellationToken);
 
         return response ?? [];
+    }
+
+    public async Task<StorageMaintenanceJobCreated> QueueStorageScanAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync(Api("maintenance/storage/scans"), null, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await ReadRequiredJsonAsync<StorageMaintenanceJobCreated>(response, cancellationToken);
+    }
+
+    public async Task<StorageMaintenanceJobCreated> QueueStorageRepairAsync(
+        Guid scanJobId,
+        StorageRepairActions actions,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            Api($"maintenance/storage/scans/{scanJobId}/repairs"),
+            new StorageRepairRequest(actions),
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await ReadRequiredJsonAsync<StorageMaintenanceJobCreated>(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<StorageMaintenanceJobDto>> GetStorageMaintenanceJobsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<StorageMaintenanceJobDto>>(
+            Api("maintenance/storage/jobs"),
+            JsonOptions,
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<StorageMaintenanceJobDto?> GetStorageMaintenanceJobAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync(Api($"maintenance/storage/jobs/{id}"), cancellationToken);
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await ReadRequiredJsonAsync<StorageMaintenanceJobDto>(response, cancellationToken);
+    }
+
+    public async Task<StorageMaintenanceFindingsPage?> GetStorageMaintenanceFindingsAsync(
+        Guid scanJobId,
+        StorageFindingResolution? resolution = null,
+        StorageFindingType? type = null,
+        int skip = 0,
+        int take = 200,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<string>
+        {
+            $"skip={skip.ToString(CultureInfo.InvariantCulture)}",
+            $"take={take.ToString(CultureInfo.InvariantCulture)}"
+        };
+        if (resolution is not null)
+        {
+            parameters.Add($"resolution={resolution}");
+        }
+
+        if (type is not null)
+        {
+            parameters.Add($"type={type}");
+        }
+
+        var uri = Api($"maintenance/storage/scans/{scanJobId}/findings?{string.Join('&', parameters)}");
+        using var response = await httpClient.GetAsync(uri, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await ReadRequiredJsonAsync<StorageMaintenanceFindingsPage>(response, cancellationToken);
+    }
+
+    public async Task<StorageMaintenanceJobDto?> CancelStorageMaintenanceJobAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync(
+            Api($"maintenance/storage/jobs/{id}/cancel"),
+            null,
+            cancellationToken);
+        if (response.StatusCode is HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await ReadRequiredJsonAsync<StorageMaintenanceJobDto>(response, cancellationToken);
     }
 
     public async Task<HomeStats> GetHomeStatsAsync(CancellationToken cancellationToken = default)

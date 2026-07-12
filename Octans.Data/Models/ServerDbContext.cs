@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Octans.Data.Models.Duplicates;
 using Octans.Data.Models.Importing;
+using Octans.Data.Models.Maintenance;
 using Octans.Data.Models.Ratings;
 using Octans.Data.Models.Subscriptions;
 using Octans.Data.Models.Tagging;
@@ -36,6 +37,8 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<DuplicateCandidate> DuplicateCandidates { get; set; }
     public virtual DbSet<DuplicateDecision> DuplicateDecisions { get; set; }
     public virtual DbSet<Note> Notes { get; set; }
+    public virtual DbSet<StorageMaintenanceJob> StorageMaintenanceJobs { get; set; }
+    public virtual DbSet<StorageMaintenanceFinding> StorageMaintenanceFindings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,6 +71,30 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
         modelBuilder.Entity<Subscription>()
             .Property(s => s.RepositoryId)
             .HasDefaultValue((int)RepositoryType.Inbox);
+
+        modelBuilder.Entity<StorageMaintenanceJob>()
+            .HasOne(j => j.SourceScanJob)
+            .WithMany()
+            .HasForeignKey(j => j.SourceScanJobId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StorageMaintenanceFinding>()
+            .HasOne(f => f.ScanJob)
+            .WithMany(j => j.Findings)
+            .HasForeignKey(f => f.ScanJobId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StorageMaintenanceFinding>()
+            .HasOne(f => f.RepairJob)
+            .WithMany()
+            .HasForeignKey(f => f.RepairJobId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StorageMaintenanceJob>()
+            .HasIndex(j => new { j.Status, j.CreatedAt });
+
+        modelBuilder.Entity<StorageMaintenanceFinding>()
+            .HasIndex(f => new { f.ScanJobId, f.Resolution, f.Type });
 
         modelBuilder.Entity<HashRating>()
             .HasOne(r => r.Hash)

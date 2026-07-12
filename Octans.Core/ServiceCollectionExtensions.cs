@@ -10,6 +10,7 @@ using Octans.Core.Importing;
 using Octans.Core.Importing.Filters;
 using Octans.Core.Importing.ImportFolders;
 using Octans.Core.Importing.RawByteProviders;
+using Octans.Core.Maintenance;
 using Octans.Core.Notes;
 using Octans.Core.Progress;
 using Octans.Core.Querying;
@@ -31,7 +32,8 @@ public static class ServiceCollectionExtensions
         typeof(SubscriptionBackgroundService),
         typeof(RepositoryChangeBackgroundService),
         typeof(DownloadBackgroundService),
-        typeof(ThumbnailCreationBackgroundService)
+        typeof(ThumbnailCreationBackgroundService),
+        typeof(StorageMaintenanceBackgroundService)
     ];
 
     public static IServiceCollection AddOctansCoreServices(
@@ -49,6 +51,7 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<ImportProcessorService>();
             services.AddHostedService<SubscriptionBackgroundService>();
             services.AddHostedService<RepositoryChangeBackgroundService>();
+            services.AddHostedService<StorageMaintenanceBackgroundService>();
         }
 
         services.AddSingleton<IBackgroundProgressReporter, BackgroundProgressService>();
@@ -128,6 +131,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ImageStorage>();
         services.AddScoped<FileFinder>();
         services.AddScoped<FileDeleter>();
+        services.AddScoped<IStorageMaintenanceService, StorageMaintenanceService>();
+        services.AddScoped<StorageInventoryScanner>();
+        services.AddScoped<StorageRepairer>();
+        services.AddSingleton<StorageMaintenanceProcessor>();
+        services.AddSingleton<StorageMaintenanceCoordinator>();
+        services.AddOptions<StorageMaintenanceOptions>();
         services.AddScoped<TagUpdater>();
         services.AddScoped<INoteService, NoteService>();
 

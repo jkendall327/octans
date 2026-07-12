@@ -9,6 +9,7 @@ using Octans.Client.Components.Duplicates;
 using Octans.Client.Components.Gallery;
 using Octans.Client.Components.Importing;
 using Octans.Client.Components.MainToolbar;
+using Octans.Client.Components.Maintenance;
 using Octans.Client.Components.Settings;
 using Octans.Client.Components.StatusBar;
 using Octans.Client.Components.Subscriptions;
@@ -17,6 +18,7 @@ using Octans.Client.Settings;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing.ImportFolders;
+using Octans.Core.Maintenance;
 using Octans.Core.Progress;
 using Octans.Core.Thumbnails;
 using Octans.Data.Models;
@@ -110,6 +112,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DownloadsViewmodel>();
         services.AddScoped<SubscriptionsViewmodel>();
         services.AddScoped<DuplicateManagerViewmodel>();
+        services.AddScoped<StorageMaintenanceViewmodel>();
 
         return services;
     }
@@ -129,6 +132,12 @@ public static class ServiceCollectionExtensions
             .Services
             .AddOptions<ImportFolderOptions>()
             .BindConfiguration(ImportFolderOptions.ConfigurationSectionName)
+            .ValidateDataAnnotations();
+
+        builder
+            .Services
+            .AddOptions<StorageMaintenanceOptions>()
+            .BindConfiguration(StorageMaintenanceOptions.ConfigurationSectionName)
             .ValidateDataAnnotations();
 
         var configuration = builder.Configuration.GetSection("GlobalSettings");
