@@ -126,6 +126,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DownloaderFactory>();
         services.AddScoped<IDownloaderFactory>(s => s.GetRequiredService<DownloaderFactory>());
         services.AddScoped<DownloaderService>();
+        services.AddScoped<IDownloaderDiscoveryService>(s => s.GetRequiredService<DownloaderService>());
 
         // Files
         services.AddSingleton<ImageStorage>();
@@ -170,7 +171,7 @@ public static class ServiceCollectionExtensions
 
         // Subscriptions
         services.AddScoped<ISubscriptionService, SubscriptionService>();
-        services.AddScoped<ISubscriptionExecutor, NoOpSubscriptionExecutor>();
+        services.AddScoped<ISubscriptionExecutor, DownloaderSubscriptionExecutor>();
 
         services.AddMemoryCache();
 

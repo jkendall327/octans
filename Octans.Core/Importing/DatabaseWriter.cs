@@ -9,9 +9,14 @@ namespace Octans.Core.Importing;
 
 internal sealed class DatabaseWriter(ServerDbContext context, ILogger<DatabaseWriter> logger)
 {
-    public async Task AddItemToDatabase(ImportItem item, ContentHash hash, ImageMetadata metadata, bool autoArchive)
+    public async Task AddItemToDatabase(
+        ImportItem item,
+        ContentHash hash,
+        ImageMetadata metadata,
+        bool autoArchive,
+        RepositoryType? repository = null)
     {
-        var repositoryId = autoArchive ? (int)RepositoryType.Archive : (int)RepositoryType.Inbox;
+        var repositoryId = (int)(repository ?? (autoArchive ? RepositoryType.Archive : RepositoryType.Inbox));
         var hashItem = new HashItem
         {
             Hash = hash.Bytes,

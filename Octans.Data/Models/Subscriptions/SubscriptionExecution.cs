@@ -13,18 +13,33 @@ public class SubscriptionExecution
     [ForeignKey(nameof(SubscriptionId))]
     public Subscription Subscription { get; init; } = null!;
 
-    public DateTimeOffset ExecutedAt { get; init; }
+    public DateTimeOffset ExecutedAt { get; set; }
 
-    public SubscriptionExecutionStatus Status { get; init; }
+    public DateTimeOffset? CompletedAt { get; set; }
 
-    public int? ItemsFound { get; init; }
+    public SubscriptionExecutionStatus Status { get; set; }
+
+    public int? ItemsFound { get; set; }
+
+    public int ItemsQueued { get; set; }
+
+    public int ItemsSkipped { get; set; }
+
+    public Guid? ImportJobId { get; set; }
 
     [MaxLength(2000)]
-    public string? ErrorMessage { get; init; }
+    public string? Diagnostics { get; set; }
+
+    [MaxLength(2000)]
+    public string? ErrorMessage { get; set; }
+
+    public ICollection<SubscriptionSourceItem> SourceItems { get; } = new List<SubscriptionSourceItem>();
 }
 
 public enum SubscriptionExecutionStatus
 {
-    Succeeded,
-    Failed
+    Succeeded = 0,
+    Failed = 1,
+    Running = 2,
+    Cancelled = 3
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Octans.Data.Models;
 
@@ -10,9 +11,11 @@ using Octans.Data.Models;
 namespace Octans.Server.Migrations
 {
     [DbContext(typeof(ServerDbContext))]
-    partial class ServerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713014405_ImplementSubscriptionWorkflow")]
+    partial class ImplementSubscriptionWorkflow
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
@@ -234,9 +237,6 @@ namespace Octans.Server.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("DownloadId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Error")
                         .HasColumnType("TEXT");
 
@@ -311,9 +311,6 @@ namespace Octans.Server.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("ProcessedItems")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RepositoryId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SerializedFilterData")

@@ -30,6 +30,7 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
     public virtual DbSet<Provider> Providers { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SubscriptionExecution> SubscriptionExecutions { get; set; }
+    public virtual DbSet<SubscriptionSourceItem> SubscriptionSourceItems { get; set; }
     public virtual DbSet<RatingSystem> RatingSystems { get; set; }
     public virtual DbSet<HashRating> HashRatings { get; set; }
     public virtual DbSet<ImportJob> ImportJobs { get; set; }
@@ -71,6 +72,25 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> context) : DbCont
         modelBuilder.Entity<Subscription>()
             .Property(s => s.RepositoryId)
             .HasDefaultValue((int)RepositoryType.Inbox);
+
+        modelBuilder.Entity<Subscription>()
+            .HasIndex(s => new { s.IsEnabled, s.NextCheck });
+
+        modelBuilder.Entity<SubscriptionSourceItem>()
+            .HasIndex(i => new { i.SubscriptionId, i.SourceId, i.RemoteUrl })
+            .IsUnique();
+
+        modelBuilder.Entity<SubscriptionSourceItem>()
+            .HasOne(i => i.FirstExecution)
+            .WithMany()
+            .HasForeignKey(i => i.FirstExecutionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SubscriptionSourceItem>()
+            .HasOne(i => i.LastExecution)
+            .WithMany(e => e.SourceItems)
+            .HasForeignKey(i => i.LastExecutionId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<StorageMaintenanceJob>()
             .HasOne(j => j.SourceScanJob)

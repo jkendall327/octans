@@ -1,3 +1,6 @@
+@using Octans.Core.Tags
+@using Octans.Data.Models
+
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
@@ -10,6 +13,16 @@
             </MudSelect>
             <MudTextField Label="Query / URL" @bind-Value="Model.Query" Required="true" RequiredError="Query is required"/>
             <MudNumericField Label="Frequency (minutes)" @bind-Value="Model.FrequencyMinutes" Min="1"/>
+            <MudNumericField Label="Maximum items per run" @bind-Value="Model.MaxItemsPerRun" Min="1" Max="10000"/>
+            <MudSelect Label="Destination repository" @bind-Value="Model.Repository">
+                @foreach (var repository in Enum.GetValues<RepositoryType>())
+                {
+                    <MudSelectItem Value="@repository">@repository</MudSelectItem>
+                }
+            </MudSelect>
+            <MudCheckBox Label="Allow reimport of deleted files" @bind-Value="Model.AllowReimportDeleted"/>
+            <MudCheckBox Label="Archive imported items" @bind-Value="Model.AutoArchive"/>
+            <MudTextField Label="Tags (one per line, namespace:subtag)" Lines="3" @bind-Value="Model.TagsText"/>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -45,5 +58,22 @@
         public string Downloader { get; set; } = string.Empty;
         public string Query { get; set; } = string.Empty;
         public int FrequencyMinutes { get; set; } = 60;
+        public int MaxItemsPerRun { get; set; } = 100;
+        public RepositoryType Repository { get; set; } = RepositoryType.Inbox;
+        public bool AutoArchive { get; set; }
+        public bool AllowReimportDeleted { get; set; }
+        public string TagsText { get; set; } = string.Empty;
+
+        public IReadOnlyList<TagModel> Tags => TagsText
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(tag =>
+            {
+                var separator = tag.IndexOf(':');
+                return separator < 0
+                    ? TagModel.WithoutNamespace(tag)
+                    : new TagModel(tag[..separator], tag[(separator + 1)..]);
+            })
+            .Where(tag => !string.IsNullOrWhiteSpace(tag.Subtag))
+            .ToList();
     }
 }

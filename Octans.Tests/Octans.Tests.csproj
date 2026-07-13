@@ -36,7 +36,16 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Octans.Client\Octans.Client.csproj" />
+        <ProjectReference Include="..\Octans.Client\Octans.Client.csproj"
+                          SkipGetTargetFrameworkProperties="true"
+                          SetTargetFramework="TargetFramework=net10.0" />
     </ItemGroup>
+
+    <Target Name="SkipProjectReferenceTfmNegotiation" BeforeTargets="_GetProjectReferenceTargetFrameworkProperties">
+        <ItemGroup>
+            <ProjectReference Update="@(ProjectReference)" SkipGetTargetFrameworkProperties="true" />
+            <_MSBuildProjectReferenceExistent Update="@(_MSBuildProjectReferenceExistent)" SkipGetTargetFrameworkProperties="true" />
+        </ItemGroup>
+    </Target>
 
 </Project>

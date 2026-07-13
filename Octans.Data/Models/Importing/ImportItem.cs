@@ -9,6 +9,9 @@ public class ImportItem
     public Guid ImportJobId { get; set; }
     public ImportType ImportType { get; set; }
     public required string Source { get; set; }
+    public string? SourceId { get; set; }
+    public string? SourceType { get; set; }
+    public Guid? DownloadId { get; set; }
     public string? SerializedTags { get; set; }
     public ImportItemStatus Status { get; set; }
     public string? Error { get; set; }

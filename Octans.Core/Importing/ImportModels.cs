@@ -1,4 +1,5 @@
 using Octans.Core.Tags;
+using Octans.Data.Models;
 
 namespace Octans.Core.Importing;
 
@@ -20,6 +21,7 @@ public record ImportRequest
     public ImportFilterData? FilterData { get; init; }
     public bool AllowReimportDeleted { get; init; }
     public bool AutoArchive { get; init; }
+    public RepositoryType? Repository { get; init; }
 }
 
 public record ImportFilterData
@@ -40,6 +42,9 @@ public record ImportItem
     public Uri? Url { get; init; }
     public string? Filepath { get; init; }
     public ICollection<TagModel>? Tags { get; init; }
+    public string? SourceId { get; init; }
+    public string? SourceType { get; init; }
+    public Guid? DownloadId { get; init; }
 }
 
 /// <summary>

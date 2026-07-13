@@ -7,8 +7,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Octans.Core\Octans.Core.csproj" />
+        <ProjectReference Include="..\Octans.Core\Octans.Core.csproj"
+                          SkipGetTargetFrameworkProperties="true"
+                          SetTargetFramework="TargetFramework=net10.0" />
     </ItemGroup>
+
+    <Target Name="SkipProjectReferenceTfmNegotiation" BeforeTargets="_GetProjectReferenceTargetFrameworkProperties">
+        <ItemGroup>
+            <ProjectReference Update="@(ProjectReference)" SkipGetTargetFrameworkProperties="true" />
+            <_MSBuildProjectReferenceExistent Update="@(_MSBuildProjectReferenceExistent)" SkipGetTargetFrameworkProperties="true" />
+        </ItemGroup>
+    </Target>
 
     <ItemGroup>
         <Content Update="appsettings.Development.json">

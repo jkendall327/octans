@@ -50,7 +50,8 @@ public sealed record SubscriptionCreateRequest(
     string Query,
     int FrequencyMinutes,
     SubscriptionImportOptionsDto? ImportOptions = null,
-    IReadOnlyList<TagModel>? Tags = null);
+    IReadOnlyList<TagModel>? Tags = null,
+    int MaxItemsPerRun = 100);
 
 public sealed record SubscriptionImportOptionsDto(
     RepositoryType Repository,

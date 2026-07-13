@@ -54,6 +54,11 @@ public interface IOctansClient
     Task<DownloadersOverviewDto> RescanDownloadersAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SubscriptionStatusDto>> GetSubscriptionsAsync(CancellationToken cancellationToken = default);
     Task AddSubscriptionAsync(SubscriptionCreateRequest request, CancellationToken cancellationToken = default);
+    Task UpdateSubscriptionAsync(int id, SubscriptionCreateRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SubscriptionExecutionDto>> GetSubscriptionHistoryAsync(int id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SubscriptionSourceItemDto>> GetSubscriptionSourcesAsync(int id, CancellationToken cancellationToken = default);
+    Task RunSubscriptionNowAsync(int id, CancellationToken cancellationToken = default);
+    Task SetSubscriptionEnabledAsync(int id, bool enabled, CancellationToken cancellationToken = default);
     Task DeleteSubscriptionAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DownloadStatusDto>> GetDownloadsAsync(CancellationToken cancellationToken = default);
     Task<StorageMaintenanceJobCreated> QueueStorageScanAsync(CancellationToken cancellationToken = default);
@@ -353,6 +358,63 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         CancellationToken cancellationToken = default)
     {
         using var response = await httpClient.PostAsJsonAsync(Api("subscriptions"), request, JsonOptions, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task UpdateSubscriptionAsync(
+        int id,
+        SubscriptionCreateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PutAsJsonAsync(
+            Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}"),
+            request,
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<SubscriptionExecutionDto>> GetSubscriptionHistoryAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<SubscriptionExecutionDto>>(
+            Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}/history"),
+            JsonOptions,
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<IReadOnlyList<SubscriptionSourceItemDto>> GetSubscriptionSourcesAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetFromJsonAsync<List<SubscriptionSourceItemDto>>(
+            Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}/sources"),
+            JsonOptions,
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task RunSubscriptionNowAsync(int id, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync(
+            Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}/run"),
+            null,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    public async Task SetSubscriptionEnabledAsync(
+        int id,
+        bool enabled,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            Api($"subscriptions/{id.ToString(CultureInfo.InvariantCulture)}/enabled"),
+            new { Enabled = enabled },
+            JsonOptions,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
     }
 

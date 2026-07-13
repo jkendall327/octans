@@ -13,25 +13,32 @@
     <MudTable Items="Viewmodel.Subscriptions" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@(_loading)">
         <HeaderContent>
             <MudTh>Name</MudTh>
+            <MudTh>Enabled</MudTh>
             <MudTh>Downloader</MudTh>
             <MudTh>Query</MudTh>
             <MudTh>Frequency</MudTh>
             <MudTh>Last Run</MudTh>
             <MudTh>Status</MudTh>
             <MudTh>Items Found</MudTh>
+            <MudTh>Queued / skipped</MudTh>
             <MudTh>Next Check</MudTh>
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Enabled">@(context.IsEnabled ? "Yes" : "Paused")</MudTd>
             <MudTd DataLabel="Downloader">@context.DownloaderName</MudTd>
             <MudTd DataLabel="Query">@context.Query</MudTd>
             <MudTd DataLabel="Frequency">@context.Frequency</MudTd>
             <MudTd DataLabel="Last Run">@(context.LastRun is { } lastRun ? Formatting.FormatLocalTime(lastRun) : "Never")</MudTd>
             <MudTd DataLabel="Status">@(context.LastExecutionStatus?.ToString() ?? "-")</MudTd>
             <MudTd DataLabel="Items Found">@(context.ItemsFound?.ToString() ?? "-")</MudTd>
+            <MudTd DataLabel="Queued / skipped">@($"{context.ItemsQueued?.ToString() ?? "-"} / {context.ItemsSkipped?.ToString() ?? "-"}")</MudTd>
             <MudTd DataLabel="Next Check">@Formatting.FormatLocalTime(context.NextCheck)</MudTd>
             <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Size="Size.Small" Disabled="@context.IsRunning" OnClick="@(() => Viewmodel.RunSubscriptionAsync(context.Id))" />
+                <MudIconButton Icon="@(context.IsEnabled ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayCircle)" Color="Color.Default" Size="Size.Small" OnClick="@(() => Viewmodel.ToggleSubscriptionAsync(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Default" Size="Size.Small" OnClick="@(() => Viewmodel.ShowHistoryAsync(context.Id))" />
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Viewmodel.DeleteSubscriptionAsync(context.Id))" />
             </MudTd>
         </RowTemplate>

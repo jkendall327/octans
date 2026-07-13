@@ -1,0 +1,54 @@
+@using Octans.Core.Subscriptions
+@using Octans.Client.Services
+@inject IOctansClient Client
+
+<MudDialog>
+    <DialogContent>
+        @if (_history is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (_history.Count == 0)
+        {
+            <MudText>No runs recorded yet.</MudText>
+        }
+        else
+        {
+            <MudTable Items="_history" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Started</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Found</MudTh>
+                    <MudTh>Queued</MudTh>
+                    <MudTh>Skipped</MudTh>
+                    <MudTh>Error</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@Formatting.FormatLocalTime(context.ExecutedAt)</MudTd>
+                    <MudTd>@context.Status</MudTd>
+                    <MudTd>@(context.ItemsFound?.ToString() ?? "-")</MudTd>
+                    <MudTd>@context.ItemsQueued</MudTd>
+                    <MudTd>@context.ItemsSkipped</MudTd>
+                    <MudTd>@context.ErrorMessage</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int SubscriptionId { get; set; }
+
+    private IReadOnlyList<SubscriptionExecutionDto>? _history;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _history = await Client.GetSubscriptionHistoryAsync(SubscriptionId);
+    }
+
+    private void Close() => MudDialog.Close();
+}

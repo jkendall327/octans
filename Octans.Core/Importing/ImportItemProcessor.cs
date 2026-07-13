@@ -39,7 +39,7 @@ internal sealed class ImportItemProcessor(
         var task = request.ImportType switch
         {
             ImportType.File => file.GetRawBytes(item),
-            ImportType.RawUrl => simple.GetRawBytes(item),
+            ImportType.RawUrl => simple.GetRawBytes(request, item),
             _ => throw new InvalidOperationException("Import type not supported")
         };
 
@@ -75,7 +75,7 @@ internal sealed class ImportItemProcessor(
 
         await filesystemWriter.WriteOriginal(hash, metadata, bytes);
 
-        await databaseWriter.AddItemToDatabase(item, hash, metadata, request.AutoArchive);
+        await databaseWriter.AddItemToDatabase(item, hash, metadata, request.AutoArchive, request.Repository);
 
         logger.LogInformation("Sending thumbnail creation request");
 

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Octans.Data.Models;
 
 namespace Octans.Data.Models.Importing;
 
@@ -20,7 +21,14 @@ public class ImportJob
     public bool DeleteAfterImport { get; set; }
     public bool AllowReimportDeleted { get; set; }
     public bool AutoArchive { get; set; }
+    public int RepositoryId { get; set; } = (int)RepositoryType.Inbox;
     public string? SerializedFilterData { get; set; }
+
+    public string? SourceType { get; set; }
+    public string? SourceId { get; set; }
+
+    public int? SubscriptionId { get; set; }
+    public int? SubscriptionExecutionId { get; set; }
 
     public string SerializedRequest { get; set; } = string.Empty;
     public List<ImportItem> Items { get; init; } = [];

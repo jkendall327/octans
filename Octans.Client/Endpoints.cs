@@ -468,8 +468,26 @@ internal static class Endpoints
 
         app
             .MapGet("/downloads",
-                ([FromServices] IDownloadStateService stateService) =>
-                    stateService.GetAllDownloads().Select(MapDownloadStatus).ToList())
+                async ([FromServices] IDownloadStateService stateService,
+                    [FromServices] ServerDbContext db,
+                    CancellationToken token) =>
+                {
+                    var active = stateService.GetAllDownloads().ToDictionary(download => download.Id);
+                    var persisted = await db.DownloadStatuses
+                        .AsNoTracking()
+                        .OrderByDescending(download => download.CreatedAt)
+                        .Take(500)
+                        .ToListAsync(token);
+                    foreach (var download in persisted)
+                    {
+                        active.TryAdd(download.Id, download);
+                    }
+
+                    return active.Values
+                        .OrderByDescending(download => download.CreatedAt)
+                        .Select(MapDownloadStatus)
+                        .ToList();
+                })
             .WithName("GetDownloads");
 
         app
@@ -701,6 +719,7 @@ internal static class Endpoints
         DeleteAfterImport = request.DeleteAfterImport,
         AllowReimportDeleted = request.AllowReimportDeleted,
         AutoArchive = request.AutoArchive,
+        Repository = request.Repository,
         FilterData = request.FilterData,
         TagsBySource = request.Items
             .Select(item => new
@@ -709,7 +728,16 @@ internal static class Endpoints
                 item.Tags
             })
             .Where(item => !string.IsNullOrWhiteSpace(item.Source) && item.Tags is not null)
-            .ToDictionary(item => item.Source, item => item.Tags!)
+            .ToDictionary(item => item.Source, item => item.Tags!),
+        SourceIdsBySource = request.Items
+            .Select(item => new
+            {
+                Source = item.Filepath ?? item.Url?.AbsoluteUri ?? string.Empty,
+                item.SourceId
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Source) && !string.IsNullOrWhiteSpace(item.SourceId))
+            .ToDictionary(item => item.Source, item => item.SourceId!),
+        SourceType = request.Items.Select(item => item.SourceType).FirstOrDefault(type => !string.IsNullOrWhiteSpace(type))
     };
 
     private static void MapInfrastructureEndpoints(IEndpointRouteBuilder app)
@@ -724,7 +752,8 @@ internal static class Endpoints
         app
             .MapPost("/subscriptions",
                 async ([FromBody] SubscriptionCreateRequest request,
-                    [FromServices] ISubscriptionService subscriptionService) =>
+                    [FromServices] ISubscriptionService subscriptionService,
+                    CancellationToken token) =>
                 {
                     if (string.IsNullOrWhiteSpace(request.Name))
                     {
@@ -746,13 +775,22 @@ internal static class Endpoints
                         return Results.BadRequest("Frequency must be greater than zero minutes.");
                     }
 
-                    await subscriptionService.AddAsync(
-                        request.Name,
-                        request.DownloaderName,
-                        request.Query,
-                        TimeSpan.FromMinutes(request.FrequencyMinutes),
-                        MapSubscriptionImportSettings(request.ImportOptions),
-                        request.Tags);
+                    try
+                    {
+                        await subscriptionService.AddAsync(
+                            request.Name,
+                            request.DownloaderName,
+                            request.Query,
+                            TimeSpan.FromMinutes(request.FrequencyMinutes),
+                            MapSubscriptionImportSettings(request.ImportOptions),
+                            request.Tags,
+                            request.MaxItemsPerRun,
+                            token);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(ex.Message);
+                    }
 
                     return Results.Accepted("/api/subscriptions");
                 })
@@ -760,10 +798,89 @@ internal static class Endpoints
             .WithDescription("Submits a subscription request for automated queries");
 
         app
-            .MapDelete("/subscriptions/{id:int}",
-                async (int id, [FromServices] ISubscriptionService subscriptionService) =>
+            .MapPut("/subscriptions/{id:int}",
+                async (int id,
+                    [FromBody] SubscriptionCreateRequest request,
+                    [FromServices] ISubscriptionService subscriptionService,
+                    CancellationToken token) =>
                 {
-                    await subscriptionService.DeleteAsync(id);
+                    try
+                    {
+                        await subscriptionService.UpdateAsync(
+                            id,
+                            request.Name,
+                            request.DownloaderName,
+                            request.Query,
+                            TimeSpan.FromMinutes(request.FrequencyMinutes),
+                            MapSubscriptionImportSettings(request.ImportOptions),
+                            request.Tags,
+                            request.MaxItemsPerRun,
+                            token);
+                        return Results.NoContent();
+                    }
+                    catch (KeyNotFoundException)
+                    {
+                        return Results.NotFound();
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(ex.Message);
+                    }
+                })
+            .WithName("UpdateSubscription");
+
+        app
+            .MapGet("/subscriptions/{id:int}/history",
+                async (int id, [FromServices] ISubscriptionService service, CancellationToken token) =>
+                    Results.Ok(await service.GetHistoryAsync(id, token)))
+            .WithName("GetSubscriptionHistory");
+
+        app
+            .MapGet("/subscriptions/{id:int}/sources",
+                async (int id, [FromServices] ISubscriptionService service, CancellationToken token) =>
+                    Results.Ok(await service.GetSourceItemsAsync(id, token)))
+            .WithName("GetSubscriptionSources");
+
+        app
+            .MapPost("/subscriptions/{id:int}/run",
+                async (int id, [FromServices] ISubscriptionService service, CancellationToken token) =>
+                {
+                    try
+                    {
+                        await service.RunNowAsync(id, token);
+                        return Results.Accepted($"/api/subscriptions/{id}");
+                    }
+                    catch (KeyNotFoundException)
+                    {
+                        return Results.NotFound();
+                    }
+                })
+            .WithName("RunSubscriptionNow");
+
+        app
+            .MapPost("/subscriptions/{id:int}/enabled",
+                async (int id,
+                    [FromBody] SubscriptionEnabledRequest request,
+                    [FromServices] ISubscriptionService service,
+                    CancellationToken token) =>
+                {
+                    try
+                    {
+                        await service.SetEnabledAsync(id, request.Enabled, token);
+                        return Results.NoContent();
+                    }
+                    catch (KeyNotFoundException)
+                    {
+                        return Results.NotFound();
+                    }
+                })
+            .WithName("SetSubscriptionEnabled");
+
+        app
+            .MapDelete("/subscriptions/{id:int}",
+                async (int id, [FromServices] ISubscriptionService subscriptionService, CancellationToken token) =>
+                {
+                    await subscriptionService.DeleteAsync(id, token);
 
                     return Results.NoContent();
                 })
@@ -818,6 +935,8 @@ internal static class Endpoints
                 importOptions.Repository,
                 importOptions.AllowReimportDeleted,
                 importOptions.AutoArchive);
+
+    private sealed record SubscriptionEnabledRequest(bool Enabled);
 
     public static void MapImageEndpoints(this WebApplication app)
     {

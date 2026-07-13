@@ -38,7 +38,10 @@ public class SubscriptionsViewmodel(
                 model.Name,
                 model.Downloader,
                 model.Query,
-                model.FrequencyMinutes));
+                model.FrequencyMinutes,
+                new(model.Repository, model.AllowReimportDeleted, model.AutoArchive),
+                model.Tags,
+                model.MaxItemsPerRun));
             await LoadSubscriptionsAsync();
         }
     }
@@ -47,5 +50,26 @@ public class SubscriptionsViewmodel(
     {
         await client.DeleteSubscriptionAsync(id);
         await LoadSubscriptionsAsync();
+    }
+
+    public async Task RunSubscriptionAsync(int id)
+    {
+        await client.RunSubscriptionNowAsync(id);
+        await LoadSubscriptionsAsync();
+    }
+
+    public async Task ToggleSubscriptionAsync(SubscriptionStatusDto subscription)
+    {
+        await client.SetSubscriptionEnabledAsync(subscription.Id, !subscription.IsEnabled);
+        await LoadSubscriptionsAsync();
+    }
+
+    public async Task ShowHistoryAsync(int id)
+    {
+        var parameters = new DialogParameters<SubscriptionHistoryDialog>
+        {
+            { dialog => dialog.SubscriptionId, id }
+        };
+        await dialogService.ShowAsync<SubscriptionHistoryDialog>("Subscription history", parameters);
     }
 }

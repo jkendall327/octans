@@ -181,6 +181,14 @@ Recurring scans of web sources: subscription definitions, scheduling, provider e
 
 What exists now:
 
+The subscription workflow is now end-to-end. A run uses the selected Lua
+downloader to discover bounded result pages, records source-level history,
+creates subscription-owned durable download rows and a durable import job, and
+reuses those downloads when the import worker processes the job. Subscription
+runs expose queued/skipped counts, cursors, diagnostics, failure history, and
+links to their import jobs through the API. The scheduler supports enabled /
+paused state, manual runs, stale-run recovery, and overlap protection.
+
 - There is a persisted subscription model: `Provider`, `Subscription`, and `SubscriptionExecution`.
 - A subscription stores a name, provider/downloader, query string, check period, next-check timestamp, and a history of execution rows with executed-at time and item count.
 - `SubscriptionService` can add, list, delete, and periodically execute due subscriptions.
@@ -190,45 +198,16 @@ What exists now:
 - The executor boundary exists as `ISubscriptionExecutor`, returning `SubscriptionExecutionResult`.
 - Basic tests cover adding/listing/deleting subscriptions through the viewmodel and persisting an execution result.
 
-Important current limitations:
+Remaining limitations:
 
-- The registered executor is `NoOpSubscriptionExecutor`, so subscriptions do not currently scan any website or produce import/download work.
-- `SubscriptionExecutionResult` only records `ItemsFound`; it cannot represent discovered URLs, queued downloads/imports, failures, skipped duplicates, pagination state, or useful diagnostics.
-- The scheduler executes all due subscriptions sequentially inside one scoped service loop. There is no per-subscription locking, concurrency limit, cancellation model, manual run command, or protection against overlapping runs after process restarts.
-- Failure handling is too blunt. If one subscription executor throws, the whole check loop can stop before saving successful execution history or rescheduling later subscriptions.
-- `NextCheck` is advanced from the scheduler's initial `now`, not from actual completion time, and there is no failed-run/backoff policy.
-- The data model does not have an enabled/paused flag, last-success/last-failure fields, error messages, consecutive failure counts, stable cursor/checkpoint data, or per-subscription options.
-- `Provider` currently only has a name and is created on demand from the downloader name. It does not encode source type, base URL, credentials, policy, display metadata, or whether the referenced downloader still exists.
-- The API surface is effectively absent. `POST /subscriptions` still throws `NotImplementedException`, `SubscriptionRequest` is unused and incomplete, and there are no frontend-neutral endpoints for listing, creating, updating, deleting, pausing, or running subscriptions.
-- The existing UI is an admin table for rows, not a usable subscription workflow. It has no edit/enable/manual-run controls, no run history detail, no failure visibility, no import/download links, and no status refresh after background execution.
-- There is no deduplication or "already seen" model at the subscription layer. The app can avoid duplicate file imports later by hash/reimport logic, but subscriptions cannot yet remember which source URLs or posts they have already processed.
-- The downloader scripting surface has a `process_query` hook and gallery URL generation, but the subscription code does not use either. `DownloaderService.ResolveAsync` only resolves a concrete URL to downloadable URLs.
-- There is no clear bridge from a subscription scan to durable import jobs or durable download jobs. `PostImporter` can queue downloads for resolved post URLs, but it is not connected to subscriptions, and queued downloads are not yet imported after completion.
-- Subscription-generated HTTP work has not been placed behind the shared HTTP document/body-fetch abstraction called out in the download backlog.
-
-Before this can be hooked up to everything else:
-
-- Decide the subscription input model. A subscription probably needs at least downloader/provider, query or seed URL, frequency, tags to apply, import destination behavior, archive/inbox behavior, and maybe per-source HTTP policy.
-- Define the executor contract around real work, not just `ItemsFound`. It should return discovered source items, skipped/duplicate items, queued import/download handles, failure details, and any next-page/checkpoint information that must persist.
-- Implement a real downloader-backed executor. The first useful version can run downloader query/gallery logic, resolve discovered post/media URLs, and hand off to import/download jobs without trying to solve every website pattern.
-- Make subscriptions submit durable work rather than doing fragile in-memory work. The natural direction is: subscription execution discovers candidate sources, creates import jobs or download jobs with `SourceType = "Subscription"` and a stable source ID, then records what was queued.
-- Build the workflow continuation for "download then import" before subscriptions rely on raw queued downloads. Otherwise subscriptions can queue files into temporary paths without making them part of the library.
-- Add an "already seen" or source-item table before running subscriptions repeatedly. It should key on stable source identity/request fingerprint/post URL, not just final content hash, so the system can skip known posts before downloading them again.
-- Harden scheduling semantics: enabled/disabled state, manual run, per-subscription in-progress tracking, no overlapping executions, failed-run recording, retry/backoff, and continued processing when one subscription fails.
-- Replace the placeholder endpoint with a real API: list subscriptions, create/update/delete, enable/disable, run now, list executions, and inspect any import/download jobs created by an execution.
-- Decide whether subscription configuration should reference downloader names directly or stable downloader IDs/versions. Names are convenient but brittle if downloader files are renamed or upgraded.
-- Integrate with the shared HTTP policy layer for discovery pages and API calls. Subscription scans should share request headers, credentials, host limits, response caps, cancellation, and logging with downloader discovery fetches.
-
-For day-to-day usability:
-
-- Provide a subscription page that answers "what is this doing right now?": enabled state, next run, last success, last failure, current run status, items found, items queued, items imported, and useful error text.
-- Add edit, pause/enable, run-now, and delete controls, with confirmation when deleting history or queued work.
-- Show execution history with links to the import jobs/download jobs created by each run.
-- Let users attach tags and import options to a subscription so recurring imports land with useful metadata instead of becoming anonymous downloads.
-- Make duplicate/skipped behavior visible. Users should know whether a run found nothing, found only already-seen posts, queued new work, or failed before it could scan.
-- Add validation for bad downloader names, missing downloader capabilities, invalid query/URL input, too-small frequencies, and deleted or broken downloader scripts.
-- Make failure messages distinguish downloader-script contract errors, HTTP failures, auth/credential failures, parser failures, no-results runs, and import/download handoff failures.
-- Add per-subscription or per-provider policy knobs where they matter: frequency, retry/backoff, max pages/items per run, content-type expectations, size caps, credentials, and host throttling.
+- The downloader contract is still URL-oriented; richer typed post metadata,
+  provider credentials, and opaque pagination cursors can build on the current
+  `Cursor` field later.
+- The current scheduler is intentionally fair and sequential. A future pass can
+  add configurable provider concurrency and retry/backoff policies.
+- Import reconciliation records successful source imports, but it does not yet
+  expose per-media progress directly on the subscription page.
+- Downloader authentication and conditional requests remain outside this pass.
 
 For long-term robustness:
 

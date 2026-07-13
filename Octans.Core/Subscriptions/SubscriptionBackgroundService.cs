@@ -14,18 +14,28 @@ internal sealed class SubscriptionBackgroundService(
         using var scope = serviceProvider.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
 
-        try
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1), timeProvider);
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1), timeProvider);
 
-            while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
             {
+                if (!await timer.WaitForNextTickAsync(stoppingToken))
+                {
+                    break;
+                }
+
                 await service.CheckAndExecute(stoppingToken);
             }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Subscription processing failed");
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Subscription processing failed; the scheduler will continue.");
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            }
         }
     }
 }

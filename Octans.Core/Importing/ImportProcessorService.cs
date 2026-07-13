@@ -138,6 +138,19 @@ internal sealed class ImportProcessorService(
                 job.FailedItems++;
             }
 
+            if (result.Ok && job.SubscriptionId is { } subscriptionId && !string.IsNullOrWhiteSpace(item.SourceId))
+            {
+                var sourceItems = await context.SubscriptionSourceItems
+                    .Where(source => source.SubscriptionId == subscriptionId
+                                     && source.SourceId == item.SourceId
+                                     && source.RemoteUrl == item.Source)
+                    .ToListAsync(stoppingToken);
+                foreach (var sourceItem in sourceItems)
+                {
+                    sourceItem.ImportedAt = now;
+                }
+            }
+
             job.CurrentItem = null;
             job.UpdatedAt = now;
             await context.SaveChangesAsync(stoppingToken);

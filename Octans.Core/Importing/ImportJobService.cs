@@ -57,7 +57,12 @@ internal sealed class ImportJobService(
             DeleteAfterImport = request.DeleteAfterImport,
             AllowReimportDeleted = request.AllowReimportDeleted,
             AutoArchive = request.AutoArchive,
-            SerializedFilterData = request.FilterData is null ? null : JsonSerializer.Serialize(request.FilterData)
+            RepositoryId = (int?)request.Repository ?? (request.AutoArchive ? (int)RepositoryType.Archive : (int)RepositoryType.Inbox),
+            SerializedFilterData = request.FilterData is null ? null : JsonSerializer.Serialize(request.FilterData),
+            SourceType = request.SourceType,
+            SourceId = request.SourceId,
+            SubscriptionId = request.SubscriptionId,
+            SubscriptionExecutionId = request.SubscriptionExecutionId
         };
 
         var importRequest = request.ToImportRequest();
@@ -71,6 +76,10 @@ internal sealed class ImportJobService(
                 ImportJobId = job.Id,
                 ImportType = MapImportType(request.ImportType),
                 Source = source,
+                SourceId = request.SourceIdsBySource is not null && request.SourceIdsBySource.TryGetValue(source, out var sourceId)
+                    ? sourceId
+                    : request.SourceId,
+                SourceType = request.SourceType,
                 SerializedTags = SerializeTags(request.TagsBySource, source),
                 Status = DataImportItemStatus.Pending,
                 CreatedAt = now,
@@ -134,12 +143,16 @@ internal sealed class ImportJobService(
                 {
                     Filepath = item.ImportType is DataImportType.File ? item.Source : null,
                     Url = item.ImportType is DataImportType.RawUrl ? new Uri(item.Source) : null,
-                    Tags = DeserializeTags(item.SerializedTags)
+                    Tags = DeserializeTags(item.SerializedTags),
+                    SourceId = item.SourceId,
+                    SourceType = item.SourceType ?? job.SourceType,
+                    DownloadId = item.DownloadId
                 }
             ],
             DeleteAfterImport = job.DeleteAfterImport,
             AllowReimportDeleted = job.AllowReimportDeleted,
             AutoArchive = job.AutoArchive,
+            Repository = (RepositoryType)job.RepositoryId,
             FilterData = filterData
         };
     }
@@ -157,7 +170,11 @@ internal sealed class ImportJobService(
         job.StartedAt,
         job.CompletedAt,
         job.UpdatedAt,
-        job.Items.OrderBy(i => i.Id).Select(MapItem).ToList());
+        job.Items.OrderBy(i => i.Id).Select(MapItem).ToList(),
+        job.SourceType,
+        job.SourceId,
+        job.SubscriptionId,
+        job.SubscriptionExecutionId);
 
     private async Task<ImportJobDto?> Transition(
         Guid id,
@@ -219,7 +236,10 @@ internal sealed class ImportJobService(
         item.Attempts,
         item.StartedAt,
         item.CompletedAt,
-        item.UpdatedAt);
+        item.UpdatedAt,
+        item.SourceId,
+        item.SourceType,
+        item.DownloadId);
 
     private static bool IsTerminal(DataImportJobStatus status) =>
         status is DataImportJobStatus.Cancelled or DataImportJobStatus.Completed or DataImportJobStatus.Failed;
@@ -263,8 +283,14 @@ public record ImportJobCreateRequest
     public bool DeleteAfterImport { get; init; }
     public bool AllowReimportDeleted { get; init; }
     public bool AutoArchive { get; init; }
+    public RepositoryType? Repository { get; init; }
     public ImportFilterData? FilterData { get; init; }
     public IReadOnlyDictionary<string, ICollection<TagModel>>? TagsBySource { get; init; }
+    public IReadOnlyDictionary<string, string>? SourceIdsBySource { get; init; }
+    public string? SourceType { get; init; }
+    public string? SourceId { get; init; }
+    public int? SubscriptionId { get; init; }
+    public int? SubscriptionExecutionId { get; init; }
 
     public ImportRequest ToImportRequest() => new()
     {
@@ -273,11 +299,14 @@ public record ImportJobCreateRequest
         {
             Filepath = ImportType is ImportType.File ? source : null,
             Url = ImportType is ImportType.RawUrl ? new Uri(source) : null,
-            Tags = TagsBySource is not null && TagsBySource.TryGetValue(source, out var tags) ? tags : null
+            Tags = TagsBySource is not null && TagsBySource.TryGetValue(source, out var tags) ? tags : null,
+            SourceId = SourceIdsBySource is not null && SourceIdsBySource.TryGetValue(source, out var sourceId) ? sourceId : SourceId,
+            SourceType = SourceType
         }).ToList(),
         DeleteAfterImport = DeleteAfterImport,
         AllowReimportDeleted = AllowReimportDeleted,
         AutoArchive = AutoArchive,
+        Repository = Repository,
         FilterData = FilterData
     };
 }
@@ -297,7 +326,11 @@ public record ImportJobDto(
     DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<ImportJobItemDto> Items);
+    IReadOnlyList<ImportJobItemDto> Items,
+    string? SourceType = null,
+    string? SourceId = null,
+    int? SubscriptionId = null,
+    int? SubscriptionExecutionId = null);
 
 public record ImportJobItemDto(
     Guid Id,
@@ -308,4 +341,7 @@ public record ImportJobItemDto(
     int Attempts,
     DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string? SourceId = null,
+    string? SourceType = null,
+    Guid? DownloadId = null);
