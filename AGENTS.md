@@ -49,6 +49,14 @@ I'm toying with a React frontend instead for simplicity, hence the currently not
 
 Use standard `dotnet build` and `dotnet test` to verify your work.
 
+## 🚨🚨🚨 SANDBOX PERMISSION IS REQUIRED FOR .NET BUILDS AND RESTORES 🚨🚨🚨
+
+> **IF YOU NEED TO BUILD OR RESTORE, RUN THE COMMAND WITH PERMISSION TO EXECUTE OUTSIDE THE SANDBOX.**
+>
+> **DO NOT RUN `dotnet build`, `dotnet restore`, or commands that implicitly build/restore inside the sandbox. THEY WILL FAIL, OFTEN WITH A MISLEADING `Build FAILED` RESULT CONTAINING ZERO WARNINGS AND ZERO ERRORS.**
+>
+> MSBuild's parallel worker nodes require IPC that the sandbox blocks. Request sandbox escalation before running the command. Do not add project-file workarounds for this environment limitation.
+
 ## GitHub
 
 Use the GitHub connector for GitHub operations such as opening PRs, reading PR metadata, and commenting.
