@@ -199,17 +199,28 @@ public sealed class GalleryViewmodel(
                 .Select(s => s.Raw)
                 .ToList();
 
-            _total = await client.CountQueryFilesAsync(raw, _cts.Token);
-
-            foreach (var result in await client.QueryFilesAsync(raw, _cts.Token))
+            const int pageSize = 100;
+            while (true)
             {
-                ImageUrls.Add(result.MediaUrl);
+                var page = await client.QueryFilesPageAsync(
+                    new(raw, ImageUrls.Count, pageSize),
+                    _cts.Token);
+                _total = page.Total;
 
-                _processed++;
-
-                if (ImageUrls.Count % 8 == 0)
+                foreach (var result in page.Items)
                 {
-                    await NotifyStateChanged();
+                    ImageUrls.Add(result.MediaUrl);
+                    _processed++;
+
+                    if (ImageUrls.Count % 8 == 0)
+                    {
+                        await NotifyStateChanged();
+                    }
+                }
+
+                if (ImageUrls.Count >= page.Total || page.Items.Count == 0)
+                {
+                    break;
                 }
             }
 

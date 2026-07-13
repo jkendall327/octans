@@ -267,58 +267,49 @@ Querying is the path from user search text to matching media. This subsystem cov
 What exists now:
 
 - There is a documented intended query language in `docs/Querying.md`: tag predicates, negation, wildcards, OR, nested OR, and system predicates.
-- The code has a recognizable pipeline: `QueryParser` turns raw strings into predicates, `QueryPlanner` wraps/caches a plan, `QueryTagConverter` reduces the plan into search inputs, and `HashSearcher` executes against EF/SQLite.
-- `QueryService` exposes count and query operations for in-process consumers.
-- The gallery viewmodel uses `IQueryService.CountAsync` and `IQueryService.Query` to populate image URLs and show progress.
-- The HTTP API exposes `POST /files/query`, and `OctansClient.QueryFilesAsync` calls it.
-- Empty queries and `system:everything` return all non-trash files.
-- `system:inbox`, `system:archive`, and `system:trash` exist as repository filters.
-- Exact tag search works at the execution layer.
-- Query execution defaults to excluding trash unless the query asks for trash explicitly.
-- `HashSearcher` has lower-level support for limit/offset and count, though the public API does not expose pagination yet.
-- Query suggestions exist through `QuerySuggestionFinder` and are used by the Blazor query builder.
-- Tests cover parser basics, some repository filtering, exact tag search, lower-level namespace wildcard execution, count, limit/offset, suggestions, and query-builder suggestion wiring.
+- `QueryParser` produces a semantic predicate tree with explicit nested OR groups and source locations. The top-level predicate list is implicit AND.
+- Exact positive predicates use strict AND semantics. Negative tag predicates perform semantic exclusion, including negative-only queries, and negative predicates inside OR groups remain real NOT branches.
+- Namespace and subtag wildcards work through the normal raw-query pipeline and preserve literal SQL wildcard characters such as underscores.
+- Tag matching is case-insensitive and includes descendants implied by the existing parent-tag graph.
+- Empty queries and `system:everything` use normal non-trash scope. `system:inbox`, `system:archive`, and `system:trash` are composable predicates, including inside OR groups; only an explicit trash predicate opens trash scope.
+- `POST /files/query` accepts a frontend-neutral request with predicates, offset, and limit, and returns media DTOs plus total count and stable ascending-ID pagination metadata.
+- Invalid syntax and unsupported predicates return HTTP 400 with stable error codes, messages, predicate indexes, and source ranges.
+- `GET /query/suggestions` returns tag and system-predicate suggestions. The Blazor query builder consumes this frontend-neutral endpoint.
+- Compatibility client methods still expose count and whole-result operations by paging through the new contract.
+- End-to-end SQLite/API tests cover AND, negative-only and mixed NOT, nested OR, OR/NOT combinations, wildcard shapes and negation, repository scope, case-insensitivity, parent expansion, pagination, structured errors, and suggestions.
 
 Important current limitations:
 
-- The parser recognizes OR, negation, and wildcard syntax, but execution does not faithfully implement those semantics yet.
-- `QueryTagConverter` currently ignores OR predicates in the main reduction path, so OR queries are not safe to treat as working end-to-end.
-- Wildcard predicates are parsed but mostly discarded by the reduction layer. The searcher has a manual `WildcardNamespacesToInclude` path, but ordinary parsed wildcard queries do not reach it.
-- Negation does not behave like "all matching files except these files". It mostly removes excluded tag IDs from the include-ID set, which is not enough for normal NOT semantics.
-- Multiple included tags currently behave closer to "has any of these tags" than Hydrus-style "must satisfy every predicate".
 - System predicates are limited to everything/inbox/archive/trash. Filesize, dimensions, tag count, import date, media type, rating, duration, and similar predicates are not implemented.
-- The API returns EF `HashItem` rows rather than a frontend-neutral search result DTO.
-- Autocomplete is in-process only. There is no `/query/suggestions` or equivalent API surface for a non-Blazor frontend.
+- Sorting is fixed to ascending media ID. Offset pagination exists, but cursor pagination and selectable sorting do not.
+- Negated system predicates and whole negated OR groups are rejected rather than represented by a fully general NOT node.
+- Sibling canonicalization is not performed live. Queries reflect current stored/materialized sibling state.
+- Parent expansion still loads relationship pairs into memory, and broad wildcard resolution can create large tag-ID sets.
+- The compatibility `QueryTagConverter`/decomposed-query path remains for existing in-process callers and lower-level tests; the semantic plan is the authoritative path for raw queries.
 
 Before this can be hooked up to everything else:
 
-- Decide and document the real query semantics before building more UI/API on top: AND between normal predicates, OR grouping, NOT behavior, wildcard behavior, parent expansion, sibling resolution, repository filters, and empty query behavior.
-- Make parser, reducer, and executor agree. Right now the grammar accepts more than the executor can honestly answer.
-- Replace the loose `IEnumerable<string>` API body with a stable query request type that can carry query terms, page size, cursor/offset, sort order, repository scope, and perhaps "include deleted/trash" policy.
-- Return a search result DTO rather than raw `HashItem` EF entities. The API should return IDs/hashes/media URLs/metadata that a future frontend can depend on.
-- Expose count and pagination through the API. The gallery already wants count for progress, and large libraries cannot rely on returning the whole result set.
-- Expose query suggestions through the API.
-- Decide how query errors should be represented. Unsupported system predicates currently throw exceptions rather than returning user-actionable parse/validation errors.
+- Decide the sibling materialization contract so normal querying can reliably use canonical sibling semantics.
+- Decide the next stable request fields: selectable sort, cursor pagination, and any explicit repository-scope option beyond predicates.
+- Add richer system predicates once the media metadata model is firm.
 - Remove or quarantine stale paths like `FileFinder.GetFilesByTagQuery`, which appears separate from the real query pipeline and has suspicious matching logic.
 
 For day-to-day usability:
 
-- Implement the common search grammar well: exact tags, namespace/subtag wildcards, negation, OR, parent-expanded queries, repository filters, and useful system predicates.
 - Add practical system predicates: file size, dimensions, file type/content type, import date, deleted/trash state, tag count, rating, duplicate status, and maybe source/import job.
 - Add stable sorting: import date, hash ID, random, file size, dimensions, rating, and maybe "recently viewed" later.
-- Add pagination or cursoring that feels good in the gallery and does not require loading every result.
-- Improve suggestions so they can suggest tags, namespaces, system predicates, recent searches, and maybe common operators.
-- Provide clear user-facing error messages for invalid syntax, unsupported predicates, and queries that are valid but currently unimplemented.
+- Add cursoring or incremental/infinite gallery loading so the UI does not eventually materialize every matching URL even though transport is paged.
+- Improve suggestions with namespaces, recent searches, operators, and alias annotations.
+- Highlight structured query error ranges directly in the query builder instead of showing only the request error text.
 - Add "explain this query" or at least developer-facing diagnostics for why a query matched, especially once parents/siblings are active.
 - Preserve search state in a frontend-neutral way so changing the UI does not lose query history, saved searches, or shareable search URLs.
 
 For long-term robustness:
 
-- Build a real query model with explicit predicate types and validated semantics. String parsing should be a thin input layer, not the only place where meaning lives.
-- Add end-to-end tests from raw query strings to result sets for every supported grammar feature, including combinations like `character:mario -series:mario_bros system:archive`.
+- Extend the internal semantic query model only as new operators require it; string parsing should remain a thin input layer.
 - Add performance-oriented integration tests or benchmarks for large tag/mapping counts.
 - Design indexes around the real query plan: mapping by tag, mapping by hash, repository filtering, system predicate columns, and common sort orders.
-- Decide whether query planning is worth caching. The current planner cache keys on predicate object hash codes, which is unlikely to be a stable long-term contract.
+- Decide whether query planning is worth caching once plans have a stable structural key and measurable planning cost.
 - Make tag relationship behavior scalable. Parent expansion currently loads all parent relationships into memory; that may be fine for now, but large tag graphs need a deliberate strategy.
 - Consider moving complex execution to explicit SQL/CTEs when EF becomes awkward, especially for AND/OR/NOT combinations and parent expansion.
 - Add observability for slow queries: query text/shape, elapsed time, result count, database timing, and whether relationship expansion or wildcard matching dominated the work.

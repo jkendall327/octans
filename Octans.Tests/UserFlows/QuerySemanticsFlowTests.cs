@@ -1,9 +1,13 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.Extensions.DependencyInjection;
+using Octans.Client;
 using Octans.Core;
+using Octans.Core.Querying;
 using Octans.Core.Tags;
 using Octans.Data.Models;
 using Octans.Data.Models.Tagging;
@@ -86,6 +90,187 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
             ["bowser-trash"]);
     }
 
+    [Fact]
+    public async Task NegativeOnlyQuery_SubtractsMatchesFromNormalLibraryScope()
+    {
+        await AssertQueryReturns(
+            ["-character:samus"],
+            ["ridley-metroid-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task PositiveAndNegativePredicates_UseSetSubtraction()
+    {
+        await AssertQueryReturns(
+            ["series:metroid", "-character:ridley"],
+            ["samus-metroid-inbox"]);
+    }
+
+    [Fact]
+    public async Task ExplicitOrGroup_MatchesAnyAlternative()
+    {
+        await AssertQueryReturns(
+            ["or:character:samus OR character:mario"],
+            ["samus-metroid-inbox", "samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task NestedOrGroup_PreservesItsTreeSemantics()
+    {
+        await AssertQueryReturns(
+            ["or:character:ridley OR (or:character:mario OR series:smash)"],
+            ["ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task NegativeAlternativeInsideOrGroup_IsARealNotPredicate()
+    {
+        await AssertQueryReturns(
+            ["or:character:ridley OR -series:metroid"],
+            ["ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task NonTrashRepositoryAlternative_DoesNotOpenTrashScopeForOtherAlternatives()
+    {
+        await AssertQueryReturns(
+            ["or:system:inbox OR character:bowser"],
+            ["samus-metroid-inbox", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task TrashAlternative_ExplicitlyOpensTrashScope()
+    {
+        await AssertQueryReturns(
+            ["or:system:trash OR character:samus"],
+            ["samus-metroid-inbox", "samus-smash-archive", "bowser-trash"]);
+    }
+
+    [Theory]
+    [InlineData("character:sam*", "samus-metroid-inbox", "samus-smash-archive")]
+    [InlineData("character:*", "samus-metroid-inbox", "ridley-metroid-archive", "samus-smash-archive", "mario-kart-inbox")]
+    [InlineData("*:met*", "samus-metroid-inbox", "ridley-metroid-archive")]
+    [InlineData("*:*kart*", "mario-kart-inbox")]
+    public async Task Wildcards_MatchNamespaceAndSubtagPatterns(string query, params string[] expected)
+    {
+        await AssertQueryReturns([query], expected);
+    }
+
+    [Fact]
+    public async Task WildcardNegation_SubtractsEveryMatchingTag()
+    {
+        await AssertQueryReturns(
+            ["-series:met*"],
+            ["samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task SystemEverything_DoesNotDiscardOtherPredicates()
+    {
+        await AssertQueryReturns(
+            ["system:everything", "character:samus"],
+            ["samus-metroid-inbox", "samus-smash-archive"]);
+    }
+
+    [Fact]
+    public async Task TagMatching_IsCaseInsensitive()
+    {
+        await AssertQueryReturns(
+            ["CHARACTER:SAMUS"],
+            ["samus-metroid-inbox", "samus-smash-archive"]);
+    }
+
+    [Fact]
+    public async Task ParentTags_MatchMediaMappedToTheirDescendantTags()
+    {
+        await AssertQueryReturns(
+            ["franchise:nintendo"],
+            ["samus-metroid-inbox", "ridley-metroid-archive"]);
+    }
+
+    [Fact]
+    public async Task NegatedParentTags_ExcludeMediaMappedToTheirDescendantTags()
+    {
+        await AssertQueryReturns(
+            ["-franchise:nintendo"],
+            ["samus-smash-archive", "mario-kart-inbox"]);
+    }
+
+    [Fact]
+    public async Task PagedQuery_ReturnsStableSliceAndTotal()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        await SeedLibrary(factory);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/files/query",
+            new FileQueryRequest([], Offset: 1, Limit: 2));
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        jsonOptions.Converters.Add(new JsonStringEnumConverter());
+        var page = await response.Content.ReadFromJsonAsync<FileQueryPageDto>(jsonOptions);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        page.Should().NotBeNull();
+        page!.Total.Should().Be(4);
+        page.Offset.Should().Be(1);
+        page.Limit.Should().Be(2);
+        page.Items.Should().HaveCount(2);
+        page.Items.Select(item => item.Id).Should().BeInAscendingOrder();
+    }
+
+    [Theory]
+    [InlineData("system:nope", "unsupported_system_predicate")]
+    [InlineData("or:character:samus", "or_requires_alternatives")]
+    [InlineData("or:character:samus OR (character:mario", "unbalanced_parenthesis")]
+    [InlineData("character:", "empty_subtag")]
+    public async Task InvalidQuery_ReturnsStructuredBadRequest(string query, string expectedCode)
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/files/query",
+            new FileQueryRequest([query]));
+        var error = await response.Content.ReadFromJsonAsync<QueryErrorResponse>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        error.Should().NotBeNull();
+        error!.Errors.Should().ContainSingle();
+        error.Errors[0].Code.Should().Be(expectedCode);
+        error.Errors[0].PredicateIndex.Should().Be(0);
+        error.Errors[0].Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task QuerySuggestions_IncludeSystemPredicatesAndTags()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        await SeedLibrary(factory);
+
+        var system = await client.GetFromJsonAsync<QueryLanguageSuggestionsDto>(
+            "/api/query/suggestions?search=system:ar");
+        var tags = await client.GetFromJsonAsync<QueryLanguageSuggestionsDto>(
+            "/api/query/suggestions?search=sam");
+
+        system!.Suggestions.Should().Contain(s => s.Value == "system:archive" && s.Kind == "system");
+        tags!.Suggestions.Should().Contain(s => s.Value == "character:samus" && s.Kind == "tag");
+    }
+
+    [Fact]
+    public async Task QuerySuggestions_PreserveTagNegation()
+    {
+        await using var factory = new OctansApiFactory(output);
+        var client = factory.CreateClient();
+        await SeedLibrary(factory);
+
+        var result = await client.GetFromJsonAsync<QueryLanguageSuggestionsDto>(
+            "/api/query/suggestions?search=-sam");
+
+        result!.Suggestions.Should().Contain(s => s.Value == "-character:samus");
+    }
+
     private async Task AssertQueryReturns(string[] query, string[] expectedNames)
     {
         await using var factory = new OctansApiFactory(output);
@@ -135,6 +320,7 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
                 [new("character", "bowser"), new("series", "mario")])
         };
 
+        var tags = new Dictionary<TagModel, Tag>();
         foreach (var item in media)
         {
             var stored = await factory.AddStoredImageAsync(
@@ -145,11 +331,15 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
 
             foreach (var tagModel in item.Tags)
             {
-                var tag = new Tag
+                if (!tags.TryGetValue(tagModel, out var tag))
                 {
-                    Namespace = new Namespace { Value = tagModel.Namespace ?? string.Empty },
-                    Subtag = new Subtag { Value = tagModel.Subtag }
-                };
+                    tag = new Tag
+                    {
+                        Namespace = new Namespace { Value = tagModel.Namespace ?? string.Empty },
+                        Subtag = new Subtag { Value = tagModel.Subtag }
+                    };
+                    tags[tagModel] = tag;
+                }
 
                 db.Mappings.Add(new Mapping
                 {
@@ -158,6 +348,16 @@ public sealed class QuerySemanticsFlowTests(ITestOutputHelper output)
                 });
             }
         }
+
+        db.TagParents.Add(new TagParent
+        {
+            Child = tags[new("series", "metroid")],
+            Parent = new Tag
+            {
+                Namespace = new Namespace { Value = "franchise" },
+                Subtag = new Subtag { Value = "nintendo" }
+            }
+        });
 
         await db.SaveChangesAsync();
 

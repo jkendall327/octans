@@ -9,7 +9,7 @@ namespace Octans.Core.Querying;
 /// </summary>
 internal sealed class QueryTagConverter
 {
-    public DecomposedQuery Reduce(QueryPlan plan)
+    public DecomposedQuery Reduce(QueryPlan plan, int? limit = null, int offset = 0)
     {
         var (system, tags, ors) = plan.Predicates.Partition<SystemPredicate, TagPredicate, OrPredicate>();
 
@@ -30,6 +30,9 @@ internal sealed class QueryTagConverter
 
         return new()
         {
+            Plan = plan,
+            Limit = limit,
+            Offset = offset,
             SystemPredicates = system,
             TagsToInclude = include,
             TagsToExclude = exclude,
@@ -91,6 +94,7 @@ internal sealed class QueryTagConverter
 
 internal sealed class DecomposedQuery
 {
+    public QueryPlan? Plan { get; init; }
     public List<SystemPredicate> SystemPredicates { get; init; } = [];
     public List<RepositoryType> RepositoryFilters { get; init; } = [];
     public HashSet<TagModel> TagsToInclude { get; init; } = [];

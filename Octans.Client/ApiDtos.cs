@@ -2,6 +2,7 @@ using Octans.Core.Downloaders;
 using Octans.Core.Importing;
 using Octans.Core.Http.Models;
 using Octans.Core.Notes;
+using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Subscriptions;
 using Octans.Core.Tags;
@@ -38,7 +39,22 @@ public sealed record RepositoryTransitionRequest(
 
 public sealed record QuerySuggestionsDto(IReadOnlyList<TagModel> Tags);
 
+public sealed record QueryLanguageSuggestionDto(
+    string Value,
+    string DisplayText,
+    string Kind);
+
+public sealed record QueryLanguageSuggestionsDto(IReadOnlyList<QueryLanguageSuggestionDto> Suggestions);
+
 public sealed record FileQueryCountDto(int Count);
+
+public sealed record FileQueryPageDto(
+    IReadOnlyList<FileDto> Items,
+    int Total,
+    int Offset,
+    int Limit);
+
+public sealed record QueryErrorResponse(IReadOnlyList<QueryError> Errors);
 
 public sealed record DownloadersOverviewDto(
     string DownloaderDirectory,

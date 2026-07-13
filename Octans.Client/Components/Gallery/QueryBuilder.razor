@@ -46,7 +46,7 @@
         <div
           class="qb-suggest-item"
           @onclick="@(async () => await ViewModel.ApplySuggestion(s))">
-          @s.Namespace : @s.Subtag
+          @s.DisplayText
         </div>
       }
     </div>

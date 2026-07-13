@@ -1,8 +1,10 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Octans.Client;
 using Octans.Core.Importing;
+using Octans.Core.Querying;
 using Octans.Data.Models;
 using Octans.Data.Models.Duplicates;
 
@@ -50,7 +52,7 @@ public class OctansClientTests
             observedRequest = request;
 
             return StubHttpResponses.Json("""
-                [{"id":7,"hash":"010203","extension":".jpg","contentType":"image/jpeg","repository":"Inbox","mediaUrl":"/media/010203"}]
+                {"items":[{"id":7,"hash":"010203","extension":".jpg","contentType":"image/jpeg","repository":"Inbox","mediaUrl":"/media/010203"}],"total":1,"offset":0,"limit":500}
                 """);
         });
 
@@ -81,7 +83,7 @@ public class OctansClientTests
 
         body
             .Should()
-            .Be("""["rating:safe","tag:cat"]""");
+            .Be("""{"predicates":["rating:safe","tag:cat"],"offset":0,"limit":500}""");
 
         files
             .Should()
@@ -89,6 +91,25 @@ public class OctansClientTests
             .Which
             .Should()
             .Be(new FileDto(7, "010203", ".jpg", "image/jpeg", RepositoryType.Inbox, "/media/010203"));
+    }
+
+    [Fact]
+    public async Task QueryFilesPageAsync_ThrowsStructuredQueryError()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = JsonContent.Create(new QueryErrorResponse(
+                [new QueryError("unsupported_system_predicate", "Not supported.", 0, 0, 12)]))
+        });
+        var client = new OctansClient(new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://octans.test")
+        });
+
+        var action = () => client.QueryFilesPageAsync(new(["system:nope"]));
+
+        var exception = await action.Should().ThrowAsync<QueryRequestException>();
+        exception.Which.Errors.Should().ContainSingle().Which.Code.Should().Be("unsupported_system_predicate");
     }
 
     [Fact]

@@ -10,6 +10,7 @@ using Octans.Core.Http.Models;
 using Octans.Core.Importing;
 using Octans.Core.Maintenance;
 using Octans.Core.Notes;
+using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Core.Stats;
 using Octans.Core.Subscriptions;
@@ -24,6 +25,7 @@ public interface IOctansClient
     Task<IReadOnlyList<FileDto>> GetFilesAsync(CancellationToken cancellationToken = default);
     Task<string?> GetFileAsync(int id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FileDto>> QueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
+    Task<FileQueryPageDto> QueryFilesPageAsync(FileQueryRequest request, CancellationToken cancellationToken = default);
     Task<int> CountQueryFilesAsync(IEnumerable<string> queries, CancellationToken cancellationToken = default);
     Task<MediaDetailsDto?> GetMediaDetailsAsync(string hash, CancellationToken cancellationToken = default);
     Task<NoteDto> AddNoteAsync(string hash, string content, CancellationToken cancellationToken = default);
@@ -36,6 +38,10 @@ public interface IOctansClient
     Task<IReadOnlyList<TagModel>> GetQuerySuggestionsAsync(
         string search,
         bool exact = false,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<QueryLanguageSuggestionDto>> GetQueryLanguageSuggestionsAsync(
+        string search,
+        int limit = 20,
         CancellationToken cancellationToken = default);
     Task<ImportJobClientResult> ImportFilesAsync(ImportRequest request, CancellationToken cancellationToken = default);
     Task<ImportJobClientResult> CreateImportJobAsync(
@@ -136,19 +142,50 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         IEnumerable<string> queries,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync(Api("files/query"), queries, JsonOptions, cancellationToken);
+        var predicates = queries.ToList();
+        var files = new List<FileDto>();
+        const int pageSize = 500;
+
+        while (true)
+        {
+            var page = await QueryFilesPageAsync(new(predicates, files.Count, pageSize), cancellationToken);
+            files.AddRange(page.Items);
+            if (files.Count >= page.Total || page.Items.Count == 0)
+            {
+                return files;
+            }
+        }
+    }
+
+    public async Task<FileQueryPageDto> QueryFilesPageAsync(
+        FileQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync(Api("files/query"), request, JsonOptions, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<QueryErrorResponse>(JsonOptions, cancellationToken);
+            if (error is not null)
+            {
+                throw new QueryRequestException(error.Errors);
+            }
+        }
+
         await EnsureSuccessAsync(response, cancellationToken);
 
-        var files = await response.Content.ReadFromJsonAsync<List<FileDto>>(JsonOptions, cancellationToken);
-
-        return files ?? [];
+        return await ReadRequiredJsonAsync<FileQueryPageDto>(response, cancellationToken);
     }
 
     public async Task<int> CountQueryFilesAsync(
         IEnumerable<string> queries,
         CancellationToken cancellationToken = default)
     {
-        using var response = await httpClient.PostAsJsonAsync(Api("files/query/count"), queries, JsonOptions, cancellationToken);
+        using var response = await httpClient.PostAsJsonAsync(
+            Api("files/query/count"),
+            new FileQueryRequest(queries.ToList()),
+            JsonOptions,
+            cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var count = await ReadRequiredJsonAsync<FileQueryCountDto>(response, cancellationToken);
@@ -231,6 +268,17 @@ public sealed class OctansClient(HttpClient httpClient) : IOctansClient
         var response = await httpClient.GetFromJsonAsync<QuerySuggestionsDto>(uri, JsonOptions, cancellationToken);
 
         return response?.Tags ?? [];
+    }
+
+    public async Task<IReadOnlyList<QueryLanguageSuggestionDto>> GetQueryLanguageSuggestionsAsync(
+        string search,
+        int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var uri = Api($"query/suggestions?search={Uri.EscapeDataString(search)}&limit={limit.ToString(CultureInfo.InvariantCulture)}");
+        var response = await httpClient.GetFromJsonAsync<QueryLanguageSuggestionsDto>(uri, JsonOptions, cancellationToken);
+
+        return response?.Suggestions ?? [];
     }
 
     public async Task<ImportJobClientResult> ImportFilesAsync(

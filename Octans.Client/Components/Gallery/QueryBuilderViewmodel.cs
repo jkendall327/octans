@@ -1,5 +1,4 @@
 using Octans.Core.Querying;
-using Octans.Core.Tags;
 
 namespace Octans.Client.Components.Gallery;
 
@@ -11,12 +10,12 @@ public sealed class QueryBuilderViewmodel(IOctansClient client) : ViewmodelBase,
     private bool _initialized;
 
     private readonly List<QueryParameter> _parameters = [];
-    private readonly List<QuerySuggestionDto> _suggestions = [];
+    private readonly List<QueryLanguageSuggestionDto> _suggestions = [];
 
     public Func<List<QueryParameter>, Task>? QueryChanged { get; set; }
 
     public IReadOnlyList<QueryParameter> Parameters => _parameters;
-    public IReadOnlyList<QuerySuggestionDto> Suggestions => _suggestions;
+    public IReadOnlyList<QueryLanguageSuggestionDto> Suggestions => _suggestions;
 
     public string Current { get; private set; } = string.Empty;
 
@@ -119,14 +118,11 @@ public sealed class QueryBuilderViewmodel(IOctansClient client) : ViewmodelBase,
 
         try
         {
-            var results = await client.GetQuerySuggestionsAsync(term, cancellationToken: _requestCts.Token);
+            var results = await client.GetQueryLanguageSuggestionsAsync(term, cancellationToken: _requestCts.Token);
 
             _suggestions.Clear();
 
-            _suggestions.AddRange(results
-                .OrderBy(t => t.Namespace)
-                .ThenBy(t => t.Subtag)
-                .Select(MapSuggestion));
+            _suggestions.AddRange(results);
 
             await NotifyStateChanged();
         }
@@ -164,15 +160,13 @@ public sealed class QueryBuilderViewmodel(IOctansClient client) : ViewmodelBase,
         await NotifyQueryChangedAsync();
     }
 
-    public async Task ApplySuggestion(QuerySuggestionDto tag)
+    public async Task ApplySuggestion(QueryLanguageSuggestionDto suggestion)
     {
-        Current = $"{tag.Namespace}:{tag.Subtag}";
+        Current = suggestion.Value;
 
         await NotifyStateChanged();
         await AddCurrentAsync();
     }
-
-    private static QuerySuggestionDto MapSuggestion(TagModel tag) => new(tag.Namespace, tag.Subtag);
 
     private async Task NotifyQueryChangedAsync()
     {
@@ -192,5 +186,3 @@ public sealed class QueryBuilderViewmodel(IOctansClient client) : ViewmodelBase,
         _requestCts?.Dispose();
     }
 }
-
-public sealed record QuerySuggestionDto(string Namespace, string Subtag);

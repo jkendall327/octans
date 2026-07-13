@@ -87,7 +87,21 @@ The above example, for instance, is equivalent to `or:character:mario OR stage:1
 
 ### System Queries
 
-!TODO: list out all the system queries intending to implement.
+Query v1 supports:
+
+- `system:everything` for the normal non-trash library scope.
+- `system:inbox` for inbox media.
+- `system:archive` for archived media.
+- `system:trash` for trashed media. This is the predicate that explicitly opens
+  trash scope.
+
+System predicates are ordinary predicates. For example,
+`system:everything character:samus` still requires the tag, and
+`or:system:trash OR character:samus` matches trash plus normally scoped Samus
+media.
+
+Filesize, dimensions, tag count, import date, file type, and other media
+predicates are intentionally outside query v1.
 
 ## Implementation
 
@@ -102,4 +116,47 @@ The above example, for instance, is equivalent to `or:character:mario OR stage:1
 - Should still keep optimization rules simple and documented...
 
 ### Query executor
-!TODO: ???
+
+The v1 executor translates the predicate tree into composable EF/SQL filters.
+Top-level predicates use AND semantics. OR nodes retain their nested structure,
+and negative tag predicates become `NOT EXISTS`-style filters rather than
+mutating the positive tag set.
+
+Exact and wildcard tag matching is case-insensitive. Matching a parent tag also
+matches mappings to its materialized descendant tags. Normal queries exclude
+trash unless the tree contains an explicit `system:trash` predicate.
+
+## HTTP API
+
+`POST /api/files/query` accepts a stable paged request:
+
+```json
+{
+  "predicates": ["character:samus", "-series:smash"],
+  "offset": 0,
+  "limit": 100
+}
+```
+
+The limit must be between 1 and 500. Results contain `items`, `total`, `offset`,
+and `limit`; items are frontend-neutral media DTOs rather than EF entities.
+Results use ascending media ID as the stable v1 order.
+
+Invalid queries return HTTP 400 with an `errors` array. Each error has a stable
+code, message, predicate index, start offset, and length. The source range is
+relative to the corresponding string in `predicates`.
+
+`GET /api/query/suggestions?search=...&limit=...` returns both tag and system
+predicate suggestions. Negative tag input retains its `-` prefix in suggested
+values.
+
+## Deliberate v1 Limits
+
+- OR is explicit through the `or:... OR ...` form; whitespace does not imply OR.
+- Negation applies to tag predicates. Negated system predicates and negated OR
+  groups are rejected with structured errors.
+- Sorting is fixed to ascending media ID.
+- Sibling canonicalization depends on future materialized sibling state and is
+  not performed live by this executor.
+- Query-plan performance optimization and plan caching are future work. The
+  planner currently performs only semantics-preserving structural deduplication.

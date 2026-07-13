@@ -19,6 +19,7 @@ using Octans.Client;
 using Octans.Core;
 using Octans.Core.Filesystem;
 using Octans.Core.Importing;
+using Octans.Core.Querying;
 using Octans.Core.Repositories;
 using Octans.Data.Models;
 using Octans.Tests.Helpers;
@@ -112,19 +113,19 @@ public sealed class OctansApiFactory : WebApplicationFactory<Program>
     {
         var response = await client.PostAsJsonAsync(
             new Uri("/api/files/query", UriKind.Relative),
-            query,
+            new FileQueryRequest(query),
             JsonOptions);
 
-        var items = await response.Content.ReadFromJsonAsync<List<FileDto>>(JsonOptions) ?? [];
+        var page = await response.Content.ReadFromJsonAsync<FileQueryPageDto>(JsonOptions);
 
-        return new(response, items);
+        return new(response, page?.Items ?? []);
     }
 
     public static async Task<FileQueryCountResult> CountQueryAsync(HttpClient client, IReadOnlyList<string> query)
     {
         var response = await client.PostAsJsonAsync(
             new Uri("/api/files/query/count", UriKind.Relative),
-            query,
+            new FileQueryRequest(query),
             JsonOptions);
         var count = await response.Content.ReadFromJsonAsync<FileQueryCountDto>(JsonOptions);
 

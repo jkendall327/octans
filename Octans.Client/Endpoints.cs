@@ -26,6 +26,14 @@ namespace Octans.Client;
 
 internal static class Endpoints
 {
+    private static readonly string[] QuerySystemPredicates =
+    [
+        "system:everything",
+        "system:inbox",
+        "system:archive",
+        "system:trash"
+    ];
+
     public static void AddEndpoints(this WebApplication app)
     {
         var api = app.MapGroup("/api");
@@ -87,6 +95,46 @@ internal static class Endpoints
                 })
             .WithName("GetTagSuggestions")
             .WithDescription("Gets autocomplete tag suggestions");
+
+        app
+            .MapGet("/query/suggestions",
+                async (string search,
+                    int? limit,
+                    [FromServices] QuerySuggestionFinder suggestionFinder,
+                    CancellationToken token) =>
+                {
+                    var take = Math.Clamp(limit ?? 20, 1, 50);
+                    var trimmed = search.Trim();
+                    var suggestions = new List<QueryLanguageSuggestionDto>();
+                    suggestions.AddRange(QuerySystemPredicates
+                        .Where(value => value.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
+                        .Select(value => new QueryLanguageSuggestionDto(value, value, "system")));
+
+                    if (!trimmed.StartsWith("system:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var negated = trimmed.StartsWith(PredicateConstants.Negation);
+                        var tagSearch = negated ? trimmed[1..] : trimmed;
+                        var tags = await suggestionFinder.GetAutocompleteTagIds(tagSearch, false, token);
+
+                        suggestions.AddRange(tags
+                            .OrderBy(tag => tag.Namespace.Value)
+                            .ThenBy(tag => tag.Subtag.Value)
+                            .Select(tag =>
+                            {
+                                var value = $"{tag.Namespace.Value}:{tag.Subtag.Value}";
+                                if (negated)
+                                {
+                                    value = $"-{value}";
+                                }
+
+                                return new QueryLanguageSuggestionDto(value, value, "tag");
+                            }));
+                    }
+
+                    return new QueryLanguageSuggestionsDto(suggestions.Take(take).ToList());
+                })
+            .WithName("GetQuerySuggestions")
+            .WithDescription("Gets query-language suggestions for tags and system predicates");
 
         app
             .MapPost("/tags",
@@ -165,25 +213,42 @@ internal static class Endpoints
 
         app
             .MapPost("/files/query",
-                ([FromBody] IEnumerable<string> queries,
-                    [FromServices] IQueryService service,
-                    CancellationToken token) => QueryFileDtos(queries, service, token))
-            .WithName("Search by Query")
-            .WithDescription("Retrieve files found by a tag query search");
-
-        app
-            .MapPost("/files/query/count",
-                async ([FromBody] IEnumerable<string> queries,
+                async ([FromBody] FileQueryRequest request,
                     [FromServices] IQueryService service,
                     CancellationToken token) =>
                 {
-                    var count = 0;
-                    await foreach (var _ in service.Query(queries, token))
+                    try
                     {
-                        count++;
+                        var page = await service.QueryAsync(request, token);
+                        return Results.Ok(new FileQueryPageDto(
+                            page.Items.Select(MapFile).ToList(),
+                            page.Total,
+                            page.Offset,
+                            page.Limit));
                     }
+                    catch (QueryValidationException ex)
+                    {
+                        return Results.BadRequest(new QueryErrorResponse(ex.Errors));
+                    }
+                })
+            .WithName("Search by Query")
+            .WithDescription("Retrieves one page of files found by a query, with the total match count");
 
-                    return new FileQueryCountDto(count);
+        app
+            .MapPost("/files/query/count",
+                async ([FromBody] FileQueryRequest request,
+                    [FromServices] IQueryService service,
+                    CancellationToken token) =>
+                {
+                    try
+                    {
+                        var count = await service.CountAsync(request.Predicates, token);
+                        return Results.Ok(new FileQueryCountDto(count));
+                    }
+                    catch (QueryValidationException ex)
+                    {
+                        return Results.BadRequest(new QueryErrorResponse(ex.Errors));
+                    }
                 })
             .WithName("CountSearchResults")
             .WithDescription("Counts files found by a tag query search");
@@ -1020,17 +1085,6 @@ internal static class Endpoints
         {
             error = "Hash must be hex.";
             return false;
-        }
-    }
-
-    private static async IAsyncEnumerable<FileDto> QueryFileDtos(
-        IEnumerable<string> queries,
-        IQueryService service,
-        [EnumeratorCancellation] CancellationToken token)
-    {
-        await foreach (var item in service.Query(queries, token).WithCancellation(token))
-        {
-            yield return MapFile(item);
         }
     }
 

@@ -52,12 +52,8 @@ public class GalleryViewmodelTests
         };
 
         _client
-            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(hashes.Length);
-
-        _client
-            .QueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(hashes);
+            .QueryFilesPageAsync(Arg.Any<FileQueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new FileQueryPageDto(hashes, hashes.Length, 0, 100));
 
         var args = new List<QueryParameter>();
 
@@ -74,15 +70,11 @@ public class GalleryViewmodelTests
         var total = 100;
 
         _client
-            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns(total);
-
-        _client
-            .QueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
+            .QueryFilesPageAsync(Arg.Any<FileQueryRequest>(), Arg.Any<CancellationToken>())
             .Returns(async ci =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), ci.Arg<CancellationToken>());
-                return [];
+                return new FileQueryPageDto([], total, 0, 100);
             });
 
         var args = new List<QueryParameter>();
@@ -103,8 +95,8 @@ public class GalleryViewmodelTests
     public async Task Exception_sets_LastError_and_stops_searching()
     {
         _client
-            .CountQueryFilesAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>())
-            .Returns<Task<int>>(_ => throw new InvalidOperationException("boom"));
+            .QueryFilesPageAsync(Arg.Any<FileQueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns<Task<FileQueryPageDto>>(_ => throw new InvalidOperationException("boom"));
 
         var args = new List<QueryParameter>();
 

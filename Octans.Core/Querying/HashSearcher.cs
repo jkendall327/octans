@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Octans.Core.Tags;
 using Octans.Data.Models;
@@ -45,6 +46,11 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
             .Where(h => h.DeletedAt == null)
             .AsQueryable();
 
+        if (request.Plan is not null)
+        {
+            return await BuildSemanticQuery(query, request.Plan, cancellationToken);
+        }
+
         if (ShouldStartFromAllHashes(request))
         {
             return ApplyRepositoryFilter(query, request);
@@ -69,6 +75,117 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
 
         return ApplyRepositoryFilter(query, request);
     }
+
+    private async Task<IQueryable<HashItem>> BuildSemanticQuery(
+        IQueryable<HashItem> query,
+        QueryPlan plan,
+        CancellationToken cancellationToken)
+    {
+        var tagIds = new Dictionary<TagPredicate, IReadOnlyList<int>>();
+        foreach (var tag in EnumerateTagPredicates(plan.Predicates).Distinct())
+        {
+            tagIds[tag] = await GetMatchingTagIds(tag, cancellationToken);
+        }
+
+        if (!ContainsTrashPredicate(plan.Predicates))
+        {
+            query = query.Where(h => h.RepositoryId != (int)RepositoryType.Trash);
+        }
+
+        foreach (var predicate in plan.Predicates)
+        {
+            query = query.Where(BuildExpression(predicate, tagIds));
+        }
+
+        return query;
+    }
+
+    private async Task<IReadOnlyList<int>> GetMatchingTagIds(
+        TagPredicate predicate,
+        CancellationToken cancellationToken)
+    {
+        var namespacePattern = ToLikePattern(predicate.NamespacePattern);
+        var subtagPattern = ToLikePattern(predicate.SubtagPattern);
+
+        var ids = await context.Tags
+            .Where(t => EF.Functions.Like(t.Namespace.Value, namespacePattern, "\\") &&
+                        EF.Functions.Like(t.Subtag.Value, subtagPattern, "\\"))
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+
+        if (ids.Count == 0)
+        {
+            return ids;
+        }
+
+        var expanded = ids.ToHashSet();
+        expanded.UnionWith(await tagParentService.GetDescendantIdsAsync(expanded, cancellationToken));
+        return expanded.ToList();
+    }
+
+    private Expression<Func<HashItem, bool>> BuildExpression(
+        IPredicate predicate,
+        IReadOnlyDictionary<TagPredicate, IReadOnlyList<int>> tagIds) => predicate switch
+    {
+        EverythingPredicate => hash => true,
+        RepositoryPredicate repository => hash => hash.RepositoryId == (int)repository.Repository,
+        TagPredicate tag => BuildTagExpression(tag, tagIds[tag]),
+        OrPredicate or => or.Predicates
+            .Select(child => BuildExpression(child, tagIds))
+            .Aggregate(OrElse),
+        _ => throw new InvalidOperationException($"Predicate type '{predicate.GetType().Name}' cannot be executed.")
+    };
+
+    private Expression<Func<HashItem, bool>> BuildTagExpression(TagPredicate predicate, IReadOnlyList<int> ids)
+    {
+        Expression<Func<HashItem, bool>> match = hash => context.Mappings
+            .Any(mapping => mapping.Hash.Id == hash.Id && ids.Contains(mapping.Tag.Id));
+
+        return predicate.IsExclusive ? Not(match) : match;
+    }
+
+    private static Expression<Func<HashItem, bool>> OrElse(
+        Expression<Func<HashItem, bool>> left,
+        Expression<Func<HashItem, bool>> right)
+    {
+        var parameter = left.Parameters[0];
+        var rightBody = new ReplaceParameterVisitor(right.Parameters[0], parameter).Visit(right.Body)!;
+        return Expression.Lambda<Func<HashItem, bool>>(Expression.OrElse(left.Body, rightBody), parameter);
+    }
+
+    private static Expression<Func<HashItem, bool>> Not(Expression<Func<HashItem, bool>> expression) =>
+        Expression.Lambda<Func<HashItem, bool>>(Expression.Not(expression.Body), expression.Parameters);
+
+    private static IEnumerable<TagPredicate> EnumerateTagPredicates(IEnumerable<IPredicate> predicates)
+    {
+        foreach (var predicate in predicates)
+        {
+            if (predicate is TagPredicate tag)
+            {
+                yield return tag;
+            }
+
+            if (predicate is not OrPredicate or)
+            {
+                continue;
+            }
+
+            foreach (var child in EnumerateTagPredicates(or.Predicates))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private static bool ContainsTrashPredicate(IEnumerable<IPredicate> predicates) => predicates.Any(predicate =>
+        predicate is RepositoryPredicate { Repository: RepositoryType.Trash } ||
+        predicate is OrPredicate or && ContainsTrashPredicate(or.Predicates));
+
+    private static string ToLikePattern(string pattern) => pattern
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal)
+        .Replace(PredicateConstants.Wildcard.ToString(), "%", StringComparison.Ordinal);
 
     private static IQueryable<HashItem> ApplyRepositoryFilter(IQueryable<HashItem> query, DecomposedQuery request)
     {
@@ -176,5 +293,10 @@ internal sealed class HashSearcher(ServerDbContext context, TagParentService tag
         }
 
         return excludeIds;
+    }
+
+    private sealed class ReplaceParameterVisitor(ParameterExpression source, ParameterExpression target) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == source ? target : node;
     }
 }

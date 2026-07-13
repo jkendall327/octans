@@ -53,11 +53,15 @@ public sealed class QuerySuggestionFinder(ServerDbContext context, TagSplitter s
 
         var namespaceIds = namespaces.Select(n => n.Id).ToList();
 
+        var allTags = context.Tags
+            .Include(t => t.Namespace)
+            .Include(t => t.Subtag);
+
         IQueryable<Tag> tagsForFoundNamespaces;
 
         if (namespaceIds.Count > 0)
         {
-            tagsForFoundNamespaces = context.Tags.Where(t => namespaceIds.Contains(t.Namespace.Id));
+            tagsForFoundNamespaces = allTags.Where(t => namespaceIds.Contains(t.Namespace.Id));
         }
         else
         {
@@ -73,7 +77,7 @@ public sealed class QuerySuggestionFinder(ServerDbContext context, TagSplitter s
             // If space was empty, we don't use tagsForFoundNamespaces anyway unless wildcards logic below messes it up.
             // But let's define it as empty to be safe, though it shouldn't be reached in that case
             // because of logic later "var source = namespaces.Any() ? ... : context.Tags"
-            tagsForFoundNamespaces = context.Tags.Where(t => false);
+            tagsForFoundNamespaces = allTags.Where(t => false);
         }
 
         List<Tag> tags = [];
@@ -87,7 +91,7 @@ public sealed class QuerySuggestionFinder(ServerDbContext context, TagSplitter s
 
             if (!namespaces.Any())
             {
-                tags = await context.Tags.ToListAsync(token);
+                tags = await allTags.ToListAsync(token);
             }
 
             // Get all tags for all the wildcard-expanded namespaces.
@@ -104,7 +108,7 @@ public sealed class QuerySuggestionFinder(ServerDbContext context, TagSplitter s
 
         // If the user specified 1+ namespaces, only consider tags in those spaces.
         // Otherwise, search everything.
-        var source = namespaces.Any() ? tagsForFoundNamespaces : context.Tags;
+        var source = namespaces.Any() ? tagsForFoundNamespaces : allTags;
 
         var clean = subtag.Replace(PredicateConstants.Wildcard.ToString(), string.Empty, StringComparison.Ordinal);
 
