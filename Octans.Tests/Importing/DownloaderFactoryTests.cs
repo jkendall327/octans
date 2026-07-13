@@ -340,6 +340,55 @@ public class DownloaderFactoryTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Fact]
+    public async Task DiscoverAsync_ShouldFailWhenSelectedDownloaderParserFails()
+    {
+        var subdir = _downloaders.CreateSubdirectory("broken");
+        AddFileToSubdir(subdir, "metadata", new("""
+                                                Downloader = {
+                                                    name = "broken downloader",
+                                                    creator = "Octans tests",
+                                                    version = "1.0"
+                                                }
+                                                """));
+        AddFileToSubdir(subdir, "classifier", _classifier);
+        AddFileToSubdir(subdir, "gug", new("function generate_url(query, page) return 'https://example.com/gallery' end"));
+        AddFileToSubdir(subdir, "parser", new("function parse_html(content) error('parser failure') end"));
+        var service = CreateService(CreateDocumentFetcher("gallery html"));
+
+        var act = async () => await service.DiscoverAsync("broken downloader", "octans");
+
+        await act.Should()
+            .ThrowAsync<DownloaderContractException>()
+            .WithMessage("*parse_html*");
+    }
+
+    [Fact]
+    public async Task DiscoverAsync_ShouldFailWhenSelectedDownloaderClassifierFails()
+    {
+        var subdir = _downloaders.CreateSubdirectory("broken");
+        AddFileToSubdir(subdir, "metadata", new("""
+                                                Downloader = {
+                                                    name = "broken downloader",
+                                                    creator = "Octans tests",
+                                                    version = "1.0"
+                                                }
+                                                """));
+        AddFileToSubdir(subdir, "classifier", new("""
+                                                   function match_url(url) return true end
+                                                   function classify_url(url) error('classifier failure') end
+                                                   """));
+        AddFileToSubdir(subdir, "gug", new("function generate_url(query, page) return 'https://example.com/gallery' end"));
+        AddFileToSubdir(subdir, "parser", new("function parse_html(content) return { 'https://example.com/post/1' } end"));
+        var service = CreateService(CreateDocumentFetcher("gallery html"));
+
+        var act = async () => await service.DiscoverAsync("broken downloader", "octans");
+
+        await act.Should()
+            .ThrowAsync<DownloaderContractException>()
+            .WithMessage("*classify_url*");
+    }
+
     private void AddFileToSubdir(IDirectoryInfo dir, string filename, MockFileData data)
     {
         _fileSystem.AddFile(dir.FullName + $"/{filename}.lua", data);

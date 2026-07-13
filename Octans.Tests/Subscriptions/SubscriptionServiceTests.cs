@@ -208,4 +208,58 @@ public class SubscriptionServiceTests
             Assert.Equal(now.AddHours(2), subscriptions[1].NextCheck);
         }
     }
+
+    [Fact]
+    public async Task RunNow_ExecutesOnlyRequestedSubscriptionAndPreservesPausedState()
+    {
+        var now = new DateTimeOffset(2023, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        _timeProvider.SetUtcNow(now);
+
+        int pausedId;
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var provider = new Provider { Name = "TestProvider" };
+            context.Providers.Add(provider);
+            await context.SaveChangesAsync();
+
+            var paused = new Subscription
+            {
+                Name = "Paused Subscription",
+                CheckPeriod = TimeSpan.FromHours(1),
+                Query = "paused query",
+                ProviderId = provider.Id,
+                NextCheck = now.AddMinutes(-1),
+                IsEnabled = false
+            };
+            context.Subscriptions.AddRange(
+                paused,
+                new Subscription
+                {
+                    Name = "Other Due Subscription",
+                    CheckPeriod = TimeSpan.FromHours(1),
+                    Query = "other query",
+                    ProviderId = provider.Id,
+                    NextCheck = now.AddMinutes(-1)
+                });
+            await context.SaveChangesAsync();
+            pausedId = paused.Id;
+        }
+
+        _executor.ExecuteAsync(Arg.Any<Subscription>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new SubscriptionExecutionResult(0)));
+
+        await _sut.RunNowAsync(pausedId);
+
+        await _executor.Received(1).ExecuteAsync(
+            Arg.Is<Subscription>(subscription => subscription.Id == pausedId),
+            Arg.Any<CancellationToken>());
+        await _executor.DidNotReceive().ExecuteAsync(
+            Arg.Is<Subscription>(subscription => subscription.Name == "Other Due Subscription"),
+            Arg.Any<CancellationToken>());
+
+        await using var verificationContext = await _factory.CreateDbContextAsync();
+        var pausedAfterRun = await verificationContext.Subscriptions.SingleAsync(subscription => subscription.Id == pausedId);
+        Assert.False(pausedAfterRun.IsEnabled);
+        Assert.Single(await verificationContext.SubscriptionExecutions.ToListAsync());
+    }
 }

@@ -340,7 +340,7 @@ internal sealed class HttpDownloader(
             await stateService.UpdateProgress(downloadId,
                 bytesDownloaded,
                 totalBytes,
-                bytesDownloaded / totalElapsed.TotalSeconds);
+                totalElapsed > TimeSpan.Zero ? bytesDownloaded / totalElapsed.TotalSeconds : 0);
 
             await lifecycle.MarkCompletedAsync(downloadId, new()
             {

@@ -1,10 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using FluentAssertions.Execution;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Octans.Client;
 using Octans.Core;
 using Octans.Core.Importing;
@@ -59,15 +61,19 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         persistedTags.Should().BeEquivalentTo(tags);
     }
 
-    [Fact(Skip = "Subscriptions haven't been fully implemented yet. This is a north-star test.")]
+    [Fact]
     public async Task UserCan_RunSubscriptionImportDiscoveredItemsAvoidAlreadySeenItemsAndInspectHistory()
     {
         var discoveredItems = CreateDiscoveredItems();
         var executor = new FakeSubscriptionExecutor(discoveredItems);
 
-        await using var factory = new OctansApiFactory(
-            output,
-            services => services.ReplaceExistingRegistrationsWith<ISubscriptionExecutor>(executor));
+        await using var factory = CreateFactory(executor, discoveredItems);
+        factory.FileSystem.AddDrive("/", new()
+        {
+            AvailableFreeSpace = 1024 * 1024 * 1024,
+            TotalFreeSpace = 1024 * 1024 * 1024,
+            TotalSize = 1024L * 1024 * 1024 * 10
+        });
         var client = factory.CreateClient();
         var createResponse = await client.PostAsJsonAsync(
             new Uri("/api/subscriptions", UriKind.Relative),
@@ -93,6 +99,10 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         var subscriptionsAfterCreate = await GetSubscriptions(client);
 
         await RunDueSubscriptions(factory);
+        using (var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
+        {
+            await factory.ProcessQueuedImportJobAsync(cancellation.Token).WaitAsync(TimeSpan.FromSeconds(15));
+        }
 
         var executionsAfterFirstRun = executor.Executions.ToList();
         var subscriptionsAfterFirstRun = await GetSubscriptions(client);
@@ -192,7 +202,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         }
     }
 
-    [Fact(Skip = "Subscriptions haven't been fully implemented yet. This is a north-star test.")]
+    [Fact]
     public async Task UserCan_SeeSubscriptionFailureHistoryAndFutureRunsStillRecover()
     {
         var discoveredItems = CreateDiscoveredItems();
@@ -218,6 +228,7 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         var firstRunException = await Record.ExceptionAsync(() => RunDueSubscriptions(factory));
         var subscriptionsAfterFailure = await GetSubscriptions(client);
 
+        factory.TimeProvider.Advance(TimeSpan.FromMinutes(5));
         await RunDueSubscriptions(factory);
 
         var subscriptionsAfterRecovery = await GetSubscriptions(client);
@@ -263,6 +274,30 @@ public sealed class SubscriptionFlowTests(ITestOutputHelper output)
         var hash = ContentHash.FromContent(bytes);
 
         return new(new(url), bytes, hash);
+    }
+
+    private OctansApiFactory CreateFactory(
+        ISubscriptionExecutor executor,
+        IReadOnlyList<SubscriptionDiscoveredItem> discoveredItems)
+    {
+        var remoteHttp = new StubHttpMessageHandler(request =>
+        {
+            var item = discoveredItems.Single(discovered => discovered.RemoteUrl == request.RequestUri);
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(item.Bytes)
+            };
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            return response;
+        });
+
+        return new(output, services =>
+        {
+            services.ReplaceExistingRegistrationsWith<ISubscriptionExecutor>(executor);
+            services.AddSingleton<IHostedService, DownloadBackgroundService>();
+            services.AddHttpClient("DownloadClient")
+                .ConfigurePrimaryHttpMessageHandler(() => remoteHttp);
+        });
     }
 
     private static async Task RunDueSubscriptions(OctansApiFactory factory)

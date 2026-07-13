@@ -854,6 +854,10 @@ internal static class Endpoints
                     {
                         return Results.NotFound();
                     }
+                    catch (InvalidOperationException ex)
+                    {
+                        return Results.Conflict(ex.Message);
+                    }
                 })
             .WithName("RunSubscriptionNow");
 

@@ -57,11 +57,10 @@ internal sealed class DownloaderService(
         var discoveryQuery = query;
         if (!isSeedUrl && downloader.Metadata.SupportedOperations.Contains("process_query"))
         {
-            discoveryQuery = TryRun(
-                                downloader,
-                                "process_query",
-                                () => downloader.ProcessApiQuery(query))
-                            ?? query;
+            discoveryQuery = RunDiscoveryOperation(
+                downloader,
+                "process_query",
+                () => downloader.ProcessApiQuery(query));
         }
         var pageLimit = isSeedUrl ? 1 : Math.Max(1, Math.Min(100, (maxItems + 49) / 50));
 
@@ -71,16 +70,18 @@ internal sealed class DownloaderService(
             var galleryUri = isSeedUrl
                 ? seedUri!
                 : CreateHttpUri(
-                    TryRun(downloader, "generate_url", () => downloader.GenerateGalleryUrl(discoveryQuery, page, resolverToken))
-                        ?? throw new DownloaderContractException("generate_url failed."),
+                    RunDiscoveryOperation(
+                        downloader,
+                        "generate_url",
+                        () => downloader.GenerateGalleryUrl(discoveryQuery, page, resolverToken)),
                     "generate_url");
             var html = await documentFetcher.GetStringAsync(galleryUri, resolverToken);
-            var candidates = TryRun(
+            var candidates = RunDiscoveryOperation(
                 downloader,
                 "parse_html",
                 () => downloader.ParseHtml(html, resolverToken)
                     .Select(url => CreateHttpUri(url, "parse_html"))
-                    .ToList()) ?? [];
+                    .ToList());
 
             if (candidates.Count == 0)
             {
@@ -92,7 +93,7 @@ internal sealed class DownloaderService(
             {
                 resolverToken.ThrowIfCancellationRequested();
                 var candidateId = NormalizeSourceId(candidate);
-                var classification = TryRun(
+                var classification = RunDiscoveryOperation(
                     downloader,
                     "classify_url",
                     () => downloader.ClassifyUrl(candidate, resolverToken));
@@ -193,14 +194,13 @@ internal sealed class DownloaderService(
         CancellationToken cancellationToken)
     {
         var raw = await documentFetcher.GetStringAsync(uri, cancellationToken);
-        return TryRun(
+        return RunDiscoveryOperation(
                 downloader,
                 "parse_html",
                 () => downloader
                     .ParseHtml(raw, cancellationToken)
                     .Select(u => CreateHttpUri(u, "parse_html"))
-                    .ToList())
-            ?? [];
+                    .ToList());
     }
 
     private async Task<IReadOnlyList<Uri>> ResolveGalleryAsync(
@@ -265,6 +265,20 @@ internal sealed class DownloaderService(
         }
 
         return uri;
+    }
+
+    private static T RunDiscoveryOperation<T>(Downloader downloader, string operation, Func<T> action)
+    {
+        try
+        {
+            return action();
+        }
+        catch (DownloaderContractException ex)
+        {
+            throw new DownloaderContractException(
+                $"Downloader '{GetDownloaderName(downloader)}' failed during {operation}: {ex.Message}",
+                ex);
+        }
     }
 
     private T? TryRun<T>(Downloader downloader, string operation, Func<T> action)

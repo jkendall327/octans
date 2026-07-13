@@ -141,17 +141,29 @@ internal sealed class SubscriptionService(
 
     public async Task RunNowAsync(int id, CancellationToken cancellationToken = default)
     {
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var subscription = await db.Subscriptions.FindAsync([id], cancellationToken);
-        if (subscription is null)
+        await SchedulerLock.WaitAsync(cancellationToken);
+        try
         {
-            throw new KeyNotFoundException($"Subscription {id} was not found.");
-        }
+            await using var db = await factory.CreateDbContextAsync(cancellationToken);
+            var subscription = await db.Subscriptions
+                .Include(item => item.Provider)
+                .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            if (subscription is null)
+            {
+                throw new KeyNotFoundException($"Subscription {id} was not found.");
+            }
 
-        subscription.IsEnabled = true;
-        subscription.NextCheck = timeProvider.GetUtcNow();
-        await db.SaveChangesAsync(cancellationToken);
-        await CheckAndExecute(cancellationToken);
+            if (subscription.IsRunning)
+            {
+                throw new InvalidOperationException($"Subscription {id} is already running.");
+            }
+
+            await ExecuteSubscriptionAsync(db, subscription, cancellationToken);
+        }
+        finally
+        {
+            SchedulerLock.Release();
+        }
     }
 
     public async Task SetEnabledAsync(int id, bool enabled, CancellationToken cancellationToken = default)
@@ -273,76 +285,86 @@ internal sealed class SubscriptionService(
         foreach (var subscription in subscriptions)
         {
             stoppingToken.ThrowIfCancellationRequested();
-            var execution = await StartExecutionAsync(db, subscription, stoppingToken);
-            var queuedDownloadIds = new List<Guid>();
-            try
+            await ExecuteSubscriptionAsync(db, subscription, stoppingToken);
+        }
+    }
+
+    private async Task ExecuteSubscriptionAsync(
+        ServerDbContext db,
+        Subscription subscription,
+        CancellationToken cancellationToken)
+    {
+        var execution = await StartExecutionAsync(db, subscription, cancellationToken);
+        var queuedDownloadIds = new List<Guid>();
+        try
+        {
+            var result = await executor.ExecuteAsync(subscription, cancellationToken);
+            execution.ItemsFound = result.ItemsFound;
+            execution.Diagnostics = result.Diagnostics;
+            subscription.Cursor = result.NextCursor;
+
+            var newItems = await FindAndRememberNewItemsAsync(
+                db,
+                subscription,
+                execution,
+                result.DiscoveredItems,
+                cancellationToken);
+            execution.ItemsSkipped = result.ItemsFound - newItems.Count;
+
+            if (newItems.Count > 0)
             {
-                var result = await executor.ExecuteAsync(subscription, stoppingToken);
-                execution.ItemsFound = result.ItemsFound;
-                execution.Diagnostics = result.Diagnostics;
-                subscription.Cursor = result.NextCursor;
-
-                var newItems = await FindAndRememberNewItemsAsync(
-                    db,
-                    subscription,
-                    execution,
-                    result.DiscoveredItems,
-                    stoppingToken);
-                execution.ItemsSkipped = result.ItemsFound - newItems.Count;
-
-                if (newItems.Count > 0)
+                var completedAt = timeProvider.GetUtcNow();
+                var importJob = CreateImportJob(db, subscription, execution, newItems, completedAt);
+                db.ImportJobs.Add(importJob);
+                execution.ImportJobId = importJob.Id;
+                execution.ItemsQueued = newItems.Count;
+                queuedDownloadIds.AddRange(importJob.Items
+                    .Where(item => item.DownloadId is not null)
+                    .Select(item => item.DownloadId!.Value));
+                foreach (var item in newItems)
                 {
-                    var completedAt = timeProvider.GetUtcNow();
-                    var importJob = CreateImportJob(db, subscription, execution, newItems, completedAt);
-                    db.ImportJobs.Add(importJob);
-                    execution.ImportJobId = importJob.Id;
-                    execution.ItemsQueued = newItems.Count;
-                    queuedDownloadIds.AddRange(importJob.Items
-                        .Where(item => item.DownloadId is not null)
-                        .Select(item => item.DownloadId!.Value));
-                    foreach (var item in newItems)
-                    {
-                        item.QueuedAt = completedAt;
-                    }
-                }
-
-                CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: true);
-                logger.LogInformation(
-                    "Executed subscription {SubscriptionId} ({Name}); found {ItemsFound}, queued {ItemsQueued}, skipped {ItemsSkipped}",
-                    subscription.Id,
-                    subscription.Name,
-                    execution.ItemsFound,
-                    execution.ItemsQueued,
-                    execution.ItemsSkipped);
-            }
-            catch (OperationCanceledException)
-            {
-                execution.Status = SubscriptionExecutionStatus.Cancelled;
-                execution.ErrorMessage = "Subscription execution was cancelled.";
-                CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: false);
-                await db.SaveChangesAsync(CancellationToken.None);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                execution.Status = SubscriptionExecutionStatus.Failed;
-                execution.ErrorMessage = Truncate(ex.Message, 2000);
-                execution.Diagnostics = Truncate(ex.ToString(), 2000);
-                CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: false);
-                logger.LogError(ex, "Subscription {SubscriptionId} ({Name}) failed", subscription.Id, subscription.Name);
-            }
-
-            await db.SaveChangesAsync(stoppingToken);
-            if (downloadStateService is not null)
-            {
-                foreach (var downloadId in queuedDownloadIds)
-                {
-                    var status = await db.DownloadStatuses
-                        .AsNoTracking()
-                        .SingleAsync(download => download.Id == downloadId, stoppingToken);
-                    await downloadStateService.AddOrUpdateDownloadAsync(status);
+                    item.QueuedAt = completedAt;
                 }
             }
+
+            CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: true);
+            logger.LogInformation(
+                "Executed subscription {SubscriptionId} ({Name}); found {ItemsFound}, queued {ItemsQueued}, skipped {ItemsSkipped}",
+                subscription.Id,
+                subscription.Name,
+                execution.ItemsFound,
+                execution.ItemsQueued,
+                execution.ItemsSkipped);
+        }
+        catch (OperationCanceledException)
+        {
+            execution.Status = SubscriptionExecutionStatus.Cancelled;
+            execution.ErrorMessage = "Subscription execution was cancelled.";
+            CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: false);
+            await db.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            execution.Status = SubscriptionExecutionStatus.Failed;
+            execution.ErrorMessage = Truncate(ex.Message, 2000);
+            execution.Diagnostics = Truncate(ex.ToString(), 2000);
+            CompleteSubscription(subscription, execution, timeProvider.GetUtcNow(), succeeded: false);
+            logger.LogError(ex, "Subscription {SubscriptionId} ({Name}) failed", subscription.Id, subscription.Name);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        if (downloadStateService is null)
+        {
+            return;
+        }
+
+        foreach (var downloadId in queuedDownloadIds)
+        {
+            var status = await db.DownloadStatuses
+                .AsNoTracking()
+                .SingleAsync(download => download.Id == downloadId, cancellationToken);
+            await downloadStateService.AddOrUpdateDownloadAsync(status);
         }
     }
 
@@ -634,15 +656,16 @@ internal sealed class SubscriptionService(
         string downloaderName,
         CancellationToken cancellationToken)
     {
+        var normalizedName = downloaderName.Trim();
         var provider = await db.Providers.FirstOrDefaultAsync(
-            p => p.Name == downloaderName,
+            p => p.Name == normalizedName,
             cancellationToken);
         if (provider is not null)
         {
             return provider;
         }
 
-        provider = new Provider { Name = downloaderName.Trim() };
+        provider = new Provider { Name = normalizedName };
         db.Providers.Add(provider);
         return provider;
     }

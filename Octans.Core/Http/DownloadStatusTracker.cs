@@ -89,7 +89,7 @@ internal sealed class DownloadStatusTracker(
 
         status.BytesDownloaded = bytesDownloaded;
         status.TotalBytes = totalBytes;
-        status.CurrentSpeed = speed;
+        status.CurrentSpeed = double.IsFinite(speed) && speed >= 0 ? speed : 0;
         status.LastUpdated = timeProvider.GetUtcNow();
 
         await Raise(new DownloadStatusChanged { Status = status });

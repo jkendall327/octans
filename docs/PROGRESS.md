@@ -181,33 +181,27 @@ Recurring scans of web sources: subscription definitions, scheduling, provider e
 
 What exists now:
 
-The subscription workflow is now end-to-end. A run uses the selected Lua
-downloader to discover bounded result pages, records source-level history,
-creates subscription-owned durable download rows and a durable import job, and
-reuses those downloads when the import worker processes the job. Subscription
-runs expose queued/skipped counts, cursors, diagnostics, failure history, and
-links to their import jobs through the API. The scheduler supports enabled /
-paused state, manual runs, stale-run recovery, and overlap protection.
-
 - There is a persisted subscription model: `Provider`, `Subscription`, and `SubscriptionExecution`.
-- A subscription stores a name, provider/downloader, query string, check period, next-check timestamp, and a history of execution rows with executed-at time and item count.
-- `SubscriptionService` can add, list, delete, and periodically execute due subscriptions.
+- A subscription stores its downloader/query, schedule, enabled/running state, failure count, import destination, tags, per-run item limit, and a history of execution rows.
+- The registered executor uses the selected Lua downloader to process a query or seed URL, scan a bounded number of gallery pages, resolve post pages to media URLs, and report downloader/HTTP discovery failures as failed runs.
+- Successful discovery creates source-level history, durable subscription-owned download rows, and a durable import job. The import worker consumes the completed downloads through the normal import pipeline, including repository and tag settings.
+- Repeated runs skip source ID plus normalized-URL pairs already recorded for that subscription. End-to-end user-flow coverage exercises discovery handoff, download/import processing, tagging, media serving, and a repeated run that does not queue duplicates.
+- `SubscriptionService` can create, update, list, delete, enable/pause, manually execute one subscription, and periodically execute due subscriptions. Manual execution does not enable a paused subscription or sweep unrelated due subscriptions.
+- Runs record running/succeeded/failed/cancelled status, queued/skipped counts, diagnostics, errors, completion time, and the created import-job ID. One failed subscription does not prevent later due subscriptions from running.
+- Scheduling prevents overlapping in-process checks, persists an in-progress marker for restart recovery, uses exponential failure backoff, and advances the next check from completion time.
 - `SubscriptionBackgroundService` runs every minute and calls `SubscriptionService.CheckAndExecute`.
-- The Blazor subscriptions page can list subscriptions, show last run/items found/next check, and create or delete rows through a dialog.
-- The add-subscription dialog discovers downloader names from `DownloaderFactory`, so the UI already assumes subscriptions are tied to downloader definitions.
-- The executor boundary exists as `ISubscriptionExecutor`, returning `SubscriptionExecutionResult`.
-- Basic tests cover adding/listing/deleting subscriptions through the viewmodel and persisting an execution result.
+- The API supports list/create/update/delete, enable/pause, run-now, execution-history, and source-history operations. The Blazor page supports create/delete, enable/pause, run-now, and a basic execution-history dialog.
 
 Remaining limitations:
 
-- The downloader contract is still URL-oriented; richer typed post metadata,
-  provider credentials, and opaque pagination cursors can build on the current
-  `Cursor` field later.
-- The current scheduler is intentionally fair and sequential. A future pass can
-  add configurable provider concurrency and retry/backoff policies.
-- Import reconciliation records successful source imports, but it does not yet
-  expose per-media progress directly on the subscription page.
-- Downloader authentication and conditional requests remain outside this pass.
+- The downloader contract is URL-oriented. It cannot return richer typed post metadata, stable provider item IDs independent of URLs, or opaque pagination cursors; the persisted `Cursor` field is currently unused and is not exposed by the API.
+- `Provider` is still only a downloader name created on demand. It has no stable downloader/version identity, validation at subscription creation time, credentials, source policy, or useful display metadata.
+- Scheduling is sequential and guarded by an in-process static lock. There is no configurable provider concurrency, cross-process claim/lease, or backpressure based on the download/import queues.
+- A run is marked succeeded once durable downstream work is queued. Download/import failures are visible on those jobs but are not reconciled into the subscription execution status or summary counts.
+- Source items are considered seen as soon as work is queued. Cancelled or permanently failed downstream work is therefore not automatically retried by a later subscription run.
+- Import reconciliation records successful source imports, but the subscription page does not show per-media progress, source history, import-job links, or final imported/failed counts.
+- The API can update subscriptions, but the Blazor page has no edit workflow. It also lacks delete confirmation and automatic refresh while a run is active.
+- Downloader authentication, conditional requests, redirects/source identity changes, and multiple changing media files per post remain outside this pass.
 
 For long-term robustness:
 
